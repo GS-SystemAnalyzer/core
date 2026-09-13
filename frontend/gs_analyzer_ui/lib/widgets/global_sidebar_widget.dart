@@ -204,25 +204,33 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
             if (_isExpanded) ...[
               const SizedBox(width: 10),
               Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        title,
-                        overflow: TextOverflow.ellipsis,
-                        style: HudTheme.bodyText.copyWith(
-                          color: color,
-                          fontSize: 13,
-                          fontWeight: isActive ? FontWeight.w500 : FontWeight.normal,
+                child: ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.centerLeft,
+                    minWidth: 0,
+                    maxWidth: 250,
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: HudTheme.bodyText.copyWith(
+                              color: color,
+                              fontSize: 13,
+                              fontWeight: isActive ? FontWeight.w500 : FontWeight.normal,
+                            ),
+                          ),
                         ),
-                      ),
+                        if (route == AppRoute.storage)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6.0),
+                            child: Icon(Icons.lock, color: color, size: 14),
+                          ),
+                      ],
                     ),
-                    if (route == AppRoute.storage)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 6.0),
-                        child: Icon(Icons.lock, color: color, size: 14),
-                      ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -276,6 +284,7 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
               Expanded(
                 child: Text(
                   'SETTINGS',
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: HudTheme.bodyText.copyWith(
                     color: color,

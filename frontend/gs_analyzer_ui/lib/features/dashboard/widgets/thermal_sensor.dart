@@ -83,17 +83,11 @@ class _ThermalSensorState extends ConsumerState<ThermalSensor> {
                   'FAN SPEED',
                 ),
                 Text(
-                  '${telemetry.chassisFan1Rpm} rpm',
+                  '${telemetry.cpuFanRpm} rpm',
                   style: HudTheme.statGreen,
                 )
               ],
             )
-          // CustomProgressIndicator(
-          //   label: 'fan speed', 
-          //   tag: '${telemetry.chassisFan1Rpm} rpm', 
-          //   value: 0.8, 
-          //   height: 4
-          // )
         ],
       )
     );
