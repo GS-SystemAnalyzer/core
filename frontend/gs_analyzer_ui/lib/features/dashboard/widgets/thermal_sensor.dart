@@ -15,7 +15,17 @@ class _ThermalSensorState extends ConsumerState<ThermalSensor> {
   @override
   Widget build(BuildContext context) {
     final thermalState = ref.watch(thermalProvider);
-    final telemetry = thermalState.telemetry!;
+    final telemetry = thermalState.telemetry;
+
+    if (telemetry == null) {
+      return CustomContainer(
+        color: HudTheme.bgPanel,
+        padding: const EdgeInsets.all(20),
+        child: const Center(
+          child: CircularProgressIndicator(color: HudTheme.accentCyan),
+        ),
+      );
+    }
 
     return CustomContainer(
       color: HudTheme.bgPanel,
