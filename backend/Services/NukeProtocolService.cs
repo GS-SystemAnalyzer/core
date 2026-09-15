@@ -29,6 +29,8 @@ public class NukeProtocolService : INukeProtocolService
 
 	// Cache of active plan tokens to their normalized paths (TTL 15 mins)
 	private readonly MemoryCache _activePlanTokens = new MemoryCache(new MemoryCacheOptions());
+	private int _activeNukeCount = 0;
+	public bool IsNuking => Volatile.Read(ref _activeNukeCount) > 0;
 
 	public async Task<NukePreviewResponse> PreviewNukeAsync(List<string> paths, CancellationToken cancellationToken = default)
 	{
@@ -144,7 +146,10 @@ public class NukeProtocolService : INukeProtocolService
 		// Remove the token so it can't be reused
 		_activePlanTokens.Remove(planToken);
 
-		var totalNodes = paths.Count;
+		Interlocked.Increment(ref _activeNukeCount);
+		try
+		{
+			var totalNodes = paths.Count;
 		var processedNodes = 0;
 		var cancelToken = _scanner.NukeToken();
 		using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancelToken, cancellationToken);
@@ -280,18 +285,23 @@ public class NukeProtocolService : INukeProtocolService
 			await _hubContext.Clients.All.SendAsync("NukeAborted", "OPERATION ABORTED BY USER");
 		}
 
-		return new NukeResultDto
+			return new NukeResultDto
+			{
+				DeletedFiles = deletedFiles,
+				FreedBytes = freedBytes,
+				FreedFormatted = FormatSize(freedBytes),
+				StagedBytes = stagedBytes,
+				StagedFormatted = FormatSize(stagedBytes),
+				SkippedFiles = skippedFiles,
+				RecycleBinUsed = useRecycleBin,
+				Recoverable = useRecycleBin && deletedPaths.Count > 0,
+				OperationId = operationId
+			};
+		}
+		finally
 		{
-			DeletedFiles = deletedFiles,
-			FreedBytes = freedBytes,
-			FreedFormatted = FormatSize(freedBytes),
-			StagedBytes = stagedBytes,
-			StagedFormatted = FormatSize(stagedBytes),
-			SkippedFiles = skippedFiles,
-			RecycleBinUsed = useRecycleBin,
-			Recoverable = useRecycleBin && deletedPaths.Count > 0,
-			OperationId = operationId
-		};
+			Interlocked.Decrement(ref _activeNukeCount);
+		}
 	}
 
 	private void MoveToStaging(string originalPath, string operationId, bool isDirectory)

@@ -126,6 +126,12 @@ builder.Services.AddSingleton<IScheduleStore, ScheduleStore>();
 builder.Services.AddSingleton<IScheduleService, ScheduleService>();
 builder.Services.AddHostedService<ScheduledScanWorker>();
 
+// Automation services
+builder.Services.AddSingleton<IAutomationRuleStore, AutomationRuleStore>();
+builder.Services.AddSingleton<IAutomationAuditService, AutomationAuditService>();
+builder.Services.AddSingleton<IAutomationService, AutomationService>();
+builder.Services.AddHostedService<AutomationWorker>();
+
 // Scoped services (per-request)
 builder.Services.AddScoped<IDiskOperationService, DiskOperationsService>();
 builder.Services.AddScoped<IDuplicateFileDetector, DuplicateFileDetector>();
