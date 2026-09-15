@@ -146,6 +146,12 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
                     Icons.history_outlined,
                     currentRoute,
                   ),
+                  _buildNavItem(
+                    AppRoute.automation,
+                    'AUTOMATION',
+                    Icons.auto_mode_outlined,
+                    currentRoute,
+                  ),
                 ],
               ),
             ),

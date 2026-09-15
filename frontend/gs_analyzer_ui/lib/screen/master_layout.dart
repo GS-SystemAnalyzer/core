@@ -18,6 +18,7 @@ import 'package:gs_analyzer_ui/screen/startup_manager_screen.dart';
 import 'package:gs_analyzer_ui/providers/cache_stats_provider.dart';
 import 'package:gs_analyzer_ui/screen/telemetry_history_screen.dart';
 import 'package:gs_analyzer_ui/screen/disk_io_screen.dart';
+import 'package:gs_analyzer_ui/screen/automation_screen.dart';
 import 'cpu_metrics_screen.dart';
 
 class MasterLayout extends ConsumerWidget {
@@ -81,8 +82,11 @@ class MasterLayout extends ConsumerWidget {
       case AppRoute.settings:
         return const SettingsScreen();
 
+      case AppRoute.automation:
+        return const AutomationScreen();
+
       case AppRoute.dashboard:
-      return const DashboardScreen();
+        return const DashboardScreen();
         
     }
   }
