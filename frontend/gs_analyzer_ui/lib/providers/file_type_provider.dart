@@ -9,11 +9,17 @@ class FileTypeNoScanException implements Exception {
 
 final selectedCategoryProvider = StateProvider<String?>((ref) => null);
 
+/// Counter used to trigger manual cache invalidations with `refresh: true`.
+final fileTypesRefreshTriggerProvider = StateProvider.family<int, String>(
+  (ref, root) => 0,
+);
+
 /// Fetches file type breakdown for [root].
 /// Throws [FileTypeNoScanException] when no Directory scan has run yet.
 final fileTypesProvider = FutureProvider.autoDispose
     .family<FileTypeResult, String>((ref, root) async {
-      return ApiService().getFileTypes(root);
+      final refreshCount = ref.watch(fileTypesRefreshTriggerProvider(root));
+      return ApiService().getFileTypes(root, refresh: refreshCount > 0);
     });
 
 final scanRootProvider = StateProvider.family<String, String>(

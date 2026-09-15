@@ -15,6 +15,8 @@ import 'package:gs_analyzer_ui/providers/scan_diff_provider.dart';
 import 'package:gs_analyzer_ui/screen/scan_diff_screen.dart';
 import 'package:gs_analyzer_ui/widgets/disk_alert_banner.dart';
 import 'package:gs_analyzer_ui/providers/disk_alert_provider.dart';
+import 'package:gs_analyzer_ui/providers/file_type_provider.dart';
+import 'package:gs_analyzer_ui/widgets/export_scan_dialog.dart';
 
 class StorageScreen extends ConsumerWidget {
   const StorageScreen({Key? key}) : super(key: key);
@@ -120,6 +122,10 @@ class StorageScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text('STORAGE MATRICES', style: HudTheme.headerCyan),
+        actions: [
+          if (currentDrive != null)
+            _ExportScanButton(drive: currentDrive),
+        ],
       ),
       body: buildBody(),
     );
@@ -529,3 +535,74 @@ class _WhatChangedButton extends ConsumerWidget {
     );
   }
 }
+
+class _ExportScanButton extends ConsumerWidget {
+  final DriveInfo drive;
+
+  const _ExportScanButton({required this.drive});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dirState = ref.watch(directoryProvider);
+    final fileTypesAsync = ref.watch(fileTypesProvider(drive.name));
+
+    final hasCachedScan = (dirState.allNodes.isNotEmpty &&
+            dirState.currentPath.toUpperCase().startsWith(drive.name.toUpperCase())) ||
+        fileTypesAsync.maybeWhen(
+          data: (data) => data.categories.isNotEmpty,
+          orElse: () => false,
+        );
+
+    if (!hasCachedScan) {
+      return Tooltip(
+        message: 'RUN A SCAN FIRST',
+        child: Padding(
+          padding: const EdgeInsets.only(right: 16),
+          child: TextButton.icon(
+            onPressed: null,
+            icon: const Icon(
+              Icons.arrow_downward,
+              size: 14,
+              color: HudTheme.textDim,
+            ),
+            label: Text(
+              'EXPORT',
+              style: HudTheme.labelMuted.copyWith(color: HudTheme.textDim),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: TextButton.icon(
+        style: TextButton.styleFrom(
+          foregroundColor: HudTheme.accentCyan,
+          backgroundColor: HudTheme.accentCyan.withValues(alpha: 0.1),
+          side: const BorderSide(color: HudTheme.accentCyan, width: 1),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        ),
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (_) => ExportScanDialog(driveName: drive.name),
+          );
+        },
+        icon: const Icon(
+          Icons.arrow_downward,
+          size: 14,
+          color: HudTheme.accentCyan,
+        ),
+        label: Text(
+          'EXPORT',
+          style: HudTheme.labelMuted.copyWith(
+            color: HudTheme.accentCyan,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
+

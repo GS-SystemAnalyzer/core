@@ -72,6 +72,58 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
                 ),
               ),
             ),
+            const SizedBox(width: 8),
+            Tooltip(
+              message: 'REFRESH FILE TYPES FROM MEMORY',
+              child: InkWell(
+                borderRadius: BorderRadius.circular(4),
+                onTap: asyncResult.isLoading
+                    ? null
+                    : () {
+                        ref
+                            .read(
+                              fileTypesRefreshTriggerProvider(
+                                scanRoot,
+                              ).notifier,
+                            )
+                            .state++;
+                        ref
+                            .read(
+                              ebRefreshTriggerProvider(
+                                scanRoot,
+                              ).notifier,
+                            )
+                            .state++;
+                        ref.invalidate(fileTypesProvider(scanRoot));
+                        ref.invalidate(extensionBreakdownProvider(scanRoot));
+                      },
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: const Color(0xFF00FFFF).withValues(alpha: 0.35),
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: asyncResult.isLoading
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFF00FFFF),
+                            ),
+                          ),
+                        )
+                      : const Icon(
+                          Icons.refresh_rounded,
+                          color: Color(0xFF00FFFF),
+                          size: 14,
+                        ),
+                ),
+              ),
+            ),
           ],
         ),
         subtitle: asyncResult.whenOrNull(

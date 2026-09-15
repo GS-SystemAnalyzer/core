@@ -326,4 +326,49 @@ public class FileTypeScannerTests
 	{
 		Assert.Equal("1.0 TB", FileTypeScanner.FormatBytes(1_099_511_627_776L));
 	}
+
+	[Theory]
+	[InlineData(".mp4", FileCategoryDictionary.Media)]
+	[InlineData("mp4", FileCategoryDictionary.Media)]
+	[InlineData(".PDF", FileCategoryDictionary.Documents)]
+	[InlineData(".exe", FileCategoryDictionary.Executables)]
+	[InlineData(".zip", FileCategoryDictionary.Archives)]
+	[InlineData(".cs", FileCategoryDictionary.Code)]
+	[InlineData(".sys", FileCategoryDictionary.System)]
+	[InlineData(".randomext123", FileCategoryDictionary.Other)]
+	[InlineData("", FileCategoryDictionary.Other)]
+	[InlineData(null, FileCategoryDictionary.Other)]
+	public void FileCategoryDictionary_MapsStandardExtensionsCorrectly(string? extension, string expectedCategory)
+	{
+		Assert.Equal(expectedCategory, FileCategoryDictionary.GetCategory(extension));
+	}
+
+	[Fact]
+	public void Analyze_PrioritizesDirectorySizeCache_WhenBothCachesExist()
+	{
+		var engine = CreateEngine();
+		SeedCache(engine, @"C:\Projects\BigApp", new()
+		{
+			[".cs"] = new FileTypeEntry { Count = 100, Bytes = 20_000_000 },
+			[".mp4"] = new FileTypeEntry { Count = 10, Bytes = 50_000_000 }
+		});
+
+		var mockCacheService = new Mock<IScanCacheService>();
+		// Suppose cacheService only has a tiny partial subset
+		mockCacheService.Setup(c => c.HasScanRoot(It.IsAny<string>())).Returns(true);
+		mockCacheService.Setup(c => c.GetNodesUnderRoot(It.IsAny<string>())).Returns(new List<CachedDirNode>
+		{
+			new CachedDirNode(@"C:\Projects\BigApp", Array.Empty<string>(), new List<CachedFileEntry>
+			{
+				new CachedFileEntry("tiny.cs", ".cs", 100, DateTime.UtcNow)
+			}, 100, 100, DateTimeOffset.UtcNow, false)
+		});
+
+		var scanner = new FileTypeScanner(engine, CreateCache(), mockCacheService.Object);
+		var result = scanner.Analyze(@"C:\")!;
+
+		Assert.NotNull(result);
+		// Should have aggregated from engine.DirectorySizeCache (70_000_000 bytes)
+		Assert.Equal(70_000_000, result.TotalScannedBytes);
+	}
 }

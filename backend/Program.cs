@@ -52,6 +52,7 @@ builder.Services.AddSingleton<IAgeHeatmapEngine, AgeHeatmapEngine>();
 builder.Services.AddSingleton<IScanSnapshotStore, ScanSnapshotStore>();
 builder.Services.AddSingleton<IScanDiffService, ScanDiffService>();
 builder.Services.AddSingleton<IWatcherEventLogService, WatcherEventLogService>();
+builder.Services.AddSingleton<IScanExportService, ScanExportService>();
 
 builder.Services.AddSingleton<ITelemetryHistoryBuffer, TelemetryHistoryBuffer>();
 

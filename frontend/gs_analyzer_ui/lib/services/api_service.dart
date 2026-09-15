@@ -20,6 +20,8 @@ import 'package:gs_analyzer_ui/models/network_telemetry.dart';
 import 'package:gs_analyzer_ui/models/disk_io_telemetry.dart';
 import 'package:gs_analyzer_ui/models/scan_diff.dart';
 import 'package:gs_analyzer_ui/models/cache_stats.dart';
+import 'package:gs_analyzer_ui/models/scan_export_options.dart';
+import 'dart:typed_data';
 
 class ApiService {
   final http.Client _client;
@@ -457,10 +459,12 @@ class ApiService {
     return null;
   }
 
-  Future<FileTypeResult> getFileTypes(String root) async {
+  Future<FileTypeResult> getFileTypes(String root, {bool refresh = false}) async {
+    final query = <String, String>{'root': root};
+    if (refresh) query['refresh'] = 'true';
     final uri = Uri.parse(
       '$storageUrl/scan/filetypes',
-    ).replace(queryParameters: {'root': root});
+    ).replace(queryParameters: query);
 
     final response = await _client.get(uri);
 
@@ -479,10 +483,12 @@ class ApiService {
     );
   }
 
-  Future<ExtensionBreakdownResult> getExtensionBreakdown(String root) async {
+  Future<ExtensionBreakdownResult> getExtensionBreakdown(String root, {bool refresh = false}) async {
+    final query = <String, String>{'root': root};
+    if (refresh) query['refresh'] = 'true';
     final uri = Uri.parse(
       '$storageUrl/scan/extensions',
-    ).replace(queryParameters: {'root': root});
+    ).replace(queryParameters: query);
 
     final response = await _client.get(uri);
 
@@ -869,6 +875,29 @@ class ApiService {
       await _client.get(uri);
     } catch (e) {
       appLogger.i('Failed to trigger network radar: $e');
+    }
+  }
+
+  /// Exports the cached scan report in JSON, CSV, or HTML format.
+  /// Throws [DiffNoScanException] if 409 Conflict is returned (no cache).
+  Future<Uint8List> exportScan({
+    required String root,
+    ScanExportFormat format = ScanExportFormat.json,
+    bool redactPaths = false,
+  }) async {
+    final uri = Uri.parse('http://localhost:5200/api/scan/export').replace(queryParameters: {
+      'root': root,
+      'format': format.value,
+      'redactPaths': redactPaths.toString(),
+    });
+
+    final response = await _client.get(uri);
+    if (response.statusCode == 200) {
+      return response.bodyBytes;
+    } else if (response.statusCode == 409) {
+      throw const DiffNoScanException();
+    } else {
+      throw Exception('Failed to export scan report: HTTP ${response.statusCode}');
     }
   }
 }
