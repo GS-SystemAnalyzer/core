@@ -21,6 +21,7 @@ import 'package:gs_analyzer_ui/models/disk_io_telemetry.dart';
 import 'package:gs_analyzer_ui/models/scan_diff.dart';
 import 'package:gs_analyzer_ui/models/cache_stats.dart';
 import 'package:gs_analyzer_ui/models/scan_export_options.dart';
+import 'package:gs_analyzer_ui/models/automation_rule.dart';
 import 'dart:typed_data';
 
 class ApiService {
@@ -43,6 +44,7 @@ class ApiService {
   static const String networkUrl = 'http://localhost:5200/api/network';
   static const String diskIoUrl = 'http://localhost:5200/api/diskio';
   static const String watcherUrl = 'http://localhost:5200/api/watcher';
+  static const String automationUrl = 'http://localhost:5200/api/automation';
 
   Future<TelemetryHistoryResponse?> fetchTelemetryHistory(
     String metric,
@@ -898,6 +900,103 @@ class ApiService {
       throw const DiffNoScanException();
     } else {
       throw Exception('Failed to export scan report: HTTP ${response.statusCode}');
+    }
+  }
+
+
+  Future<List<AutomationRule>> getAutomationRules() async {
+    final uri = Uri.parse('$automationUrl/rules');
+    final response = await _client.get(uri);
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => AutomationRule.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load automation rules: HTTP ${response.statusCode}');
+    }
+  }
+
+  Future<AutomationRule> createAutomationRule(Map<String, dynamic> request) async {
+    final uri = Uri.parse('$automationUrl/rules');
+    final response = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(request),
+    );
+    if (response.statusCode == 201) {
+      return AutomationRule.fromJson(jsonDecode(response.body));
+    } else if (response.statusCode == 400) {
+      final json = jsonDecode(response.body);
+      throw Exception(json['message'] ?? 'Validation error on rule root allowlist');
+    } else {
+      throw Exception('Failed to create rule: HTTP ${response.statusCode}');
+    }
+  }
+
+  Future<AutomationRule> updateAutomationRule(String id, Map<String, dynamic> request) async {
+    final uri = Uri.parse('$automationUrl/rules/$id');
+    final response = await _client.put(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(request),
+    );
+    if (response.statusCode == 200) {
+      return AutomationRule.fromJson(jsonDecode(response.body));
+    } else if (response.statusCode == 400) {
+      final json = jsonDecode(response.body);
+      throw Exception(json['message'] ?? 'Validation error');
+    } else {
+      throw Exception('Failed to update rule: HTTP ${response.statusCode}');
+    }
+  }
+
+  Future<void> deleteAutomationRule(String id) async {
+    final uri = Uri.parse('$automationUrl/rules/$id');
+    final response = await _client.delete(uri);
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Failed to delete rule: HTTP ${response.statusCode}');
+    }
+  }
+
+  Future<NukePreviewResponse> dryRunAutomationRule(String id) async {
+    final uri = Uri.parse('$automationUrl/rules/$id/dryrun');
+    final response = await _client.post(uri);
+    if (response.statusCode == 200) {
+      return NukePreviewResponse.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Dry run failed: HTTP ${response.statusCode}');
+    }
+  }
+
+  Future<AutomationRule> armAutomationRule(String id) async {
+    final uri = Uri.parse('$automationUrl/rules/$id/arm');
+    final response = await _client.post(uri);
+    if (response.statusCode == 200) {
+      return AutomationRule.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to arm rule: HTTP ${response.statusCode}');
+    }
+  }
+
+  Future<AutomationAuditEntry> runAutomationRule(String id) async {
+    final uri = Uri.parse('$automationUrl/rules/$id/run');
+    final response = await _client.post(uri);
+    if (response.statusCode == 200) {
+      return AutomationAuditEntry.fromJson(jsonDecode(response.body));
+    } else if (response.statusCode == 409) {
+      throw const ScheduleBusyException();
+    } else {
+      throw Exception('Failed to trigger rule: HTTP ${response.statusCode}');
+    }
+  }
+
+  Future<List<AutomationAuditEntry>> getAutomationAudit([int days = 30]) async {
+    final uri = Uri.parse('$automationUrl/audit?days=$days');
+    final response = await _client.get(uri);
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => AutomationAuditEntry.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to fetch audit log: HTTP ${response.statusCode}');
     }
   }
 }
