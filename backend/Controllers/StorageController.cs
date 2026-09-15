@@ -248,10 +248,16 @@ namespace GSSystemAnalyzer.Controllers
 		[HttpGet("scan/filetypes")]
 		public IActionResult GetFileTypes(
 			[FromQuery] string root,
-			[FromServices] IFileTypeScanner scanner)
+			[FromServices] IFileTypeScanner scanner,
+			[FromQuery] bool refresh = false)
 		{
 			var validationResult = ValidateRootForCachedRead(root);
 			if (validationResult != null) return validationResult;
+
+			if (refresh)
+			{
+				scanner.Invalidate(root);
+			}
 
 			var result = scanner.Analyze(root);
 
@@ -288,10 +294,16 @@ namespace GSSystemAnalyzer.Controllers
 		[HttpGet("scan/extensions")]
 		public IActionResult GetExtensions(
 			[FromQuery] string root,
-			[FromServices] IFileTypeScanner scanner)
+			[FromServices] IFileTypeScanner scanner,
+			[FromQuery] bool refresh = false)
 		{
 			var validationResult = ValidateRootForCachedRead(root);
 			if (validationResult != null) return validationResult;
+
+			if (refresh)
+			{
+				scanner.Invalidate(root);
+			}
 
 			var result = scanner.GetExtensionBreakdown(root);
 

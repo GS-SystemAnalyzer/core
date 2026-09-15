@@ -7,87 +7,6 @@ namespace GSSystemAnalyzer.Engine;
 
 public class FileTypeScanner : IFileTypeScanner
 {
-	private static readonly Dictionary<string, string> _categoryMap =
-		new(StringComparer.OrdinalIgnoreCase)
-		{
-			// Media
-			[".mp4"] = "media",
-			[".mkv"] = "media",
-			[".avi"] = "media",
-			[".mov"] = "media",
-			[".mp3"] = "media",
-			[".flac"] = "media",
-			[".wav"] = "media",
-			[".aac"] = "media",
-			[".jpg"] = "media",
-			[".jpeg"] = "media",
-			[".png"] = "media",
-			[".gif"] = "media",
-			[".bmp"] = "media",
-			[".svg"] = "media",
-			[".webp"] = "media",
-			[".heic"] = "media",
-			[".raw"] = "media",
-			// Documents
-			[".pdf"] = "documents",
-			[".doc"] = "documents",
-			[".docx"] = "documents",
-			[".xls"] = "documents",
-			[".xlsx"] = "documents",
-			[".ppt"] = "documents",
-			[".pptx"] = "documents",
-			[".txt"] = "documents",
-			[".md"] = "documents",
-			[".csv"] = "documents",
-			[".odt"] = "documents",
-			[".rtf"] = "documents",
-			// Executables
-			[".exe"] = "executables",
-			[".dll"] = "executables",
-			[".msi"] = "executables",
-			[".bat"] = "executables",
-			[".sh"] = "executables",
-			[".bin"] = "executables",
-			[".app"] = "executables",
-			[".deb"] = "executables",
-			[".rpm"] = "executables",
-			// Archives
-			[".zip"] = "archives",
-			[".rar"] = "archives",
-			[".7z"] = "archives",
-			[".tar"] = "archives",
-			[".gz"] = "archives",
-			[".bz2"] = "archives",
-			[".xz"] = "archives",
-			[".iso"] = "archives",
-			[".img"] = "archives",
-			// Code
-			[".cs"] = "code",
-			[".js"] = "code",
-			[".ts"] = "code",
-			[".py"] = "code",
-			[".dart"] = "code",
-			[".java"] = "code",
-			[".cpp"] = "code",
-			[".c"] = "code",
-			[".h"] = "code",
-			[".go"] = "code",
-			[".rs"] = "code",
-			[".json"] = "code",
-			[".xml"] = "code",
-			[".yaml"] = "code",
-			[".toml"] = "code",
-			// System
-			[".sys"] = "system",
-			[".ini"] = "system",
-			[".cfg"] = "system",
-			[".log"] = "system",
-			[".tmp"] = "system",
-			[".dat"] = "system",
-			[".db"] = "system",
-			[".lnk"] = "system",
-		};
-
 	private readonly DiskScannerEngine _engine;
 	private readonly IMemoryCache _cache;
 	private readonly IScanCacheService? _cacheService;
@@ -123,7 +42,10 @@ public class FileTypeScanner : IFileTypeScanner
 		var wasScanned = (_cacheService != null && _cacheService.HasScanRoot(root)) ||
 			_engine.DirectorySizeCache.Keys
 			.Any(k => k.Equals(normalizedNoSlash, StringComparison.OrdinalIgnoreCase) ||
-					  k.StartsWith(normalized, StringComparison.OrdinalIgnoreCase));
+					  k.Equals(normalized, StringComparison.OrdinalIgnoreCase) ||
+					  k.StartsWith(normalized, StringComparison.OrdinalIgnoreCase) ||
+					  k.StartsWith(normalizedNoSlash + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+					  k.StartsWith(normalizedNoSlash + "/", StringComparison.OrdinalIgnoreCase));
 
 		if (!wasScanned) return null;
 
@@ -134,8 +56,12 @@ public class FileTypeScanner : IFileTypeScanner
 
 	public void Invalidate(string root)
 	{
-		_cache.Remove($"filetypes:{NormalizeRoot(root).ToLowerInvariant()}");
-		_cache.Remove($"extbreakdown:{NormalizeRoot(root).ToLowerInvariant()}");
+		var norm = NormalizeRoot(root).ToLowerInvariant();
+		_cache.Remove($"filetypes:{norm}");
+		_cache.Remove($"extbreakdown:{norm}");
+		var normNoSlash = norm.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+		_cache.Remove($"filetypes:{normNoSlash}");
+		_cache.Remove($"extbreakdown:{normNoSlash}");
 	}
 
 	public ExtensionBreakdownResult? GetExtensionBreakdown(string root)
@@ -150,7 +76,10 @@ public class FileTypeScanner : IFileTypeScanner
 		var wasScanned = (_cacheService != null && _cacheService.HasScanRoot(root)) ||
 			_engine.DirectorySizeCache.Keys
 			.Any(k => k.Equals(normalizedNoSlash, StringComparison.OrdinalIgnoreCase) ||
-					  k.StartsWith(normalized, StringComparison.OrdinalIgnoreCase));
+					  k.Equals(normalized, StringComparison.OrdinalIgnoreCase) ||
+					  k.StartsWith(normalized, StringComparison.OrdinalIgnoreCase) ||
+					  k.StartsWith(normalizedNoSlash + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+					  k.StartsWith(normalizedNoSlash + "/", StringComparison.OrdinalIgnoreCase));
 
 		if (!wasScanned) return null;
 
@@ -169,7 +98,7 @@ public class FileTypeScanner : IFileTypeScanner
 		var extensions = realEntries.Select(e =>
 		{
 			var extName = string.IsNullOrEmpty(e.Key) || e.Key == "no extension" ? "(none)" : e.Key.ToLowerInvariant();
-			var cat = _categoryMap.TryGetValue(extName, out var c) ? c : "other";
+			var cat = FileCategoryDictionary.GetCategory(extName);
 
 			// if it was "no extension" in extMap, map to "(none)"
 			if (e.Key == "no extension") extName = "(none)";
@@ -199,6 +128,7 @@ public class FileTypeScanner : IFileTypeScanner
 			Extensions = extensions
 		};
 	}
+
 	private FileTypeScanResult BuildResult(string root)
 	{
 		var normalizedRoot = NormalizeRoot(root);
@@ -209,8 +139,7 @@ public class FileTypeScanner : IFileTypeScanner
 		var totalBytes = realEntries.Sum(v => v.Value.Bytes);
 
 		var categories = extMap
-			.GroupBy(kvp =>
-				_categoryMap.TryGetValue(kvp.Key, out var cat) ? cat : "other")
+			.GroupBy(kvp => FileCategoryDictionary.GetCategory(kvp.Key))
 			.Select(g =>
 			{
 				var catBytes = g.Sum(e => (long)e.Value.Bytes);
@@ -224,7 +153,7 @@ public class FileTypeScanner : IFileTypeScanner
 						TotalBytes = e.Value.Bytes,
 						SizeFormatted = FormatBytes(e.Value.Bytes),
 						PercentOfDisk = totalBytes > 0
-							? Math.Round((double)e.Value.Bytes / totalBytes * 100, 1) : 0.0,
+							? Math.Round((double)catBytes > 0 ? (double)e.Value.Bytes / totalBytes * 100 : 0.0, 1) : 0.0,
 					})
 					.OrderByDescending(e => e.TotalBytes)
 					.ToList();
@@ -257,6 +186,52 @@ public class FileTypeScanner : IFileTypeScanner
 	{
 		var extMap = new ConcurrentDictionary<string, FileTypeEntry>(StringComparer.OrdinalIgnoreCase);
 
+		var rootNoSlash = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+		var cachedDirs = _engine.DirectorySizeCache
+			.Where(kvp => kvp.Key.Equals(rootNoSlash, StringComparison.OrdinalIgnoreCase) ||
+						  kvp.Key.Equals(root, StringComparison.OrdinalIgnoreCase) ||
+						  kvp.Key.StartsWith(root, StringComparison.OrdinalIgnoreCase) ||
+						  kvp.Key.StartsWith(rootNoSlash + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+						  kvp.Key.StartsWith(rootNoSlash + "/", StringComparison.OrdinalIgnoreCase) ||
+						  (kvp.Value.ScanRoot != null && kvp.Value.ScanRoot.TrimEnd('\\', '/').Equals(rootNoSlash, StringComparison.OrdinalIgnoreCase)))
+			.ToList();
+
+		foreach (var kvp in cachedDirs)
+		{
+			if (kvp.Value.Extensions != null)
+			{
+				foreach (var ext in kvp.Value.Extensions)
+				{
+					extMap.AddOrUpdate(
+						ext.Key,
+						_ => new FileTypeEntry
+						{
+							Count = ext.Value.Count,
+							Bytes = ext.Value.Bytes,
+							LargestFileBytes = ext.Value.LargestFileBytes,
+							LargestFilePath = ext.Value.LargestFilePath
+						},
+						(_, prev) =>
+						{
+							prev.Count += ext.Value.Count;
+							prev.Bytes += ext.Value.Bytes;
+							if (ext.Value.LargestFileBytes > prev.LargestFileBytes)
+							{
+								prev.LargestFileBytes = ext.Value.LargestFileBytes;
+								prev.LargestFilePath = ext.Value.LargestFilePath;
+							}
+							return prev;
+						});
+				}
+			}
+		}
+
+		if (extMap.Count > 0)
+		{
+			return extMap;
+		}
+
+		// Fallback to _cacheService if DirectorySizeCache has no extension data (e.g. mocked cacheService in tests)
 		if (_cacheService != null)
 		{
 			var nodes = _cacheService.GetNodesUnderRoot(root).ToList();
@@ -296,44 +271,8 @@ public class FileTypeScanner : IFileTypeScanner
 			}
 		}
 
-		var rootNoSlash = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-		var cachedDirs = _engine.DirectorySizeCache
-			.Where(kvp => kvp.Key.Equals(rootNoSlash, StringComparison.OrdinalIgnoreCase) ||
-						  kvp.Key.StartsWith(root, StringComparison.OrdinalIgnoreCase));
-
-		foreach (var kvp in cachedDirs)
-		{
-			if (kvp.Value.Extensions != null)
-			{
-				foreach (var ext in kvp.Value.Extensions)
-				{
-					extMap.AddOrUpdate(
-						ext.Key,
-						_ => new FileTypeEntry
-						{
-							Count = ext.Value.Count,
-							Bytes = ext.Value.Bytes,
-							LargestFileBytes = ext.Value.LargestFileBytes,
-							LargestFilePath = ext.Value.LargestFilePath
-						},
-						(_, prev) =>
-						{
-							prev.Count += ext.Value.Count;
-							prev.Bytes += ext.Value.Bytes;
-							if (ext.Value.LargestFileBytes > prev.LargestFileBytes)
-							{
-								prev.LargestFileBytes = ext.Value.LargestFileBytes;
-								prev.LargestFilePath = ext.Value.LargestFilePath;
-							}
-							return prev;
-						});
-				}
-			}
-		}
-
 		return extMap;
 	}
-
 
 	private static string NormalizeRoot(string root)
 	{

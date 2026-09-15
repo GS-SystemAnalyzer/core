@@ -15,19 +15,22 @@ namespace GSSystemAnalyzer.Services
 		private readonly ILogger<DiskOperationsService> _logger;
 		private readonly IScanDiffService _scanDiff;
 		private readonly IScanCacheService? _cacheService;
+		private readonly IFileTypeScanner? _fileTypeScanner;
 
 		public DiskOperationsService(
 			DiskScannerEngine scanner,
 			IHubContext<SystemHub> hubContext,
 			ILogger<DiskOperationsService> logger,
 			IScanDiffService scanDiff,
-			IScanCacheService? cacheService = null)
+			IScanCacheService? cacheService = null,
+			IFileTypeScanner? fileTypeScanner = null)
 		{
 			_scanner = scanner;
 			_hubContext = hubContext;
 			_logger = logger;
 			_scanDiff = scanDiff;
 			_cacheService = cacheService;
+			_fileTypeScanner = fileTypeScanner;
 		}
 
 		public DriveTelemetryDto GetDriveTelemetry(string driveLetter)
@@ -115,6 +118,35 @@ namespace GSSystemAnalyzer.Services
 						RootNodeKey: rootNodeKey
 					);
 					_cacheService.SetScanRoot(rootMeta);
+
+					var directFiles = items.OfType<FileInfo>().Select(f => new CachedFileEntry(
+						f.Name,
+						string.IsNullOrEmpty(f.Extension) ? "(none)" : f.Extension.ToLowerInvariant(),
+						f.Length,
+						f.LastWriteTimeUtc
+					)).ToList();
+
+					var directSubDirs = items.OfType<DirectoryInfo>().Select(d => d.FullName).ToList();
+
+					var rootDirNode = new CachedDirNode(
+						Path: path,
+						ChildDirectoryPaths: directSubDirs,
+						Files: directFiles,
+						OwnBytes: directFiles.Sum(f => f.Length),
+						RecursiveBytes: actualFolderSize,
+						CachedAt: DateTimeOffset.UtcNow,
+						RecursiveBytesStale: false
+					);
+					_cacheService.SetNode(rootDirNode, path);
+				}
+
+				try
+				{
+					_fileTypeScanner?.Invalidate(path);
+				}
+				catch (Exception ex)
+				{
+					_logger.LogDebug(ex, "Failed to invalidate file types cache for {Path}", path);
 				}
 
 				Task.Run(() => _scanner.SaveMemoryToDisk());
