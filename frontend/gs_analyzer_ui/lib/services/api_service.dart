@@ -903,7 +903,6 @@ class ApiService {
     }
   }
 
-
   Future<List<AutomationRule>> getAutomationRules() async {
     final uri = Uri.parse('$automationUrl/rules');
     final response = await _client.get(uri);
