@@ -30,6 +30,7 @@ public class LeakTests : IDisposable
             Task.FromResult(new NukeResultDto { DeletedFiles = 0, FreedBytes = 0, SkippedFiles = 0 });
 
         public void TriggerNukeAbort() {}
+        public bool IsNuking => false;
         public NukeOperation? PeekUndo() => null;
         public NukeResultDto? UndoNuke(string? operationId = null) => null;
         public List<NukeOperation> GetUndoHistory() => new();

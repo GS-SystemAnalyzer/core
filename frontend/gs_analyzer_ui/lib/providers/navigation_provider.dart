@@ -11,6 +11,7 @@ enum AppRoute {
   network,
   thermal,
   telemetryHistory,
+  automation,
   settings,
 }
 
