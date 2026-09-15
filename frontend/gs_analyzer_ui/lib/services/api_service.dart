@@ -17,6 +17,7 @@ import 'package:gs_analyzer_ui/models/telemetry_history_model.dart';
 import 'package:gs_analyzer_ui/models/startup_program.dart';
 import 'package:gs_analyzer_ui/models/scheduled_scan_model.dart';
 import 'package:gs_analyzer_ui/models/network_telemetry.dart';
+import 'package:gs_analyzer_ui/models/disk_io_telemetry.dart';
 import 'package:gs_analyzer_ui/models/scan_diff.dart';
 import 'package:gs_analyzer_ui/models/cache_stats.dart';
 
@@ -38,6 +39,7 @@ class ApiService {
   static const String schedulesUrl = 'http://localhost:5200/api/schedules';
   static const String scanDiffUrl = 'http://localhost:5200/api/scan/diff';
   static const String networkUrl = 'http://localhost:5200/api/network';
+  static const String diskIoUrl = 'http://localhost:5200/api/diskio';
   static const String watcherUrl = 'http://localhost:5200/api/watcher';
 
   Future<TelemetryHistoryResponse?> fetchTelemetryHistory(
@@ -806,6 +808,24 @@ class ApiService {
     } catch (e) {
       appLogger.i('Failed to set primary network interface: $e');
       return false;
+    }
+  }
+
+  /// Fetches the latest disk I/O snapshot via REST.
+  Future<DiskIoSnapshotCollection?> fetchDiskIoSnapshot() async {
+    final uri = Uri.parse(diskIoUrl);
+    try {
+      final response = await _client.get(uri);
+      if (response.statusCode == 200) {
+        final jsonBody = jsonDecode(response.body) as Map<String, dynamic>;
+        return DiskIoSnapshotCollection.fromJson(jsonBody);
+      } else {
+        appLogger.i('Failed to fetch disk I/O snapshot: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      appLogger.i('Disk I/O snapshot request failed: $e');
+      return null;
     }
   }
 

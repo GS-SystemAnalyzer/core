@@ -5,6 +5,7 @@ enum AppRoute {
   process,
   cpuMetics,
   memory,
+  diskIo,
   storage,
   startup,
   network,

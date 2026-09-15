@@ -328,6 +328,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               notifier.updateUI();
             },
           ),
+          _buildSlider(
+            'DISK I/O POLL',
+            mon.diskIoPollIntervalMs.toDouble(),
+            500,
+            60000,
+            ' ms',
+            (val) {
+              mon.diskIoPollIntervalMs = val.toInt();
+              notifier.updateUI();
+            },
+          ),
           _buildToggle('SCHEDULED SCANS', mon.enableScheduledScans, (val) {
             mon.enableScheduledScans = val;
             notifier.updateUI();

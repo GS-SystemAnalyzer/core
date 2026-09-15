@@ -35,6 +35,9 @@ builder.Services.AddSingleton<RamMonitoringEngine>();
 builder.Services.AddSingleton<NetworkSamplerEngine>();
 builder.Services.AddSingleton<INetworkEngine>(sp =>
 	sp.GetRequiredService<NetworkSamplerEngine>());
+builder.Services.AddSingleton<DiskIoEngine>();
+builder.Services.AddSingleton<IDiskIoEngine>(sp =>
+	sp.GetRequiredService<DiskIoEngine>());
 
 // Service singletons (interface → implementation)
 builder.Services.AddSingleton<INetworkInterfaceProvider, SystemNetworkInterfaceProvider>();
@@ -95,11 +98,27 @@ else
 	throw new PlatformNotSupportedException("OS not supported for thermal telemetry");
 }
 
+// Platform-specific Disk I/O provider
+if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+{
+	builder.Services.AddSingleton<IWmiDiskIoSource, WindowsWmiDiskIoSource>();
+	builder.Services.AddSingleton<IDiskIoReader, WindowsDiskIoReader>();
+}
+else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+{
+	builder.Services.AddSingleton<IDiskIoReader, LinuxDiskIoReader>();
+}
+else
+{
+	throw new PlatformNotSupportedException("OS not supported for Disk I/O telemetry");
+}
+
 // Background services
 builder.Services.AddHostedService<CpuSamplerEngine>();
 builder.Services.AddHostedService<ThermalMonitoringEngine>();
 builder.Services.AddHostedService<DriveMonitorService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<NetworkSamplerEngine>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<DiskIoEngine>());
 
 // Schedule services
 builder.Services.AddSingleton<IScheduleStore, ScheduleStore>();

@@ -128,7 +128,9 @@ namespace GSSystemAnalyzer.Tests.Services
 			Assert.Contains("thermal_cpu_package", metrics);
 			Assert.Contains("network_rx", metrics);
 			Assert.Contains("network_tx", metrics);
-			Assert.Equal(6, metrics.Count);
+			Assert.Contains("disk_io_read", metrics);
+			Assert.Contains("disk_io_write", metrics);
+			Assert.Equal(8, metrics.Count);
 		}
 
 		[Fact]

@@ -30,6 +30,7 @@ class TelemetryService {
   Function(Map<String, dynamic>)? onRamAlert;
   Function(Map<String, dynamic>)? onRamAlertCleared;
   Function(Map<String, dynamic>)? onNetworkUpdate;
+  Function(Map<String, dynamic>)? onDiskIoUpdate;
   Function(Map<String, dynamic>)? onWatcherEventLogged;
 
   TelemetryService({
@@ -74,6 +75,7 @@ class TelemetryService {
     _hubConnection.on('RamAlert', _handleRamAlert);
     _hubConnection.on('RamAlertCleared', _handleRamAlertCleared);
     _hubConnection.on('NetworkUpdate', _handleNetworkUpdate);
+    _hubConnection.on('DiskIoUpdate', _handleDiskIoUpdate);
     _hubConnection.on('WatcherEventLogged', _handleWatcherEventLogged);
   }
 
@@ -315,6 +317,21 @@ class TelemetryService {
       }
     } catch (e) {
       appLogger.i('NETWORK TELEMETRY CRASH: $e');
+    }
+  }
+
+  void _handleDiskIoUpdate(List<Object?>? arguments) {
+    if (arguments == null || arguments.isEmpty) return;
+    try {
+      final rawData = arguments[0];
+      if (rawData is Map) {
+        final data = Map<String, dynamic>.from(rawData);
+        if (onDiskIoUpdate != null) {
+          onDiskIoUpdate!(data);
+        }
+      }
+    } catch (e) {
+      appLogger.i('DISK IO TELEMETRY CRASH: $e');
     }
   }
 

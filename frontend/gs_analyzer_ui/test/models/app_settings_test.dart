@@ -62,4 +62,31 @@ void main() {
       expect(out['maxCachedNodes'], 120000);
     });
   });
+
+  group('MonitoringSettings serialization', () {
+    test('diskIoPollIntervalMs defaults to 1000', () {
+      final mon = MonitoringSettings.fromJson({});
+      expect(mon.diskIoPollIntervalMs, 1000);
+    });
+
+    test('fromJson and toJson round-trips correctly', () {
+      final json = {
+        'cpuPollIntervalMs': 1500,
+        'ramPollIntervalMs': 2500,
+        'thermalPollIntervalMs': 3000,
+        'networkPollIntervalMs': 1200,
+        'diskIoPollIntervalMs': 800,
+        'scheduledScanIntervalMinutes': 30,
+        'enableScheduledScans': true,
+        'preferredNetworkInterfaceId': 'eth0',
+      };
+      final mon = MonitoringSettings.fromJson(json);
+      expect(mon.diskIoPollIntervalMs, 800);
+      expect(mon.networkPollIntervalMs, 1200);
+
+      final out = mon.toJson();
+      expect(out['diskIoPollIntervalMs'], 800);
+      expect(out['networkPollIntervalMs'], 1200);
+    });
+  });
 }

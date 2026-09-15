@@ -111,6 +111,12 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
                     currentRoute,
                   ),
                   _buildNavItem(
+                    AppRoute.diskIo,
+                    'DISK I/O',
+                    Icons.speed_outlined,
+                    currentRoute,
+                  ),
+                  _buildNavItem(
                     AppRoute.storage,
                     'STORAGE',
                     Icons.storage_outlined,
