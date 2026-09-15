@@ -9,10 +9,16 @@ final ebSelectedCategoriesProvider = StateProvider<Set<String>>((ref) => {});
 final ebSortColumnProvider = StateProvider<String>((ref) => 'totalBytes');
 final ebSortAscendingProvider = StateProvider<bool>((ref) => false);
 
+// Refresh trigger provider
+final ebRefreshTriggerProvider = StateProvider.family<int, String>(
+  (ref, root) => 0,
+);
+
 // Future Provider for fetching data
 final extensionBreakdownProvider =
     FutureProvider.family<ExtensionBreakdownResult, String>((ref, root) async {
-      return await ApiService().getExtensionBreakdown(root);
+      final refreshCount = ref.watch(ebRefreshTriggerProvider(root));
+      return await ApiService().getExtensionBreakdown(root, refresh: refreshCount > 0);
     });
 
 // Computed Provider for filtering and sorting
