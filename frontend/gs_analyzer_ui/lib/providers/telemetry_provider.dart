@@ -9,6 +9,7 @@ import 'package:gs_analyzer_ui/utils/globals.dart';
 import 'package:flutter/material.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/providers/network_provider.dart';
+import 'package:gs_analyzer_ui/providers/disk_io_provider.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
 import 'package:gs_analyzer_ui/providers/scan_diff_provider.dart';
@@ -119,6 +120,10 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
 
     _telemetryService?.onNetworkUpdate = (data) {
       ref.read(networkProvider.notifier).updateNetwork(data);
+    };
+
+    _telemetryService?.onDiskIoUpdate = (data) {
+      ref.read(diskIoProvider.notifier).updateDiskIo(data);
     };
 
     _telemetryService?.onDirectoryChunk = (scanId, path, chunk) {

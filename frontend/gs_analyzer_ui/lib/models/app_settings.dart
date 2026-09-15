@@ -118,6 +118,7 @@ class MonitoringSettings {
       ramPollIntervalMs,
       thermalPollIntervalMs,
       networkPollIntervalMs,
+      diskIoPollIntervalMs,
       scheduledScanIntervalMinutes;
   bool enableScheduledScans;
   String? preferredNetworkInterfaceId;
@@ -127,6 +128,7 @@ class MonitoringSettings {
     this.ramPollIntervalMs = 2000,
     this.thermalPollIntervalMs = 2000,
     this.networkPollIntervalMs = 1000,
+    this.diskIoPollIntervalMs = 1000,
     this.scheduledScanIntervalMinutes = 15,
     this.enableScheduledScans = false,
     this.preferredNetworkInterfaceId,
@@ -137,6 +139,7 @@ class MonitoringSettings {
         ramPollIntervalMs: json['ramPollIntervalMs'] ?? 2000,
         thermalPollIntervalMs: json['thermalPollIntervalMs'] ?? 2000,
         networkPollIntervalMs: json['networkPollIntervalMs'] ?? 1000,
+        diskIoPollIntervalMs: json['diskIoPollIntervalMs'] ?? 1000,
         scheduledScanIntervalMinutes:
             json['scheduledScanIntervalMinutes'] ?? 15,
         enableScheduledScans: json['enableScheduledScans'] ?? false,
@@ -147,6 +150,7 @@ class MonitoringSettings {
     'ramPollIntervalMs': ramPollIntervalMs,
     'thermalPollIntervalMs': thermalPollIntervalMs,
     'networkPollIntervalMs': networkPollIntervalMs,
+    'diskIoPollIntervalMs': diskIoPollIntervalMs,
     'scheduledScanIntervalMinutes': scheduledScanIntervalMinutes,
     'enableScheduledScans': enableScheduledScans,
     'preferredNetworkInterfaceId': preferredNetworkInterfaceId,
