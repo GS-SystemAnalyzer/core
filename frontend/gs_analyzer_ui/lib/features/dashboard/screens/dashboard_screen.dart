@@ -50,7 +50,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 children: [
                                   Text(
                                     'System_Overview'.toUpperCase(),
-                                    style:theme.textTheme.headlineLarge
+                                    style:TextStyle(
+                                      fontSize: 19,
+                                      color: theme.colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 2
+                                    )
                                   ),
                                   Text(
                                     'Real-Time Telemetry Stream'.toUpperCase(),

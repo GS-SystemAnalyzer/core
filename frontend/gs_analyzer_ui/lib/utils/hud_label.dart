@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 
 class HudLabel extends StatelessWidget {
   final String text;
@@ -19,7 +18,7 @@ class HudLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text.toUpperCase(),
-      style: HudTheme.labelMuted,
+      style: Theme.of(context).textTheme.titleMedium,
       textAlign: textAlign,
       overflow: overflow,
       maxLines: maxLines,

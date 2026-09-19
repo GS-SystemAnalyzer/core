@@ -14,32 +14,32 @@ class HudColors {
   // --------- HUD LIGHT THEME COLOR -----------------
   static const lightBgBase = Color(0xFFF4F7F8);
   static const  lightBgPanel = Color(0xFFF0F6FF);
-  static const lightPrimaryBorder = Color(0XFF00545D);
+  static const lightPrimaryBorder = Colors.cyan;
 
   // Text Colors
-  static const lightTextMain = Color(0xFF172026);
-  static const lightTextMuted = Color(0xFF5F6B72);
-  static const lightTextDim = Color(0xFF8A969D);
+  static const lightTextMain = Colors.black;
+  static const lightTextMuted = Colors.black87;
+  static const lightTextDim = Colors.black54;
 
   // --------- ACCENT COLORS ----------------
 
-  static const Color lightAccentCyan = Color(0xFF00E5FF);
-  static const Color darkAccentCyan = Color(0xFF00545D);
+  static const Color lightAccentCyan = Colors.cyan;
+  static const Color darkAccentCyan = Colors.cyanAccent;
 
-  static const Color lightAccentGreen = Color(0xFF69F0AE);
-  static const Color darkAccentGreen = Color(0xFF006F3A);
+  static const Color lightAccentGreen = Colors.green;
+  static const Color darkAccentGreen = Colors.greenAccent;
 
-  static const Color lightAccentRed = Color(0xFFFF5252);
-  static const Color darkAccentRed = Color(0xFF9D0E0E);
+  static const Color lightAccentRed = Colors.red;
+  static const Color darkAccentRed = Colors.redAccent;
 
-  static const Color lightAccentAmber = Color(0xFFFFC107);
-  static const Color darkAccentAmber = Color(0xFF896700);
+  static const Color lightAccentAmber = Colors.amber;
+  static const Color darkAccentAmber = Colors.amberAccent;
 
-  static const Color lightAccentPurple = Color(0xFFE040FB);
-  static const Color darkAccentPurple = Color(0xFF7E0095);
+  static const Color lightAccentPurple = Colors.purple;
+  static const Color darkAccentPurple = Colors.purpleAccent;
 
-  static const Color lightAccentBlue = Color(0xFF448AFF);
-  static const Color darkAccentBlue = Color(0xFF003082);
+  static const Color lightAccentBlue = Colors.blue;
+  static const Color darkAccentBlue = Colors.blueAccent;
 
 
   static Color resolveAccent(String? accentKey, Brightness brightness) {

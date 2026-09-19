@@ -6,14 +6,6 @@ class HudTextTheme {
   static const String fontCore = 'Courier';
 
   static const light = TextTheme(
-    headlineLarge: TextStyle(
-      fontFamily: fontCore,
-      color: HudColors.lightPrimaryBorder,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 2,
-      fontSize: 18
-    ),
-
     headlineMedium: TextStyle(
       fontFamily: fontCore,
       color: HudColors.lightPrimaryBorder,
@@ -64,14 +56,6 @@ class HudTextTheme {
   );
 
   static const dark = TextTheme(
-    headlineLarge: TextStyle(
-      fontFamily: fontCore,
-      color: HudColors.darkPrimaryBorder,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 2,
-      fontSize: 18
-    ),
-
     headlineMedium: TextStyle(
       fontFamily: fontCore,
       color: HudColors.darkPrimaryBorder,

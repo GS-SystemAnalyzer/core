@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:gs_analyzer_ui/core/theme/hud_colors.dart';
 import 'package:gs_analyzer_ui/core/theme/hud_text_theme.dart';
 import 'package:gs_analyzer_ui/providers/navigation_provider.dart';
 import 'package:gs_analyzer_ui/providers/settings_provider.dart';
@@ -183,14 +182,14 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
   }) {
     final theme = Theme.of(context);
     final isActive = route == currentRoute && !isAction;
-    final color = isActive ? theme.colorScheme.onPrimary : theme.colorScheme.surfaceDim;
+    final color = isActive ? theme.colorScheme.primary : theme.colorScheme.surfaceDim;
 
     // Windows 11 style accent line
     final accentLine = Container(
       width: 3,
       height: 16,
       decoration: BoxDecoration(
-        color: isActive ? theme.colorScheme.onPrimary : Colors.transparent,
+        color: isActive ? theme.colorScheme.primary : Colors.transparent,
         borderRadius: BorderRadius.circular(2),
       ),
     );
@@ -261,13 +260,13 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
         .watch(settingsProvider)
         .hasUnsavedChanges;
         final theme = Theme.of(context);
-    final color = isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.surfaceDim;
+    final color = isSelected ? theme.colorScheme.primary : theme.colorScheme.surfaceDim;
 
     final accentLine = Container(
       width: 3,
       height: 16,
       decoration: BoxDecoration(
-        color: isSelected ? theme.colorScheme.onPrimary : Colors.transparent,
+        color: isSelected ? theme.colorScheme.primary : Colors.transparent,
         borderRadius: BorderRadius.circular(2),
       ),
     );
