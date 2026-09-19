@@ -179,6 +179,7 @@ class CacheSettings {
 class AppearanceSettings {
   String theme, accentColor;
   bool compactMode, showAnimations;
+
   AppearanceSettings({
     this.theme = 'cyber_dark',
     this.accentColor = 'cyan',

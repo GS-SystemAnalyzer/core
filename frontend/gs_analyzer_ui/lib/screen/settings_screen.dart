@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/models/app_settings.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
 import 'package:gs_analyzer_ui/widgets/scheduled_scans_panel.dart';
@@ -70,7 +70,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final settings = state.currentSettings!;
 
     return Scaffold(
-      backgroundColor: HudTheme.bgBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -503,6 +503,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     SettingsState state,
     SettingsNotifier notifier,
   ) {
+    final currentTheme = app.theme.toLowerCase();
+    final isLight = currentTheme == 'cyber_light' || currentTheme == 'light';
+    final isSystem = currentTheme == 'system';
+    final isDark =
+        (currentTheme == 'cyber_dark' || currentTheme == 'dark') ||
+        (!isLight && !isSystem);
+
     return _SettingsSection(
       title: 'APPEARANCE',
       errorFilter: 'Appearance',
@@ -515,6 +522,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           }),
           _buildToggle('ANIMATIONS', app.showAnimations, (val) {
             app.showAnimations = val;
+            notifier.updateUI();
+          }),
+          _buildToggle('DARK MODE', isDark, (val) {
+            if (val) {
+              app.theme = 'cyber_dark';
+            }
+            notifier.updateUI();
+          }),
+          _buildToggle('LIGHT MODE', isLight, (val) {
+            if (val) {
+              app.theme = 'cyber_light';
+            }
+            notifier.updateUI();
+          }),
+          _buildToggle('SYSTEM MODE', isSystem, (val) {
+            if (val) {
+              app.theme = 'system';
+            }
             notifier.updateUI();
           }),
           const SizedBox(height: 16),

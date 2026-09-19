@@ -5,7 +5,7 @@ import 'package:gs_analyzer_ui/models/disk_io_telemetry.dart';
 import 'package:gs_analyzer_ui/providers/disk_io_provider.dart';
 import 'package:gs_analyzer_ui/utils/formatters.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 
 class DiskIoCard extends ConsumerWidget {
   final DiskIoSnapshot? overrideDisk;

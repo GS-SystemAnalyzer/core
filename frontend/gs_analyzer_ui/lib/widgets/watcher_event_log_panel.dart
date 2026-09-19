@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/models/watcher_event.dart';
 import 'package:gs_analyzer_ui/providers/watcher_log_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'dart:ui' as ui;

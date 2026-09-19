@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gs_analyzer_ui/models/nuke_preview.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 
 class NukePreviewResult {
   final bool confirmed;

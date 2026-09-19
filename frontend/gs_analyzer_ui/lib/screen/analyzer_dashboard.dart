@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 import 'package:gs_analyzer_ui/widgets/_directory_search_widget.dart';
 import 'package:gs_analyzer_ui/widgets/age_heatmap_overlay.dart';
 import 'package:gs_analyzer_ui/widgets/directory_node_widget.dart';

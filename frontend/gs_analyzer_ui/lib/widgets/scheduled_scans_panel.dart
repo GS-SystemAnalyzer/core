@@ -4,7 +4,7 @@ import 'package:gs_analyzer_ui/models/scheduled_scan_model.dart';
 import 'package:gs_analyzer_ui/providers/schedule_provider.dart';
 import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 import 'package:intl/intl.dart';
 
 class ScheduledScansPanel extends ConsumerWidget {
