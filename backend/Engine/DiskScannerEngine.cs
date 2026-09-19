@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime;
 using System.Text.Json;
 using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
@@ -6,6 +7,7 @@ using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 
 namespace GSSystemAnalyzer.Engine;
 
@@ -25,6 +27,40 @@ public class DiskScannerEngine : IDiskScannerEngine
 {
 	public ConcurrentDictionary<string, CacheEntry> DirectorySizeCache = new(StringComparer.OrdinalIgnoreCase);
 	private CancellationTokenSource? _nukeCts;
+
+	// Cancelling this evicts every analyzer snapshot that registered SnapshotResetToken.
+	// A token, not _cache.Clear(), because ScanDiffService shares that IMemoryCache (Program.cs:25).
+	private CancellationTokenSource _snapshotResetCts = new();
+	private readonly object _snapshotTokenLock = new object();
+
+	/// <summary>Expiration token for cached analyzer snapshots. Read a fresh one per cache entry:
+	/// the source is replaced on every reset, so an earlier token is already spent.</summary>
+	public IChangeToken SnapshotResetToken
+	{
+		get
+		{
+			lock (_snapshotTokenLock)
+			{
+				return new CancellationChangeToken(_snapshotResetCts.Token);
+			}
+		}
+	}
+
+	/// <summary>Evicts every analyzer snapshot that registered <see cref="SnapshotResetToken"/>.</summary>
+	private void ResetAnalyzerSnapshots()
+	{
+		CancellationTokenSource spent;
+		lock (_snapshotTokenLock)
+		{
+			spent = _snapshotResetCts;
+			_snapshotResetCts = new CancellationTokenSource();
+		}
+
+		// Cancelled outside the lock: MemoryCache fires eviction callbacks inside Cancel(), and one
+		// reading SnapshotResetToken on another thread would block on a lock held here.
+		try { spent.Cancel(); } catch (ObjectDisposedException) { /* already reset */ }
+		spent.Dispose();
+	}
 	private readonly ConcurrentDictionary<Guid, ScanSession> _activeSessions = new();
 	private readonly SemaphoreSlim _scanLock = new SemaphoreSlim(1, 1);
 
@@ -338,11 +374,18 @@ public class DiskScannerEngine : IDiskScannerEngine
 				dir.Attributes.HasFlag(FileAttributes.ReparsePoint))
 				return 0;
 
-			var files = dir.GetFiles("*", option);
-			size += files.Sum(f => f.Length);
+			// Single streaming pass: EnumerateFiles replaces a GetFiles array that was walked five times.
+			// Everything the folder needs is accumulated here, or a naive swap would re-walk per use.
+			long ownBytes = 0;
+			int fileCount = 0;
+			List<CachedFileEntry>? fileEntries = _cacheService != null ? new List<CachedFileEntry>() : null;
 
-			foreach (var f in files)
+			foreach (var f in dir.EnumerateFiles("*", option))
 			{
+				var length = f.Length;
+				ownBytes += length;
+				fileCount++;
+
 				var ext = f.Extension.ToLowerInvariant();
 				if (string.IsNullOrEmpty(ext)) ext = "no extension";
 
@@ -352,17 +395,27 @@ public class DiskScannerEngine : IDiskScannerEngine
 					extMap[ext] = fte;
 				}
 				fte.Count++;
-				fte.Bytes += f.Length;
+				fte.Bytes += length;
 
-				if (f.Length > fte.LargestFileBytes)
+				if (length > fte.LargestFileBytes)
 				{
-					fte.LargestFileBytes = f.Length;
+					fte.LargestFileBytes = length;
 					fte.LargestFilePath = f.FullName;
 				}
+
+				// Built inline rather than in a second pass; stays null with no cache service.
+				fileEntries?.Add(new CachedFileEntry(
+					f.Name,
+					string.IsNullOrEmpty(f.Extension) ? "(none)" : f.Extension.ToLowerInvariant(),
+					length,
+					f.LastWriteTimeUtc
+				));
 			}
 
+			size += ownBytes;
+
 			var pulse = Interlocked.Increment(ref _deepScanThrottle);
-			var currentCount = Interlocked.Add(ref _scannedFilesCount, files.Length);
+			var currentCount = Interlocked.Add(ref _scannedFilesCount, fileCount);
 
 			if (pulse % 50 == 0)
 			{
@@ -383,23 +436,21 @@ public class DiskScannerEngine : IDiskScannerEngine
 				size += GetDirectorySize(subDir, token, scanRoot, currentDepth + 1);
 			}
 
-			var fileEntries = files.Select(f => new CachedFileEntry(
-				f.Name,
-				string.IsNullOrEmpty(f.Extension) ? "(none)" : f.Extension.ToLowerInvariant(),
-				f.Length,
-				f.LastWriteTimeUtc
-			)).ToList();
-
-			var dirNode = new CachedDirNode(
-				Path: dir.FullName,
-				ChildDirectoryPaths: childPaths,
-				Files: fileEntries,
-				OwnBytes: files.Sum(f => f.Length),
-				RecursiveBytes: size,
-				CachedAt: DateTimeOffset.UtcNow,
-				RecursiveBytesStale: false
-			);
-			_cacheService?.SetNode(dirNode, scanRoot);
+			// Only build the ScanCacheService payload when a cache service will consume it.
+			// With none (tests, benchmark) this allocated a node + entry per file and dropped it. See D-11.
+			if (_cacheService != null && fileEntries != null)
+			{
+				var dirNode = new CachedDirNode(
+					Path: dir.FullName,
+					ChildDirectoryPaths: childPaths,
+					Files: fileEntries,
+					OwnBytes: ownBytes,
+					RecursiveBytes: size,
+					CachedAt: DateTimeOffset.UtcNow,
+					RecursiveBytesStale: false
+				);
+				_cacheService.SetNode(dirNode, scanRoot);
+			}
 		}
 		catch (OperationCanceledException) { throw; }
 		catch (Exception) { /* access denied etc — skip silently */ }
@@ -425,11 +476,14 @@ public class DiskScannerEngine : IDiskScannerEngine
 				var dir = Path.GetDirectoryName(_cacheFilePath)!;
 				Directory.CreateDirectory(dir);
 
-				var dirJson = JsonSerializer.Serialize(
-					new Dictionary<string, CacheEntry>(DirectorySizeCache));
-
 				var tmpPath = _cacheFilePath + ".tmp";
-				File.WriteAllText(tmpPath, dirJson);
+
+				// Stream straight to the file; the previous version held a dictionary copy plus the
+				// whole JSON string, which lands on the LOH. Written via IDictionary so the shape is unchanged.
+				using (var stream = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None))
+				{
+					JsonSerializer.Serialize<IDictionary<string, CacheEntry>>(stream, DirectorySizeCache);
+				}
 
 				// Atomic swap — readers see either the old file or the new one, never a stump.
 				File.Move(tmpPath, _cacheFilePath, overwrite: true);
@@ -677,6 +731,10 @@ public class DiskScannerEngine : IDiskScannerEngine
 		DirectorySizeCache.Clear();
 		_cacheService?.Clear();
 
+		// Without this the analyzer snapshots sit in the shared IMemoryCache for their full
+		// 15-minute TTL, still holding the extension dictionaries — the "never returns to idle" bug.
+		ResetAnalyzerSnapshots();
+
 		lock (_fileWriteLock)
 		{
 			try
@@ -690,7 +748,15 @@ public class DiskScannerEngine : IDiskScannerEngine
 			}
 		}
 
-		_logger.LogInformation("Cache cleared — memory wiped, scanner_memory.json deleted");
+		// CompactOnce because the freed extension dictionaries and JSON buffers sit on the LOH,
+		// which is never compacted by default. The only forced collection here — keep it off scan paths.
+		GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+		GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+		GC.WaitForPendingFinalizers();
+		GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+
+		_logger.LogInformation(
+			"Cache cleared — memory wiped, analyzer snapshots evicted, scanner_memory.json deleted, LOH compacted");
 	}
 
 	public void InvalidatePaths(IEnumerable<string> paths)
