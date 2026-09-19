@@ -50,7 +50,9 @@ public class FileTypeScanner : IFileTypeScanner
 		if (!wasScanned) return null;
 
 		var result = BuildResult(normalized);
-		_cache.Set(cacheKey, result, TimeSpan.FromMinutes(15));
+		_cache.Set(cacheKey, result, new MemoryCacheEntryOptions()
+			.SetAbsoluteExpiration(TimeSpan.FromMinutes(15))
+			.AddExpirationToken(_engine.SnapshotResetToken));
 		return result;
 	}
 
@@ -84,7 +86,9 @@ public class FileTypeScanner : IFileTypeScanner
 		if (!wasScanned) return null;
 
 		var result = BuildExtensionBreakdownResult(normalized);
-		_cache.Set(cacheKey, result, TimeSpan.FromMinutes(15));
+		_cache.Set(cacheKey, result, new MemoryCacheEntryOptions()
+			.SetAbsoluteExpiration(TimeSpan.FromMinutes(15))
+			.AddExpirationToken(_engine.SnapshotResetToken));
 		return result;
 	}
 

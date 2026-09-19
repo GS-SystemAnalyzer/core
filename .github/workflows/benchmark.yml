@@ -49,7 +49,7 @@ jobs:
           # run, so a push there changed the gate on every open core PR with no commit
           # here — core PRs inherited an unrelated repo's moving HEAD. Bump this
           # deliberately when adopting new benchmarks.
-          ref: 35b3e070b2eff7ff4b923b44af1be34092e6beb7
+          ref: bba45472cafbd490bdef1284bc5e4c90118d4473
           path: gs-benchmarks
 
       - name: Setup .NET
