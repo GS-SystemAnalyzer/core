@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 
 class HudLabel extends StatelessWidget {
   final String text;

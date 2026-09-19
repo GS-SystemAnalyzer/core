@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/widgets/telemetry_history_chart.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 
 class TelemetryHistoryScreen extends ConsumerWidget {

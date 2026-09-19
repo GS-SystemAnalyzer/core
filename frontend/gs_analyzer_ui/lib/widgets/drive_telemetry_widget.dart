@@ -5,7 +5,7 @@ import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
 import 'dart:math';
 
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 
 String formatBytes(int bytes) {
   if (bytes < 0) return "--";

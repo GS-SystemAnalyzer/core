@@ -4,7 +4,7 @@ import 'package:gs_analyzer_ui/features/dashboard/widgets/custom_progress_indica
 import 'package:gs_analyzer_ui/providers/ram_provider.dart';
 import 'package:gs_analyzer_ui/providers/ram_alert_provider.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 import 'package:gs_analyzer_ui/widgets/custom_container.dart';
 
 class CpuMemory extends ConsumerStatefulWidget {

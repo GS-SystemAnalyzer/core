@@ -1,9 +1,10 @@
 // frontend/gs_analyzer_ui/lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gs_analyzer_ui/core/theme/hud_colors.dart';
+import 'package:gs_analyzer_ui/core/theme/hud_theme.dart';
 import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/screen/master_layout.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/providers/window_provider.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
 import 'package:gs_analyzer_ui/services/notification_service.dart';
@@ -94,20 +95,25 @@ class _GSAnalyzerAppState extends ConsumerState<GSAnalyzerApp>
 
   @override
   Widget build(BuildContext context) {
-    final appearance = ref.watch(
-      settingsProvider.select((s) => s.currentSettings?.appearance),
+    final theme = ref.watch(
+      settingsProvider.select((s) => s.currentSettings?.appearance.theme),
+    );
+    final accentKey = ref.watch(
+      settingsProvider.select((s) => s.currentSettings?.appearance.accentColor),
     );
 
-    final accentColor = HudTheme.resolveAccent(appearance?.accentColor);
-    final bgColor = HudTheme.resolveBgBase(appearance?.theme);
+    final lightAccent = HudColors.resolveAccent(accentKey, Brightness.light);
+    final darkAccent = HudColors.resolveAccent(accentKey, Brightness.dark);
+    final themeMode = HudTheme.resolveThemeMode(theme);
 
     return MaterialApp(
       scaffoldMessengerKey: snackbarKey,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: bgColor,
-        colorScheme: ColorScheme.dark(primary: accentColor),
-      ),
+
+      theme: HudTheme.lightTheme(lightAccent),
+      darkTheme: HudTheme.darkTheme(darkAccent),
+      themeMode: themeMode,
+    
       home: const MasterLayout(),
     );
   }
