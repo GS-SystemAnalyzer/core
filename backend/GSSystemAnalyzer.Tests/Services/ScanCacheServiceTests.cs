@@ -6,12 +6,19 @@ using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Models.SettingDtos;
 using GSSystemAnalyzer.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
 namespace GSSystemAnalyzer.Tests.Services;
 
+// Isolated because ClearCache() forces a collection, which corrupts the process-wide heap
+// reading in Soak/LeakTests.cs when the two run in parallel. See P-9 for its separate thread flake.
+[CollectionDefinition("ForcedGarbageCollection", DisableParallelization = true)]
+public class ForcedGarbageCollectionCollection { }
+
+[Collection("ForcedGarbageCollection")]
 public class ScanCacheServiceTests
 {
 	private readonly Mock<ISettingService> _mockSettings;
@@ -327,6 +334,99 @@ public class ScanCacheServiceTests
 		scanner.ClearCache();
 		Assert.Equal(0, service.GetStats().NodeCount);
 		Assert.Empty(scanner.DirectorySizeCache);
+	}
+
+	// --- Issue #141: ClearCache must also evict the analyzer snapshots, and the streamed
+	// --- SaveMemoryToDisk must keep scanner_memory.json in its existing format.
+
+	[Fact]
+	public void ClearCache_EvictsAnalyzerSnapshots_ViaSnapshotResetToken()
+	{
+		using var memoryCache = new MemoryCache(new MemoryCacheOptions());
+		var mockHub = new Mock<Microsoft.AspNetCore.SignalR.IHubContext<GSSystemAnalyzer.Hubs.SystemHub>>();
+		var scanner = new DiskScannerEngine(mockHub.Object, _mockSettings.Object, NullLogger<DiskScannerEngine>.Instance);
+		scanner.DirectorySizeCache.Clear();
+
+		// Stand in for what FileTypeScanner / AgeHeatmapEngine do at their _cache.Set calls.
+		memoryCache.Set("filetypes:c:\\", "snapshot", new MemoryCacheEntryOptions()
+			.SetAbsoluteExpiration(TimeSpan.FromMinutes(15))
+			.AddExpirationToken(scanner.SnapshotResetToken));
+
+		Assert.True(memoryCache.TryGetValue("filetypes:c:\\", out _));
+
+		scanner.ClearCache();
+
+		Assert.False(memoryCache.TryGetValue("filetypes:c:\\", out _));
+	}
+
+	[Fact]
+	public void SnapshotResetToken_AfterClearCache_IsFreshSoLaterSnapshotsSurvive()
+	{
+		using var memoryCache = new MemoryCache(new MemoryCacheOptions());
+		var mockHub = new Mock<Microsoft.AspNetCore.SignalR.IHubContext<GSSystemAnalyzer.Hubs.SystemHub>>();
+		var scanner = new DiskScannerEngine(mockHub.Object, _mockSettings.Object, NullLogger<DiskScannerEngine>.Instance);
+		scanner.DirectorySizeCache.Clear();
+
+		scanner.ClearCache();
+
+		// A snapshot cached AFTER the reset must survive the already-spent source.
+		// Otherwise every later analyzer read misses the cache for the process's life.
+		memoryCache.Set("filetypes:d:\\", "fresh", new MemoryCacheEntryOptions()
+			.SetAbsoluteExpiration(TimeSpan.FromMinutes(15))
+			.AddExpirationToken(scanner.SnapshotResetToken));
+
+		Assert.True(memoryCache.TryGetValue("filetypes:d:\\", out var value));
+		Assert.Equal("fresh", value);
+	}
+
+	[Fact]
+	public void SaveMemoryToDisk_StreamedOutput_MatchesTheStringSerializedFormatExactly()
+	{
+		var mockHub = new Mock<Microsoft.AspNetCore.SignalR.IHubContext<GSSystemAnalyzer.Hubs.SystemHub>>();
+		var scanner = new DiskScannerEngine(mockHub.Object, _mockSettings.Object, NullLogger<DiskScannerEngine>.Instance);
+		scanner.DirectorySizeCache.Clear();
+
+		var stamp = new DateTime(2026, 9, 18, 12, 0, 0, DateTimeKind.Utc);
+		scanner.DirectorySizeCache[@"C:\Alpha"] = new CacheEntry
+		{
+			Size = 4096,
+			LastUpdated = stamp,
+			CachedAtUtc = stamp,
+			ScanRoot = @"C:\",
+			Extensions = new Dictionary<string, FileTypeEntry>
+			{
+				[".txt"] = new FileTypeEntry { Count = 2, Bytes = 2048, LargestFileBytes = 1024, LargestFilePath = @"C:\Alpha\a.txt" }
+			}
+		};
+		scanner.DirectorySizeCache[@"C:\Beta"] = new CacheEntry
+		{
+			Size = 0,
+			LastUpdated = stamp,
+			CachedAtUtc = stamp,
+			ScanRoot = @"C:\",
+			Extensions = null
+		};
+
+		// What the pre-#141 code produced: one contiguous string from a full Dictionary copy.
+		var expected = System.Text.Json.JsonSerializer.Serialize(
+			new Dictionary<string, CacheEntry>(scanner.DirectorySizeCache));
+
+		scanner.SaveMemoryToDisk();
+
+		var cacheFilePath = Path.Combine(
+			Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+			"GSAnalyzer", "scanner_memory.json");
+		var actual = File.ReadAllText(cacheFilePath);
+
+		Assert.Equal(expected, actual);
+
+		// And it must still round-trip through the loader's own deserialization.
+		var reloaded = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, CacheEntry>>(actual);
+		Assert.NotNull(reloaded);
+		Assert.Equal(2, reloaded!.Count);
+		Assert.Equal(4096, reloaded[@"C:\Alpha"].Size);
+		Assert.Equal(@"C:\Alpha\a.txt", reloaded[@"C:\Alpha"].Extensions![".txt"].LargestFilePath);
+		Assert.Null(reloaded[@"C:\Beta"].Extensions);
 	}
 }
 
