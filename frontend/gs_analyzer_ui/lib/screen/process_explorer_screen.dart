@@ -6,7 +6,6 @@ import 'package:gs_analyzer_ui/models/process_telemetry.dart';
 import 'package:gs_analyzer_ui/providers/cpu_provider.dart';
 import 'package:gs_analyzer_ui/providers/process_explorer_provider.dart';
 import 'package:gs_analyzer_ui/providers/ram_provider.dart';
-import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
 import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 
@@ -23,6 +22,7 @@ class ProcessExplorerScreen extends ConsumerWidget {
     final showAll = ref.watch(showAllProcessesProvider);
     final totalCount = ramState.groupedProcesses.length;
     final d = ref.watch(hudDensityProvider);
+    final theme = Theme.of(context);
 
     return Column(
       children: [
@@ -35,9 +35,9 @@ class ProcessExplorerScreen extends ConsumerWidget {
         // Table
         Expanded(
           child: ramState.isLoading && ramState.groupedProcesses.isEmpty
-              ? const Center(
+              ? Center(
                   child: CircularProgressIndicator(
-                    color: HudTheme.primaryBorder,
+                    color: theme.colorScheme.outline,
                   ),
                 )
               : Column(
@@ -96,11 +96,12 @@ class _SystemLoadBar extends ConsumerWidget {
     final cpuText = cpuState.snapshot != null
         ? '${load.toStringAsFixed(1)}%'
         : '--';
+        final theme = Theme.of(context);
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: d.gap),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.white10)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: theme.dividerTheme.color!)),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -109,13 +110,13 @@ class _SystemLoadBar extends ConsumerWidget {
             'CPU',
             cpuText,
             cpuPct.clamp(0.0, 1.0),
-            HudTheme.accentCyan,
+            theme.colorScheme.onPrimary,
           );
           final ram = _LoadMetric(
             'RAM',
             '${(ramPct * 100).toStringAsFixed(1)}%',
             ramPct.clamp(0.0, 1.0),
-            HudTheme.accentGreen,
+            theme.colorScheme.secondary,
           );
 
           if (wide) {
@@ -162,12 +163,12 @@ class _LoadMetric extends StatelessWidget {
           child: LinearProgressIndicator(
             value: pct.clamp(0.0, 1.0),
             color: color,
-            backgroundColor: Colors.white10,
+            backgroundColor: Theme.of(context).dividerTheme.color!,
             minHeight: 4,
           ),
         ),
         const SizedBox(width: 8),
-        Text(value, style: HudTheme.bodyText.copyWith(color: color)),
+        Text(value, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color)),
       ],
     );
   }
@@ -179,6 +180,7 @@ class _Toolbar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sort = ref.watch(processSortModeProvider);
     final status = ref.watch(processStatusFilterProvider);
+    final theme =  Theme.of(context);
 
     String sortLabel;
     switch (sort) {
@@ -211,8 +213,8 @@ class _Toolbar extends ConsumerWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.white10)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: theme.dividerTheme.color!)),
       ),
       child: Row(
         children: [
@@ -221,25 +223,25 @@ class _Toolbar extends ConsumerWidget {
             flex: 3,
             child: TextFormField(
               initialValue: ref.read(processFilterProvider),
-              style: HudTheme.bodyText,
-              cursorColor: HudTheme.accentCyan,
+              style: theme.textTheme.bodyMedium,
+              cursorColor: theme.colorScheme.onPrimary,
               decoration: InputDecoration(
                 hintText: 'FILTER BY NAME OR PID...',
-                hintStyle: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
-                prefixIcon: const Icon(
+                hintStyle: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.surfaceDim),
+                prefixIcon: Icon(
                   Icons.search,
-                  color: HudTheme.textDim,
+                  color: theme.colorScheme.surfaceDim,
                   size: 18,
                 ),
                 filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.04),
+                fillColor: theme.colorScheme.onSurface.withValues(alpha: 0.04),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(4),
-                  borderSide: const BorderSide(color: Colors.white12),
+                  borderSide: BorderSide(color: theme.dividerTheme.color!),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(4),
-                  borderSide: const BorderSide(color: HudTheme.accentCyan),
+                  borderSide: BorderSide(color: theme.colorScheme.onPrimary),
                 ),
                 contentPadding: const EdgeInsets.symmetric(vertical: 8),
               ),
@@ -310,24 +312,25 @@ class _ToolbarChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        border: Border.all(color: Colors.white12),
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.04),
+        border: Border.all(color: theme.dividerTheme.color!),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: HudTheme.textDim, size: 14),
+          Icon(icon, color: theme.colorScheme.surfaceDim, size: 14),
           const SizedBox(width: 6),
           Text(
             label,
-            style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.surfaceDim),
           ),
           const SizedBox(width: 4),
-          const Icon(Icons.arrow_drop_down, color: HudTheme.textDim, size: 14),
+          Icon(Icons.arrow_drop_down, color: theme.colorScheme.surfaceDim, size: 14),
         ],
       ),
     );
@@ -343,8 +346,8 @@ class _TableHeader extends ConsumerWidget {
       padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: 8),
       height: d.rowHeight + 16,
       decoration: BoxDecoration(
-        color: HudTheme.bgPanel,
-        border: const Border(bottom: BorderSide(color: Colors.white10)),
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(bottom: BorderSide(color: Theme.of(context).dividerTheme.color!)),
       ),
       child: const Row(
         children: [
@@ -401,13 +404,14 @@ class _ProcessRow extends ConsumerWidget {
     final isCpuHot = group.totalCpuPercent > 10.0;
     final isMemHot = group.totalPercentMem > 10.0;
     final isHot = isCpuHot || isMemHot;
+    final theme = Theme.of(context);
     final rowColor = isSelected
-        ? HudTheme.accentCyan.withValues(alpha: 0.06)
+        ? theme.colorScheme.onPrimary.withValues(alpha: 0.06)
         : isHot
-        ? HudTheme.accentAmber.withValues(alpha: 0.05)
+        ? theme.colorScheme.tertiary.withValues(alpha: 0.05)
         : Colors.transparent;
 
-    final textColor = isHot ? HudTheme.accentAmber : HudTheme.textMain;
+    final textColor = isHot ? theme.colorScheme.tertiary : theme.colorScheme.onSurface;
     final displayName = group.count > 1
         ? '${group.name} (x${group.count})'
         : group.name;
@@ -417,7 +421,7 @@ class _ProcessRow extends ConsumerWidget {
         // ── Main row
         InkWell(
           onTap: onTap,
-          hoverColor: Colors.white.withValues(alpha: 0.03),
+          hoverColor: theme.colorScheme.onSurface.withValues(alpha: 0.03),
           child: Container(
             height: d.rowHeight + 16,
             padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: 8),
@@ -425,10 +429,10 @@ class _ProcessRow extends ConsumerWidget {
               color: rowColor,
               border: Border(
                 left: BorderSide(
-                  color: isSelected ? HudTheme.accentCyan : Colors.transparent,
+                  color: isSelected ? theme.colorScheme.onPrimary : Colors.transparent,
                   width: 3,
                 ),
-                bottom: const BorderSide(color: Colors.white10),
+                bottom: BorderSide(color: theme.dividerTheme.color!),
               ),
             ),
             child: Row(
@@ -437,7 +441,7 @@ class _ProcessRow extends ConsumerWidget {
                   flex: 2,
                   child: Text(
                     group.count > 1 ? 'GRP' : group.primaryPid.toString(),
-                    style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.surfaceDim),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -445,8 +449,8 @@ class _ProcessRow extends ConsumerWidget {
                   flex: 4,
                   child: Text(
                     displayName,
-                    style: HudTheme.bodyText.copyWith(
-                      color: isSelected ? HudTheme.accentCyan : textColor,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: isSelected ? theme.colorScheme.onPrimary : textColor,
                       fontWeight: FontWeight.bold,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -457,7 +461,7 @@ class _ProcessRow extends ConsumerWidget {
                   flex: 3,
                   child: Text(
                     group.primaryUser,
-                    style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.surfaceDim),
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                   ),
@@ -466,10 +470,10 @@ class _ProcessRow extends ConsumerWidget {
                   flex: 2,
                   child: Text(
                     '${group.totalCpuPercent.toStringAsFixed(1)}%',
-                    style: HudTheme.statGreen.copyWith(
+                    style: theme.textTheme.bodyLarge?.copyWith(
                       color: isCpuHot
-                          ? HudTheme.accentAmber
-                          : HudTheme.accentCyan,
+                          ? theme.colorScheme.tertiary
+                          : theme.colorScheme.onPrimary,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -478,7 +482,7 @@ class _ProcessRow extends ConsumerWidget {
                   flex: 2,
                   child: Text(
                     '${group.totalPercentMem.toStringAsFixed(1)}%',
-                    style: HudTheme.statGreen.copyWith(color: textColor),
+                    style: theme.textTheme.bodyLarge?.copyWith(color: textColor),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -489,9 +493,9 @@ class _ProcessRow extends ConsumerWidget {
                 Expanded(
                   flex: 1,
                   child: IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.cancel_outlined,
-                      color: HudTheme.accentRed,
+                      color: theme.colorScheme.error,
                       size: 18,
                     ),
                     tooltip: group.count > 1
@@ -516,6 +520,7 @@ class _ProcessRow extends ConsumerWidget {
     final label = group.count > 1
         ? 'Kill all ${group.count} instances of ${group.name}?'
         : 'Kill PID ${group.primaryPid} (${group.name})?';
+        final theme = Theme.of(context);
 
     showDialog(
       context: context,
@@ -524,18 +529,18 @@ class _ProcessRow extends ConsumerWidget {
         backgroundColor: const Color(0xFF1A1A1A),
         title: Text(
           'CONFIRM KILL',
-          style: HudTheme.bodyText.copyWith(
-            color: HudTheme.accentRed,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.error,
             fontWeight: FontWeight.bold,
           ),
         ),
-        content: Text(label, style: HudTheme.bodyText),
+        content: Text(label, style: theme.textTheme.bodyMedium),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
               'CANCEL',
-              style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.surfaceDim),
             ),
           ),
           TextButton(
@@ -550,8 +555,8 @@ class _ProcessRow extends ConsumerWidget {
             },
             child: Text(
               'KILL',
-              style: HudTheme.bodyText.copyWith(
-                color: HudTheme.accentRed,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.error,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -570,15 +575,17 @@ class _DetailDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
       padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: d.gap),
       decoration: BoxDecoration(
-        color: HudTheme.accentCyan.withValues(alpha: 0.04),
-        border: const Border(
-          left: BorderSide(color: HudTheme.accentCyan, width: 3),
-          bottom: BorderSide(color: Colors.white10),
+        color: theme.colorScheme.onPrimary.withValues(alpha: 0.04),
+        border: Border(
+          left: BorderSide(color: theme.colorScheme.onPrimary, width: 3),
+          bottom: BorderSide(color: theme.dividerTheme.color!),
         ),
       ),
       child: SingleChildScrollView(
@@ -616,13 +623,13 @@ class _DetailDrawer extends ConsumerWidget {
                   label: group.count > 1
                       ? 'KILL ALL ${group.name.toUpperCase()} (${group.count})'
                       : 'KILL PID ${group.primaryPid}',
-                  color: HudTheme.accentRed,
+                  color: theme.colorScheme.error,
                   onTap: () => _showKillDialog(context, ref),
                 ),
                 const SizedBox(width: 8),
                 _ActionButton(
                   label: 'COPY NAME',
-                  color: HudTheme.textDim,
+                  color: theme.colorScheme.surfaceDim,
                   onTap: () =>
                       Clipboard.setData(ClipboardData(text: group.name)),
                 ),
@@ -635,6 +642,7 @@ class _DetailDrawer extends ConsumerWidget {
   }
 
   void _showKillDialog(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -642,8 +650,8 @@ class _DetailDrawer extends ConsumerWidget {
         backgroundColor: const Color(0xFF1A1A1A),
         title: Text(
           'CONFIRM KILL',
-          style: HudTheme.bodyText.copyWith(
-            color: HudTheme.accentRed,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.error,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -651,14 +659,14 @@ class _DetailDrawer extends ConsumerWidget {
           group.count > 1
               ? 'Terminate all ${group.count} instances of ${group.name}?'
               : 'Terminate PID ${group.primaryPid} (${group.name})?',
-          style: HudTheme.bodyText,
+          style: theme.textTheme.bodyMedium,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
               'CANCEL',
-              style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.surfaceDim),
             ),
           ),
           TextButton(
@@ -673,8 +681,8 @@ class _DetailDrawer extends ConsumerWidget {
             },
             child: Text(
               'EXECUTE',
-              style: HudTheme.bodyText.copyWith(
-                color: HudTheme.accentRed,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.error,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -692,6 +700,7 @@ class _DrawerStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -699,7 +708,7 @@ class _DrawerStat extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           value,
-          style: HudTheme.bodyText.copyWith(color: HudTheme.accentCyan),
+          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onPrimary),
         ),
       ],
     );
@@ -729,7 +738,7 @@ class _ActionButton extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: HudTheme.bodyText.copyWith(color: color, fontSize: 11),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color, fontSize: 11),
         ),
       ),
     );
@@ -749,16 +758,17 @@ class _Footer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Colors.white10)),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: theme.dividerTheme.color!)),
       ),
       child: Row(
         children: [
           Text(
             'Showing $shown of $total processes',
-            style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.surfaceDim),
           ),
           const Spacer(),
           if (total > 100)
@@ -767,8 +777,8 @@ class _Footer extends ConsumerWidget {
                   ref.read(showAllProcessesProvider.notifier).state = !showAll,
               child: Text(
                 showAll ? 'SHOW TOP 100' : 'SHOW ALL ($total)',
-                style: HudTheme.bodyText.copyWith(
-                  color: HudTheme.accentCyan,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onPrimary,
                   decoration: TextDecoration.underline,
                 ),
               ),
