@@ -521,7 +521,9 @@ public class ScanCacheService : IScanCacheService, IDisposable
 		InvalidateSubtree(watchedRoot);
 	}
 
-	private static bool IsAppInternalPath(string path)
+	// internal so DiskScannerEngine's watcher filters on the same list; a second, narrower
+	// copy there would let the app's own writes re-trigger a scan.
+	internal static bool IsAppInternalPath(string path)
 	{
 		if (string.IsNullOrWhiteSpace(path)) return true;
 		var lower = path.ToLowerInvariant();

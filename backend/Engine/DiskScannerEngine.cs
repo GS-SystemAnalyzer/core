@@ -23,7 +23,7 @@ public class CacheEntry
 }
 
 
-public class DiskScannerEngine : IDiskScannerEngine
+public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 {
 	public ConcurrentDictionary<string, CacheEntry> DirectorySizeCache = new(StringComparer.OrdinalIgnoreCase);
 	private CancellationTokenSource? _nukeCts;
@@ -74,8 +74,14 @@ public class DiskScannerEngine : IDiskScannerEngine
 		"GSAnalyzer", "scanner_memory.json");
 	private FileSystemWatcher? _liveRader;
 	private readonly object _radarLock = new object();
-	private DateTime _lastRadarAlert = DateTime.MinValue;
-	private readonly TimeSpan _radarCooldown = TimeSpan.FromMilliseconds(500);
+	// Debounce and cap are both 1000ms, so a burst coalesces into one broadcast a second
+	// after its first event. Equal values make the cap, not the reset, decide when it fires.
+	private readonly TimeSpan _radarCooldown = TimeSpan.FromMilliseconds(1000);
+	private readonly TimeSpan _radarBurstCap = TimeSpan.FromMilliseconds(1000);
+	private string? _radarTargetPath;
+	private CancellationTokenSource? _radarDebounceCts;
+	private DateTime _radarBurstStartedUtc = DateTime.MinValue;
+	private bool _disposed;
 	private readonly ISettingService _settings;
 	private readonly IHubContext<SystemHub> _hub;
 	private readonly ILogger<DiskScannerEngine> _logger;
@@ -499,20 +505,18 @@ public class DiskScannerEngine : IDiskScannerEngine
 	{
 		lock (_radarLock)
 		{
+			if (_disposed) return;
+
 			try
 			{
-				if (_liveRader != null)
-				{
-					_liveRader.EnableRaisingEvents = false;
-					_liveRader.Dispose();
-					_liveRader = null;
-				}
+				StopRadarLocked();
 
 				if (Directory.Exists(targetPath))
 				{
+					_radarTargetPath = targetPath;
 					_liveRader = new FileSystemWatcher(targetPath);
 
-					_liveRader.IncludeSubdirectories = false;
+					_liveRader.IncludeSubdirectories = true;
 
 					_liveRader.NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size;
 					_liveRader.InternalBufferSize = 65536;
@@ -529,23 +533,49 @@ public class DiskScannerEngine : IDiskScannerEngine
 			}
 			catch (Exception ex)
 			{
+				StopRadarLocked();
 				_logger.LogWarning(ex, "Failed to deploy file system watcher on {Path}", targetPath);
 			}
 		}
 	}
 
-	private void OnRadarTriggered(object sender, FileSystemEventArgs e)
+	// Cancels any pending broadcast and detaches every handler before disposing, so a
+	// retired watcher cannot deliver an event against the new sector.
+	private void StopRadarLocked()
+	{
+		_radarDebounceCts?.Cancel();
+		_radarDebounceCts?.Dispose();
+		_radarDebounceCts = null;
+		_radarBurstStartedUtc = DateTime.MinValue;
+		_radarTargetPath = null;
+
+		if (_liveRader == null) return;
+
+		_liveRader.EnableRaisingEvents = false;
+		_liveRader.Created -= OnRadarTriggered;
+		_liveRader.Deleted -= OnRadarTriggered;
+		_liveRader.Renamed -= OnRadarTriggered;
+		_liveRader.Changed -= OnRadarTriggered;
+		_liveRader.Error -= OnRadarError;
+		_liveRader.Dispose();
+		_liveRader = null;
+	}
+
+	public void Dispose()
 	{
 		lock (_radarLock)
 		{
-			// TODO: Debounce is leading-edge and drops events, if for example a file is created and then deleted quickly, the event will be dropped. We need to implement a trailing-edge debounce to ensure we catch all events and IncludeSubdirectories = false means it only watches the current folder level, deep changes won't fire it.
-			if (DateTime.UtcNow - _lastRadarAlert < _radarCooldown)
-			{
-				return;
-			}
-
-			_lastRadarAlert = DateTime.UtcNow;
+			if (_disposed) return;
+			_disposed = true;
+			StopRadarLocked();
 		}
+	}
+
+	private void OnRadarTriggered(object sender, FileSystemEventArgs e)
+	{
+		// The app's own writes land inside the watched tree once subdirectories are watched,
+		// so reuse the cache service's exclusion list rather than a second narrower one.
+		if (ScanCacheService.IsAppInternalPath(e.FullPath)) return;
 
 		_logger.LogDebug("File system change detected: {ChangeType} on {Name}", e.ChangeType, e.Name);
 		_cacheService?.HandleWatcherEvent(e.FullPath, e.ChangeType);
@@ -579,34 +609,87 @@ public class DiskScannerEngine : IDiskScannerEngine
 
 		_watcherLog?.LogEvent(DateTimeOffset.UtcNow, kind, e.FullPath, oldPath, isDirectory);
 
+		ScheduleRadarBroadcast(sender as FileSystemWatcher);
+	}
+
+	// Broadcasts the watched ROOT, not the changed folder: the Flutter consumer compares the
+	// payload to the open directory by exact equality, so a nested path would never match.
+	private void ScheduleRadarBroadcast(FileSystemWatcher? watcher)
+	{
+		if (watcher == null) return;
+
+		CancellationTokenSource? retired;
+		CancellationTokenSource mine;
+		DateTime burstDeadline;
+
+		lock (_radarLock)
+		{
+			if (_disposed || !ReferenceEquals(watcher, _liveRader) || string.IsNullOrEmpty(_radarTargetPath)) return;
+
+			if (_radarDebounceCts == null) _radarBurstStartedUtc = DateTime.UtcNow;
+
+			retired = _radarDebounceCts;
+			mine = new CancellationTokenSource();
+			_radarDebounceCts = mine;
+			burstDeadline = _radarBurstStartedUtc + _radarBurstCap;
+		}
+
+		retired?.Cancel();
+		retired?.Dispose();
+
+		_ = BroadcastRadarAsync(watcher, mine, burstDeadline);
+	}
+
+	private async Task BroadcastRadarAsync(FileSystemWatcher watcher, CancellationTokenSource cts, DateTime burstDeadline)
+	{
 		try
 		{
-			var folderThatChanged = Path.GetDirectoryName(e.FullPath) ?? "";
+			// Trailing debounce, but never wait past the burst cap - a continuous event
+			// stream would otherwise reset the timer forever and never broadcast at all.
+			var wait = _radarCooldown;
+			var remaining = burstDeadline - DateTime.UtcNow;
+			if (remaining < wait) wait = remaining;
+			if (wait > TimeSpan.Zero) await Task.Delay(wait, cts.Token);
 
-			_ = _hub.Clients.All.SendAsync("SectorChanged", folderThatChanged.Replace("\\", "/"));
+			string watchedRoot;
+			lock (_radarLock)
+			{
+				if (_disposed || !ReferenceEquals(cts, _radarDebounceCts) ||
+					!ReferenceEquals(watcher, _liveRader) || string.IsNullOrEmpty(_radarTargetPath)) return;
+
+				_radarDebounceCts = null;
+				_radarBurstStartedUtc = DateTime.MinValue;
+				watchedRoot = _radarTargetPath.Replace("\\", "/");
+			}
+
+			await _hub.Clients.All.SendAsync("SectorChanged", watchedRoot);
+			cts.Dispose();
 		}
+		catch (OperationCanceledException) { }
 		catch (Exception ex)
 		{
-			_logger.LogDebug(ex, "Failed to broadcast SectorChanged for {Path}", e.FullPath);
+			_logger.LogDebug(ex, "Failed to broadcast SectorChanged for the watched sector");
 		}
 	}
 
 	private void OnRadarError(object sender, ErrorEventArgs e)
 	{
-		var ex = e.GetException();
-		_logger.LogWarning(ex, "Live Radar encountered an error. Buffer may have overflowed.");
-		
+		string? watchedRoot;
 		lock (_radarLock)
 		{
-			if (_liveRader != null)
-			{
-				var path = _liveRader.Path;
-				_watcherLog?.LogOverflow(path);
-				
-				// Invalidate the subtree to force a real scan instead of drifting
-				InvalidatePaths(new[] { path });
-			}
+			watchedRoot = ReferenceEquals(sender, _liveRader) ? _radarTargetPath : null;
 		}
+
+		if (string.IsNullOrEmpty(watchedRoot)) return;
+
+		_logger.LogWarning(e.GetException(), "Live Radar encountered an error. Buffer may have overflowed.");
+		_watcherLog?.LogOverflow(watchedRoot);
+
+		// Dropped events cannot be recovered, so resync the whole subtree. Not InvalidatePaths:
+		// that one also calls SaveMemoryToDisk, whose write is itself inside the watched tree.
+		_cacheService?.HandleWatcherOverflow(watchedRoot);
+
+		ScheduleRadarBroadcast(sender as FileSystemWatcher);
 	}
 
 	// Fix: Apply same lock pattern scan path got(To prevent concurrency race)
