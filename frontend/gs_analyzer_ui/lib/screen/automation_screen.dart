@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_text_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:intl/intl.dart';
 import 'package:gs_analyzer_ui/models/automation_rule.dart';
 import 'package:gs_analyzer_ui/providers/automation_provider.dart';
 import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 import 'package:gs_analyzer_ui/utils/formatters.dart';
-import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 import 'package:gs_analyzer_ui/widgets/rule_editor_dialog.dart';
 
 class AutomationScreen extends ConsumerStatefulWidget {
@@ -21,11 +22,13 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
     final rulesAsync = ref.watch(automationRulesProvider);
     final auditAsync = ref.watch(automationAuditProvider);
     final d = ref.watch(hudDensityProvider);
+    final theme = context.HudTheme;
+    final text = context.HudTextTheme;
 
     return Material(
-      color: HudTheme.bgBase,
+      color: theme.background,
       child: Container(
-        color: HudTheme.bgBase,
+        color: theme.background,
         padding: EdgeInsets.all(d.panelPad),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,29 +36,29 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
           // Header Bar
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.auto_mode_outlined,
-                color: HudTheme.accentCyan,
+                color: theme.accentCyan,
                 size: 22,
               ),
               const SizedBox(width: 10),
-              const Text('AUTOMATION PROTOCOL', style: HudTheme.headerCyan),
+              Text('AUTOMATION PROTOCOL', style: context.HudTextTheme.headlineMedium),
               const Spacer(),
               ElevatedButton.icon(
-                icon: const Icon(Icons.add, size: 16, color: HudTheme.accentCyan),
-                label: const Text(
+                icon: Icon(Icons.add, size: 16, color: theme.accentCyan),
+                label: Text(
                   '+ NEW RULE',
                   style: TextStyle(
-                    fontFamily: HudTheme.fontCore,
-                    color: HudTheme.accentCyan,
+                    fontFamily: HudTextTheme.fontCore,
+                    color: theme.accentCyan,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                     letterSpacing: 1,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: HudTheme.accentCyan.withValues(alpha: 0.15),
-                  side: const BorderSide(color: HudTheme.accentCyan),
+                  backgroundColor: theme.accentCyan.withValues(alpha: 0.15),
+                  side: BorderSide(color: theme.accentCyan),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(4),
@@ -65,7 +68,7 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
               ),
               const SizedBox(width: 8),
               IconButton(
-                icon: const Icon(Icons.refresh, color: HudTheme.textDim, size: 20),
+                icon: Icon(Icons.refresh, color: theme.textDim, size: 20),
                 tooltip: 'Refresh',
                 onPressed: () {
                   ref.read(automationRulesProvider.notifier).reload();
@@ -75,9 +78,9 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'SCHEDULED BACKGROUND CLEANUP & AUDIT LOG',
-            style: HudTheme.labelMuted,
+            style: text.titleMedium,
           ),
           SizedBox(height: d.gap * 2),
 
@@ -98,28 +101,29 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
 }
 
   Widget _buildRulesPanel(AsyncValue<List<AutomationRule>> rulesAsync) {
+    final theme = context.HudTheme;
     return Container(
-      decoration: HudTheme.hudPanelDecoration,
+      decoration: theme.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: Colors.white10)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.rule_outlined, color: HudTheme.accentCyan, size: 16),
+                    Icon(Icons.rule_outlined, color: theme.accentCyan, size: 16),
                     SizedBox(width: 8),
                     Text(
                       'RULES',
                       style: TextStyle(
-                        fontFamily: HudTheme.fontCore,
-                        color: HudTheme.accentCyan,
+                        fontFamily: HudTextTheme.fontCore,
+                        color: theme.accentCyan,
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                         letterSpacing: 1.2,
@@ -134,11 +138,11 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   onPressed: () => _openRuleEditor(context),
-                  child: const Text(
+                  child: Text(
                     '+ NEW RULE',
                     style: TextStyle(
-                      fontFamily: HudTheme.fontCore,
-                      color: HudTheme.accentCyan,
+                      fontFamily: HudTextTheme.fontCore,
+                      color: theme.accentCyan,
                       fontSize: 11,
                     ),
                   ),
@@ -150,12 +154,12 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
             child: rulesAsync.when(
               data: (rules) {
                 if (rules.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text(
-                      'NO AUTOMATION RULES CONFIGURED — CLICK + NEW RULE TO ADD ONE',
+                      'NO AUTOMATION RULES CONFIGURED Ã¢â‚¬â€ CLICK + NEW RULE TO ADD ONE',
                       style: TextStyle(
-                        fontFamily: HudTheme.fontCore,
-                        color: HudTheme.textDim,
+                        fontFamily: HudTextTheme.fontCore,
+                        color: theme.textDim,
                         fontSize: 12,
                         letterSpacing: 1,
                       ),
@@ -169,15 +173,15 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
                   itemBuilder: (context, index) => _buildRuleCard(rules[index]),
                 );
               },
-              loading: () => const Center(
-                child: CircularProgressIndicator(color: HudTheme.accentCyan),
+              loading: () => Center(
+                child: CircularProgressIndicator(color: theme.accentCyan),
               ),
               error: (err, _) => Center(
                 child: Text(
                   'ERROR: $err',
-                  style: const TextStyle(
-                    fontFamily: HudTheme.fontCore,
-                    color: HudTheme.accentRed,
+                  style: TextStyle(
+                    fontFamily: HudTextTheme.fontCore,
+                    color: theme.accentRed,
                     fontSize: 12,
                   ),
                 ),
@@ -196,17 +200,18 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
         : (rule.criteria.largerThanBytes != null
             ? '> ${formatBytes(rule.criteria.largerThanBytes!)}'
             : 'ALL FILES');
+            final theme = context.HudTheme;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: HudTheme.bgBase,
+        color: theme.background,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: !rule.isArmed
-              ? HudTheme.accentAmber.withValues(alpha: 0.5)
+              ? theme.accentAmber.withValues(alpha: 0.5)
               : (rule.isEnabled
-                  ? HudTheme.accentCyan.withValues(alpha: 0.3)
+                  ? theme.accentCyan.withValues(alpha: 0.3)
                   : Colors.white10),
         ),
       ),
@@ -217,16 +222,16 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
             children: [
               Icon(
                 rule.isEnabled ? Icons.circle : Icons.circle_outlined,
-                color: rule.isEnabled ? HudTheme.accentGreen : HudTheme.textDim,
+                color: rule.isEnabled ? theme.accentGreen : theme.textDim,
                 size: 12,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   rule.name.toUpperCase(),
-                  style: const TextStyle(
-                    fontFamily: HudTheme.fontCore,
-                    color: HudTheme.textMain,
+                  style: TextStyle(
+                    fontFamily: HudTextTheme.fontCore,
+                    color: theme.text,
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                     letterSpacing: 1,
@@ -234,10 +239,10 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
                 ),
               ),
               Text(
-                '${rule.root} · $criteriaSummary',
-                style: const TextStyle(
-                  fontFamily: HudTheme.fontCore,
-                  color: HudTheme.textDim,
+                '${rule.root} Ã‚Â· $criteriaSummary',
+                style: TextStyle(
+                  fontFamily: HudTextTheme.fontCore,
+                  color: theme.textDim,
                   fontSize: 11,
                 ),
               ),
@@ -245,17 +250,17 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: HudTheme.bgPanel,
+                  color: theme.panel,
                   borderRadius: BorderRadius.circular(2),
                   border: Border.all(
-                    color: HudTheme.accentCyan.withValues(alpha: 0.3),
+                    color: theme.accentCyan.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Text(
                   scheduleLabel,
-                  style: const TextStyle(
-                    fontFamily: HudTheme.fontCore,
-                    color: HudTheme.accentCyan,
+                  style: TextStyle(
+                    fontFamily: HudTextTheme.fontCore,
+                    color: theme.accentCyan,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
@@ -273,25 +278,25 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: HudTheme.accentAmber.withValues(alpha: 0.15),
+                    color: theme.accentAmber.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(2),
                     border: Border.all(
-                      color: HudTheme.accentAmber.withValues(alpha: 0.4),
+                      color: theme.accentAmber.withValues(alpha: 0.4),
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
                       Icon(
                         Icons.warning_amber,
-                        color: HudTheme.accentAmber,
+                        color: theme.accentAmber,
                         size: 12,
                       ),
                       SizedBox(width: 4),
                       Text(
-                        'NOT ARMED — REVIEW DRY RUN',
+                        'NOT ARMED Ã¢â‚¬â€ REVIEW DRY RUN',
                         style: TextStyle(
-                          fontFamily: HudTheme.fontCore,
-                          color: HudTheme.accentAmber,
+                          fontFamily: HudTextTheme.fontCore,
+                          color: theme.accentAmber,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.8,
@@ -305,18 +310,18 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
                   rule.lastRunUtc != null
                       ? 'Last run: ${DateFormat('yyyy-MM-dd HH:mm').format(rule.lastRunUtc!.toLocal())}'
                       : 'Never run',
-                  style: const TextStyle(
-                    fontFamily: HudTheme.fontCore,
-                    color: HudTheme.textDim,
+                  style: TextStyle(
+                    fontFamily: HudTextTheme.fontCore,
+                    color: theme.textDim,
                     fontSize: 11,
                   ),
                 ),
               if (rule.nextRunUtc != null && rule.isArmed)
                 Text(
                   'Next run: ${DateFormat('yyyy-MM-dd HH:mm').format(rule.nextRunUtc!.toLocal())}',
-                  style: const TextStyle(
-                    fontFamily: HudTheme.fontCore,
-                    color: HudTheme.textDim,
+                  style: TextStyle(
+                    fontFamily: HudTextTheme.fontCore,
+                    color: theme.textDim,
                     fontSize: 11,
                   ),
                 ),
@@ -328,12 +333,13 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
   }
 
   Widget _buildRuleActionsMenu(AutomationRule rule) {
+    final theme = context.HudTheme;
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_horiz, color: HudTheme.textDim, size: 18),
-      color: HudTheme.bgPanel,
+      icon: Icon(Icons.more_horiz, color: theme.textDim, size: 18),
+      color: theme.panel,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(4),
-        side: BorderSide(color: HudTheme.primaryBorder.withValues(alpha: 0.3)),
+        side: BorderSide(color: theme.border.withValues(alpha: 0.3)),
       ),
       onSelected: (val) async {
         final notifier = ref.read(automationRulesProvider.notifier);
@@ -361,34 +367,34 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
       },
       itemBuilder: (context) => [
         if (rule.isArmed)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'run',
             child: Row(
               children: [
-                Icon(Icons.play_arrow, color: HudTheme.accentGreen, size: 16),
+                Icon(Icons.play_arrow, color: theme.accentGreen, size: 16),
                 SizedBox(width: 8),
                 Text(
                   'RUN NOW',
                   style: TextStyle(
-                    fontFamily: HudTheme.fontCore,
-                    color: HudTheme.textMain,
+                    fontFamily: HudTextTheme.fontCore,
+                    color: theme.text,
                     fontSize: 12,
                   ),
                 ),
               ],
             ),
           ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'dryrun',
           child: Row(
             children: [
-              Icon(Icons.remove_red_eye_outlined, color: HudTheme.accentCyan, size: 16),
+              Icon(Icons.remove_red_eye_outlined, color: theme.accentCyan, size: 16),
               SizedBox(width: 8),
               Text(
                 'DRY RUN PREVIEW',
                 style: TextStyle(
-                  fontFamily: HudTheme.fontCore,
-                  color: HudTheme.textMain,
+                  fontFamily: HudTextTheme.fontCore,
+                  color: theme.text,
                   fontSize: 12,
                 ),
               ),
@@ -396,51 +402,51 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
           ),
         ),
         if (!rule.isArmed)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'arm',
             child: Row(
               children: [
-                Icon(Icons.security, color: HudTheme.accentAmber, size: 16),
+                Icon(Icons.security, color: theme.accentAmber, size: 16),
                 SizedBox(width: 8),
                 Text(
                   'ARM RULE',
                   style: TextStyle(
-                    fontFamily: HudTheme.fontCore,
-                    color: HudTheme.accentAmber,
+                    fontFamily: HudTextTheme.fontCore,
+                    color: theme.accentAmber,
                     fontSize: 12,
                   ),
                 ),
               ],
             ),
           ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'edit',
           child: Row(
             children: [
-              Icon(Icons.edit, color: HudTheme.accentCyan, size: 16),
+              Icon(Icons.edit, color: theme.accentCyan, size: 16),
               SizedBox(width: 8),
               Text(
                 'EDIT',
                 style: TextStyle(
-                  fontFamily: HudTheme.fontCore,
-                  color: HudTheme.textMain,
+                  fontFamily: HudTextTheme.fontCore,
+                  color: theme.text,
                   fontSize: 12,
                 ),
               ),
             ],
           ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'delete',
           child: Row(
             children: [
-              Icon(Icons.delete_outline, color: HudTheme.accentRed, size: 16),
+              Icon(Icons.delete_outline, color: theme.accentRed, size: 16),
               SizedBox(width: 8),
               Text(
                 'DELETE',
                 style: TextStyle(
-                  fontFamily: HudTheme.fontCore,
-                  color: HudTheme.accentRed,
+                  fontFamily: HudTextTheme.fontCore,
+                  color: theme.accentRed,
                   fontSize: 12,
                 ),
               ),
@@ -452,28 +458,29 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
   }
 
   Widget _buildAuditPanel(AsyncValue<List<AutomationAuditEntry>> auditAsync) {
+    final theme = context.HudTheme;
     return Container(
-      decoration: HudTheme.hudPanelDecoration,
+      decoration: theme.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: Colors.white10)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.history_outlined, color: HudTheme.accentCyan, size: 16),
+                    Icon(Icons.history_outlined, color: theme.accentCyan, size: 16),
                     SizedBox(width: 8),
                     Text(
                       'AUDIT LOG',
                       style: TextStyle(
-                        fontFamily: HudTheme.fontCore,
-                        color: HudTheme.accentCyan,
+                        fontFamily: HudTextTheme.fontCore,
+                        color: theme.accentCyan,
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                         letterSpacing: 1.2,
@@ -486,16 +493,16 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
                     final days = ref.watch(auditDaysProvider);
                     return DropdownButton<int>(
                       value: days,
-                      dropdownColor: HudTheme.bgPanel,
+                      dropdownColor: theme.panel,
                       underline: const SizedBox.shrink(),
-                      style: const TextStyle(
-                        fontFamily: HudTheme.fontCore,
-                        color: HudTheme.accentCyan,
+                      style: TextStyle(
+                        fontFamily: HudTextTheme.fontCore,
+                        color: theme.accentCyan,
                         fontSize: 11,
                       ),
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.arrow_drop_down,
-                        color: HudTheme.accentCyan,
+                        color: theme.accentCyan,
                         size: 18,
                       ),
                       items: const [
@@ -503,21 +510,21 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
                           value: 7,
                           child: Text(
                             'PAST 7 DAYS',
-                            style: TextStyle(fontFamily: HudTheme.fontCore),
+                            style: TextStyle(fontFamily: HudTextTheme.fontCore),
                           ),
                         ),
                         DropdownMenuItem(
                           value: 30,
                           child: Text(
                             'PAST 30 DAYS',
-                            style: TextStyle(fontFamily: HudTheme.fontCore),
+                            style: TextStyle(fontFamily: HudTextTheme.fontCore),
                           ),
                         ),
                         DropdownMenuItem(
                           value: 90,
                           child: Text(
                             'PAST 90 DAYS',
-                            style: TextStyle(fontFamily: HudTheme.fontCore),
+                            style: TextStyle(fontFamily: HudTextTheme.fontCore),
                           ),
                         ),
                       ],
@@ -536,12 +543,12 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
             child: auditAsync.when(
               data: (entries) {
                 if (entries.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text(
                       'NO AUDIT ENTRIES RECORDED',
                       style: TextStyle(
-                        fontFamily: HudTheme.fontCore,
-                        color: HudTheme.textDim,
+                        fontFamily: HudTextTheme.fontCore,
+                        color: theme.textDim,
                         fontSize: 12,
                         letterSpacing: 1,
                       ),
@@ -566,9 +573,9 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
                         children: [
                           Text(
                             dateStr,
-                            style: const TextStyle(
-                              fontFamily: HudTheme.fontCore,
-                              color: HudTheme.textDim,
+                            style: TextStyle(
+                              fontFamily: HudTextTheme.fontCore,
+                              color: theme.textDim,
                               fontSize: 11,
                             ),
                           ),
@@ -576,9 +583,9 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
                           Expanded(
                             child: Text(
                               e.ruleName.toUpperCase(),
-                              style: const TextStyle(
-                                fontFamily: HudTheme.fontCore,
-                                color: HudTheme.textMain,
+                              style: TextStyle(
+                                fontFamily: HudTextTheme.fontCore,
+                                color: theme.text,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
                               ),
@@ -586,17 +593,17 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
                           ),
                           Text(
                             e.isDryRun
-                                ? 'DRY-RUN: ${e.matchedCount} files · $bytesStr'
+                                ? 'DRY-RUN: ${e.matchedCount} files Ã‚Â· $bytesStr'
                                 : (e.wasAborted
-                                    ? 'ABORTED — ${e.abortReason ?? 'FAILED'}'
-                                    : '${e.deletedCount} files · $bytesStr'),
+                                    ? 'ABORTED Ã¢â‚¬â€ ${e.abortReason ?? 'FAILED'}'
+                                    : '${e.deletedCount} files Ã‚Â· $bytesStr'),
                             style: TextStyle(
-                              fontFamily: HudTheme.fontCore,
+                              fontFamily: HudTextTheme.fontCore,
                               color: e.wasAborted
-                                  ? HudTheme.accentRed
+                                  ? theme.accentRed
                                   : (e.isDryRun
-                                      ? HudTheme.accentCyan
-                                      : HudTheme.textDim),
+                                      ? theme.accentCyan
+                                      : theme.textDim),
                               fontSize: 11,
                             ),
                           ),
@@ -606,8 +613,8 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
                                 ? Icons.warning_amber
                                 : Icons.check_circle_outline,
                             color: e.wasAborted
-                                ? HudTheme.accentAmber
-                                : HudTheme.accentGreen,
+                                ? theme.accentAmber
+                                : theme.accentGreen,
                             size: 16,
                           ),
                         ],
@@ -616,15 +623,15 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
                   },
                 );
               },
-              loading: () => const Center(
-                child: CircularProgressIndicator(color: HudTheme.accentCyan),
+              loading: () => Center(
+                child: CircularProgressIndicator(color: theme.accentCyan),
               ),
               error: (err, _) => Center(
                 child: Text(
                   'ERROR: $err',
-                  style: const TextStyle(
-                    fontFamily: HudTheme.fontCore,
-                    color: HudTheme.accentRed,
+                  style: TextStyle(
+                    fontFamily: HudTextTheme.fontCore,
+                    color: theme.accentRed,
                     fontSize: 12,
                   ),
                 ),
@@ -648,14 +655,14 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
       SnackBar(
         content: Text(
           msg,
-          style: const TextStyle(
-            fontFamily: HudTheme.fontCore,
-            color: HudTheme.textMain,
+          style: TextStyle(
+            fontFamily: HudTextTheme.fontCore,
+            color: context.HudTheme.text,
           ),
         ),
-        backgroundColor: HudTheme.bgPanel,
+        backgroundColor: context.HudTheme.panel,
         shape: RoundedRectangleBorder(
-          side: BorderSide(color: HudTheme.primaryBorder.withValues(alpha: 0.3)),
+          side: BorderSide(color: context.HudTheme.border.withValues(alpha: 0.3)),
           borderRadius: BorderRadius.circular(4),
         ),
         duration: const Duration(seconds: 3),
