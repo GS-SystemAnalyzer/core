@@ -15,6 +15,7 @@ class _ProcessFilterState extends ConsumerState<ProcessFilter> {
   Widget build(BuildContext context) {
     final sort = ref.watch(processSortModeProvider);
     final status = ref.watch(processStatusFilterProvider);
+    final theme = Theme.of(context);
 
     String sortLabel;
     switch (sort) {
@@ -49,7 +50,7 @@ class _ProcessFilterState extends ConsumerState<ProcessFilter> {
         PopupMenuButton<ProcessStatusFilter>(
             tooltip: 'Filter by status',
             child: CustomContainer(
-              color: Colors.black,
+              color: theme.dividerTheme.color!,
               padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               child: Text(
                 'FILTER BY: $statusLabel'
@@ -75,7 +76,7 @@ class _ProcessFilterState extends ConsumerState<ProcessFilter> {
         PopupMenuButton<ProcessSortMode>(
             tooltip: 'Sort by:',
             child: CustomContainer(
-              color: Colors.black,
+              color: theme.dividerTheme.color!,
               padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               child: Text(
                 'SORT BY: $sortLabel'

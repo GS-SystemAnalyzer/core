@@ -4,7 +4,6 @@ import 'package:gs_analyzer_ui/features/dashboard/widgets/custom_progress_indica
 import 'package:gs_analyzer_ui/providers/ram_provider.dart';
 import 'package:gs_analyzer_ui/providers/ram_alert_provider.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/widgets/custom_container.dart';
 
 class CpuMemory extends ConsumerStatefulWidget {
@@ -15,16 +14,15 @@ class CpuMemory extends ConsumerStatefulWidget {
 }
 
 class _CpuMemoryState extends ConsumerState<CpuMemory>{
-  // String _formatGB(int bytes) => (bytes / (1024 * 1024 * 1024)).toStringAsFixed(1);
 
   @override
   Widget build(BuildContext context) {
     final ramstate = ref.watch(ramProvider);
     final ramAlert = ref.watch(ramAlertProvider);
-    // final drive = ref.watsch(currentDriveProvider)!;
+    final theme = Theme.of(context);
 
     return CustomContainer(
-      color: HudTheme.bgPanel,
+      color: theme.colorScheme.surface,
       padding: EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -40,7 +38,7 @@ class _CpuMemoryState extends ConsumerState<CpuMemory>{
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: ramAlert.severity == 'critical' ? HudTheme.accentRed : HudTheme.accentAmber,
+                        color: ramAlert.severity == 'critical' ? theme.colorScheme.error : theme.colorScheme.tertiary,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -58,7 +56,7 @@ class _CpuMemoryState extends ConsumerState<CpuMemory>{
               Icon(
                 Icons.memory,
                 size: 40,
-                color: HudTheme.accentGreen.withValues(alpha: 0.1),
+                color: theme.colorScheme.secondary.withValues(alpha: 0.1),
               )
             ],
           ),
@@ -107,12 +105,12 @@ class _CpuMemoryState extends ConsumerState<CpuMemory>{
             color: AlwaysStoppedAnimation(Colors.greenAccent),
           ),
           const SizedBox(height: 20,),
-          // Spacer(),
+          Spacer(),
           Row(
             children: [
               Expanded(
                 child: CustomContainer(
-                  color: Colors.black,
+                  color: theme.dividerTheme.color!,
                   padding: EdgeInsets.all(8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,7 +136,7 @@ class _CpuMemoryState extends ConsumerState<CpuMemory>{
               const SizedBox(width: 10,),
               Expanded(
                 child: CustomContainer(
-                  color: Colors.black,
+                  color: theme.dividerTheme.color!,
                   padding: EdgeInsets.all(8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,7 +156,7 @@ class _CpuMemoryState extends ConsumerState<CpuMemory>{
                         ),
                       )
                     ],
-                  )             
+                  )
                 ),
               )
             ],

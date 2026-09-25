@@ -7,7 +7,7 @@ import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import 'package:gs_analyzer_ui/providers/extension_breakdown_provider.dart';
 import 'package:gs_analyzer_ui/providers/file_type_provider.dart';
 import 'package:gs_analyzer_ui/utils/csv_exporter.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 
 class ExtensionBreakdownScreen extends ConsumerStatefulWidget {
   final String scanRoot;

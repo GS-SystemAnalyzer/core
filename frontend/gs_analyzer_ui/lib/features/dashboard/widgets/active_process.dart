@@ -5,7 +5,6 @@ import 'package:gs_analyzer_ui/features/dashboard/widgets/process_table.dart';
 import 'package:gs_analyzer_ui/features/dashboard/widgets/status.dart';
 import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 import 'package:gs_analyzer_ui/providers/process_explorer_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/widgets/custom_container.dart';
 
 class ActiveProcess extends ConsumerStatefulWidget {
@@ -22,9 +21,10 @@ class _ActiveProcessState extends ConsumerState<ActiveProcess> {
     final processes = ref.watch(filteredProcessesProvider).take(4).toList();
     final d = ref.watch(hudDensityProvider);
     final selectedPid = ref.watch(selectedProcessPidProvider);
+    final theme = Theme.of(context);
 
     return CustomContainer(
-      color: HudTheme.bgPanel,
+      color: theme.cardColor,
       padding: EdgeInsets.all(20),
       child: Column(
         children: [
@@ -34,7 +34,7 @@ class _ActiveProcessState extends ConsumerState<ActiveProcess> {
               Expanded(
                 child: Text(
                   'ACTIVE PROCESS TREE',
-                  style: HudTheme.labelMuted,
+                  style: Theme.of(context).textTheme.headlineSmall,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -49,7 +49,7 @@ class _ActiveProcessState extends ConsumerState<ActiveProcess> {
             final isCpuHot = group.totalCpuPercent > 10.0;
             final isMemHot = group.totalPercentMem > 10.0;
             final isHot = isCpuHot || isMemHot;            
-            final textColor = isHot ? HudTheme.accentAmber : HudTheme.textMain;
+            final textColor = isHot ? theme.colorScheme.tertiary : theme.colorScheme.onSurface;
 
             return SizedBox(
               height: d.rowHeight + 16,
@@ -59,32 +59,33 @@ class _ActiveProcessState extends ConsumerState<ActiveProcess> {
                   Expanded(
                     child: Text(
                       group.primaryPid.toString(),
-                      style: HudTheme.bodyText,
+                      style: theme.textTheme.bodySmall,
                     ),
                   ),
                   Expanded(
                     child: Text(
                       displayName,
                       overflow: TextOverflow.ellipsis,
-                      style: HudTheme.bodyText.copyWith(color: isSelected ? HudTheme.accentCyan : textColor),
+                      style: theme.textTheme.bodyMedium?.copyWith(color: isSelected ? theme.colorScheme.onPrimary : textColor),
                     ),
                   ),
                   Expanded(
                     child: Text(
                       group.primaryUser,
-                      style: HudTheme.bodyText,
+                      style: Theme.of(context).textTheme.bodySmall,
+                      // style: HudTheme.bodyText,
                     ),
                   ),
                   Expanded(
                     child: Text(
                       '${group.totalCpuPercent.toStringAsFixed(1)}%',
-                      style: HudTheme.statGreen.copyWith(color: isCpuHot ? HudTheme.accentAmber : HudTheme.accentCyan),
+                      style: theme.textTheme.bodySmall?.copyWith(color: isCpuHot ? theme.colorScheme.tertiary : theme.colorScheme.onPrimary),
                     ),
                   ),
                   Expanded(
                     child: Text(
                       '${group.totalPercentMem.toStringAsFixed(1)}%',
-                      style: HudTheme.statGreen.copyWith(color: textColor),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: textColor),
                     ),
                   ),
                   Expanded(

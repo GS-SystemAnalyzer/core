@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 
 class GoUpRowWidget extends ConsumerWidget {
   const GoUpRowWidget({super.key});

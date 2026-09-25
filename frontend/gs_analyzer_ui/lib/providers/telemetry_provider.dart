@@ -7,7 +7,7 @@ import 'package:gs_analyzer_ui/providers/schedule_provider.dart';
 import 'package:gs_analyzer_ui/services/telemetry_service.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
 import 'package:flutter/material.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 import 'package:gs_analyzer_ui/providers/network_provider.dart';
 import 'package:gs_analyzer_ui/providers/disk_io_provider.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';

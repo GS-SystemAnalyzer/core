@@ -7,7 +7,6 @@ import 'package:gs_analyzer_ui/features/dashboard/widgets/custom_button.dart';
 import 'package:gs_analyzer_ui/features/dashboard/widgets/net_rate.dart';
 import 'package:gs_analyzer_ui/features/dashboard/widgets/thermal_sensor.dart';
 import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -21,6 +20,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final d = ref.watch(hudDensityProvider);
+    final theme = Theme.of(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -50,11 +50,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 children: [
                                   Text(
                                     'System_Overview'.toUpperCase(),
-                                    style:HudTheme.headerCyan
+                                    style:TextStyle(
+                                      fontSize: 19,
+                                      color: theme.colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 2
+                                    )
                                   ),
                                   Text(
                                     'Real-Time Telemetry Stream'.toUpperCase(),
-                                    style: HudTheme.labelMuted,
+                                    style: theme.textTheme.titleMedium,
                                   )
                                 ],
                               ),

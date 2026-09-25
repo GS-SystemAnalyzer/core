@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/drive_info.dart';
 import '../providers/drive_stats_provider.dart';
 import '../providers/settings_provider.dart';
-import '../utils/hud_theme.dart';
+import '../core/theme/hudd_theme.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';

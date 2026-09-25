@@ -88,7 +88,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 
   void updateUI() {
     state = state.copyWith(
-      currentSettings: state.currentSettings,
+      currentSettings: state.currentSettings?.clone(),
       validationErrors: [],
     );
   }
@@ -103,6 +103,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       final newSave = state.currentSettings!.clone();
       state = state.copyWith(
         savedSettings: newSave,
+        currentSettings: newSave.clone(),
         validationErrors: [],
         isLoading: false,
       );

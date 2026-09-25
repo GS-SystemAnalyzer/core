@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gs_analyzer_ui/models/disk_io_telemetry.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 import 'package:gs_analyzer_ui/widgets/disk_io_card.dart';
 
 void main() {

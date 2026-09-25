@@ -5,7 +5,7 @@ import 'package:gs_analyzer_ui/models/file_type_model.dart';
 import 'package:gs_analyzer_ui/providers/file_type_provider.dart';
 import 'package:gs_analyzer_ui/providers/extension_breakdown_provider.dart';
 import 'package:gs_analyzer_ui/widgets/extension_breakdown_screen.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 
 class FileTypeAnalyzerPanel extends ConsumerWidget {
   final String driveName;

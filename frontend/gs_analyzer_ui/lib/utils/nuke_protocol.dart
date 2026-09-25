@@ -8,7 +8,7 @@ import 'package:gs_analyzer_ui/providers/nuke_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/providers/root_tree_provider.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 import '../widgets/nuke_preview_dialog.dart';
 import '../widgets/nuke_progress_dialog.dart';
 import '../widgets/undo_history_panel.dart';

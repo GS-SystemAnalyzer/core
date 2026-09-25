@@ -5,7 +5,7 @@ import 'package:gs_analyzer_ui/models/network_telemetry.dart';
 import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 import 'package:gs_analyzer_ui/providers/network_provider.dart';
 import 'package:gs_analyzer_ui/utils/formatters.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/core/theme/hudd_theme.dart';
 import 'package:gs_analyzer_ui/widgets/telemetry_history_chart.dart';
 
 class NetworkModuleScreen extends ConsumerStatefulWidget {
