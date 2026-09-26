@@ -1,16 +1,17 @@
 // frontend/gs_analyzer_ui/lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/screen/master_layout.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/providers/window_provider.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
 import 'package:gs_analyzer_ui/services/notification_service.dart';
 import 'package:gs_analyzer_ui/providers/navigation_provider.dart';
 import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_color.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 
 const kCompactSize = Size(900, 640);
 
@@ -94,20 +95,24 @@ class _GSAnalyzerAppState extends ConsumerState<GSAnalyzerApp>
 
   @override
   Widget build(BuildContext context) {
-    final appearance = ref.watch(
-      settingsProvider.select((s) => s.currentSettings?.appearance),
+
+
+    final theme = ref.watch(
+      settingsProvider.select((s) => s.currentSettings?.appearance.theme),
+    );
+    final accentKey = ref.watch(
+      settingsProvider.select((s) => s.currentSettings?.appearance.accentColor),
     );
 
-    final accentColor = HudTheme.resolveAccent(appearance?.accentColor);
-    final bgColor = HudTheme.resolveBgBase(appearance?.theme);
+    final accentColor = HudColor.resolveAccent(accentKey);
+    final themeMode = HudTheme.resolveThemeMode(theme);
 
     return MaterialApp(
       scaffoldMessengerKey: snackbarKey,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: bgColor,
-        colorScheme: ColorScheme.dark(primary: accentColor),
-      ),
+      theme: HudTheme.lightTheme(accentColor),
+      darkTheme: HudTheme.darkTheme(accentColor),
+      themeMode: themeMode,
       home: const MasterLayout(),
     );
   }

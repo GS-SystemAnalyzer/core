@@ -503,6 +503,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     SettingsState state,
     SettingsNotifier notifier,
   ) {
+    final currentTheme = app.theme.toLowerCase();
+    final isLight = currentTheme == 'cyber_light' || currentTheme == 'light';
+    final isSystem = currentTheme == 'system';
+    final isDark = (currentTheme == 'cyber_dark' || currentTheme == 'dark') || (!isLight && !isSystem);
     return _SettingsSection(
       title: 'APPEARANCE',
       errorFilter: 'Appearance',
@@ -515,6 +519,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           }),
           _buildToggle('ANIMATIONS', app.showAnimations, (val) {
             app.showAnimations = val;
+            notifier.updateUI();
+          }),
+          _buildToggle('DARK MODE', isDark, (val) {
+            if (val) {
+              app.theme = 'cyber_dark';
+            }
+            notifier.updateUI();
+          }),
+          _buildToggle('LIGHT MODE', isLight, (val) {
+            if (val) {
+              app.theme = 'cyber_light';
+            }
+            notifier.updateUI();
+          }),
+          _buildToggle('SYSTEM MODE', isSystem, (val) {
+            if (val) {
+              app.theme = 'system';
+            }
             notifier.updateUI();
           }),
           const SizedBox(height: 16),

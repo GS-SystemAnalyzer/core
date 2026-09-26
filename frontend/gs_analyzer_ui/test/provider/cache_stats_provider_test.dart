@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:gs_analyzer_ui/models/app_settings.dart';
 import 'package:gs_analyzer_ui/models/cache_stats.dart';
 import 'package:gs_analyzer_ui/providers/cache_stats_provider.dart';
-import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/screen/settings_screen.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 
