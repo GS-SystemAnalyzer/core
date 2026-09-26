@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
 import 'package:gs_analyzer_ui/providers/process_explorer_provider.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 class ProcessTable extends ConsumerStatefulWidget {
   const ProcessTable({super.key});
@@ -29,7 +30,7 @@ class _ProcessTableState extends ConsumerState<ProcessTable> {
             children: [
               HudLabel(label),
               if (isSorted)
-                const Icon(Icons.arrow_drop_down, color: Colors.cyan, size: 16),
+                Icon(Icons.arrow_drop_down, color: context.HudTheme.accentCyan, size: 16),
             ],
           ),
         ),

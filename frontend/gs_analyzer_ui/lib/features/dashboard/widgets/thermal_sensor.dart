@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/thermal_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/custom_container.dart';
 
 class ThermalSensor extends ConsumerStatefulWidget {
@@ -16,32 +16,36 @@ class _ThermalSensorState extends ConsumerState<ThermalSensor> {
   Widget build(BuildContext context) {
     final thermalState = ref.watch(thermalProvider);
     final telemetry = thermalState.telemetry;
+    final theme = context.HudTheme;
 
     if (telemetry == null) {
       return CustomContainer(
-        color: HudTheme.bgPanel,
+        color: theme.panel,
         padding: const EdgeInsets.all(20),
-        child: const Center(
-          child: CircularProgressIndicator(color: HudTheme.accentCyan),
+        child:  SizedBox(
+          height: 240,
+          child: Center(
+            child: Text('AWAITING CPU TELEMETRY...', style: theme.label),
+          ),
         ),
       );
     }
 
     return CustomContainer(
-      color: HudTheme.bgPanel,
+      color: theme.panel,
       padding: EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'THERMAL SENSORS',
-                style: HudTheme.labelMuted,
+                style: theme.label,
               ),
               const SizedBox(height: 17,),
               CustomContainer(
                 color: Colors.black,
                 child: ListTile(
-                  leading: Icon(Icons.thermostat, color: HudTheme.accentCyan,),
+                  leading: Icon(Icons.thermostat, color: theme.accentCyan,),
                     title: Text(
                       'CPU_PKG'
                     ),
@@ -57,7 +61,7 @@ class _ThermalSensorState extends ConsumerState<ThermalSensor> {
               CustomContainer(
                 color: Colors.black,
                 child: ListTile(
-                  leading: Icon(Icons.thermostat, color: HudTheme.accentGreen,),
+                  leading: Icon(Icons.thermostat, color: theme.accentGreen,),
                   title: Text(
                     'SYS_BOARD'
                   ),
@@ -73,7 +77,7 @@ class _ThermalSensorState extends ConsumerState<ThermalSensor> {
               CustomContainer(
                 color: Colors.black,
                 child: ListTile(
-                  leading: Icon(Icons.thermostat, color: HudTheme.primaryBorder),
+                  leading: Icon(Icons.thermostat, color: theme.border),
                   title: Text(
                     'AMBIENT'
                   ),
@@ -94,7 +98,7 @@ class _ThermalSensorState extends ConsumerState<ThermalSensor> {
                 ),
                 Text(
                   '${telemetry.cpuFanRpm} rpm',
-                  style: HudTheme.statGreen,
+                  style: theme.statGreen,
                 )
               ],
             )

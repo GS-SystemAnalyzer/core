@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/navigation_provider.dart';
 import 'package:gs_analyzer_ui/providers/settings_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 class GlobalSidebarWidget extends ConsumerStatefulWidget {
   const GlobalSidebarWidget({super.key});
@@ -19,13 +20,15 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
   Widget build(BuildContext context) {
     final currentRoute = ref.watch(navigationProvider);
     final double width = _isExpanded ? 240.0 : 54.0;
+    final theme = context.HudTheme;
+    final font = HudTheme.fontCore;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
       width: width,
-      decoration: const BoxDecoration(
-        color: Color(0xFF0F0F0F),
+      decoration: BoxDecoration(
+        color: theme.panel,
         border: Border(right: BorderSide(color: Colors.white10)),
       ),
       child: Column(
@@ -36,7 +39,7 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
             padding: const EdgeInsets.only(left: 7.0),
             alignment: Alignment.centerLeft,
             child: IconButton(
-              icon: const Icon(Icons.menu, color: HudTheme.textDim, size: 20),
+              icon: Icon(Icons.menu, color: theme.textDim, size: 20),
               onPressed: () {
                 setState(() {
                   _isExpanded = !_isExpanded;
@@ -55,23 +58,23 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'NODE_01',
                     style: TextStyle(
-                      color: HudTheme.accentCyan,
+                      color: theme.accentCyan,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      fontFamily: HudTheme.fontCore,
+                      fontFamily: font,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'ONLINE',
                     style: TextStyle(
-                      color: HudTheme.accentGreen,
+                      color: theme.accentGreen,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      fontFamily: HudTheme.fontCore,
+                      fontFamily: font,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -179,15 +182,16 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
     AppRoute currentRoute, {
     bool isAction = false,
   }) {
+    final theme = context.HudTheme;
     final isActive = route == currentRoute && !isAction;
-    final color = isActive ? HudTheme.accentCyan : HudTheme.textDim;
+    final color = isActive ? theme.accentColor : theme.textDim;
 
     // Windows 11 style accent line
     final accentLine = Container(
       width: 3,
       height: 16,
       decoration: BoxDecoration(
-        color: isActive ? HudTheme.accentCyan : Colors.transparent,
+        color: isActive ? theme.accentColor : Colors.transparent,
         borderRadius: BorderRadius.circular(2),
       ),
     );
@@ -198,13 +202,13 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
           ref.read(navigationProvider.notifier).state = route;
         }
       },
-      hoverColor: Colors.white.withValues(alpha: 0.05),
+      hoverColor: theme.textMain.withValues(alpha: 0.05),
       child: Container(
         height: 40,
         margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
           color: isActive
-              ? Colors.white.withValues(alpha: 0.05)
+              ? theme.textMain.withValues(alpha: 0.05)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
         ),
@@ -228,7 +232,7 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
                             title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: HudTheme.bodyText.copyWith(
+                            style: theme.body.copyWith(
                               color: color,
                               fontSize: 13,
                               fontWeight: isActive ? FontWeight.w500 : FontWeight.normal,
@@ -257,13 +261,14 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
     final bool hasUnsavedChanges = ref
         .watch(settingsProvider)
         .hasUnsavedChanges;
-    final color = isSelected ? HudTheme.accentCyan : HudTheme.textDim;
+        final theme = context.HudTheme;
+    final color = isSelected ? theme.accentCyan : theme.textDim;
 
     final accentLine = Container(
       width: 3,
       height: 16,
       decoration: BoxDecoration(
-        color: isSelected ? HudTheme.accentCyan : Colors.transparent,
+        color: isSelected ? theme.accentCyan : Colors.transparent,
         borderRadius: BorderRadius.circular(2),
       ),
     );
@@ -298,7 +303,7 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
                   'SETTINGS',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: HudTheme.bodyText.copyWith(
+                  style: theme.body.copyWith(
                     color: color,
                     fontSize: 13,
                     fontWeight: isSelected

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/features/dashboard/widgets/cpu_bar_chart.dart';
 import 'package:gs_analyzer_ui/providers/cpu_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/custom_container.dart';
 
 class CpuLoadReport extends ConsumerStatefulWidget {
@@ -18,22 +18,23 @@ class _CpuLoadReportState extends ConsumerState<CpuLoadReport> {
   Widget build(BuildContext context) {
     final cpuState = ref.watch(cpuProvider);
     final snapShot = cpuState.snapshot;
+    final theme = context.HudTheme;
 
     if (snapShot == null) {
       return CustomContainer(
-        color: HudTheme.bgPanel,
+        color: theme.panel,
         padding: const EdgeInsets.all(20),
-        child: const SizedBox(
+        child: SizedBox(
           height: 240,
           child: Center(
-            child: Text('AWAITING CPU TELEMETRY...', style: HudTheme.labelMuted),
+            child: Text('AWAITING CPU TELEMETRY...', style: theme.label),
           ),
         ),
       );
     }
 
     return CustomContainer(
-      color: HudTheme.bgPanel,
+      color: theme.panel,
       padding: EdgeInsets.all(20),
       child: Column(
         children: [
@@ -42,7 +43,7 @@ class _CpuLoadReportState extends ConsumerState<CpuLoadReport> {
             contentPadding: EdgeInsets.zero,
             title: Text(
               'CPU LOAD [AVG]',
-              style: HudTheme.labelMuted,
+              style: theme.label,
             ),
             subtitle: Row(
               children: [
@@ -50,7 +51,7 @@ class _CpuLoadReportState extends ConsumerState<CpuLoadReport> {
                   text: TextSpan(
                     text: '${snapShot.averageLoad.toStringAsFixed(1)}',
                     style: TextStyle(
-                      color: HudTheme.accentCyan,
+                      color: theme.accentCyan,
                       fontSize: 28
                     ),
                     children: [
@@ -64,18 +65,12 @@ class _CpuLoadReportState extends ConsumerState<CpuLoadReport> {
                     ]
                   )
                 ),
-                // const SizedBox(width: 5,),
-                // Icon(Icons.arrow_upward, size: 14, color: Colors.greenAccent,),
-                // Text(
-                //   '2.4%',
-                //   style: HudTheme.statGreen,
-                // )
               ],
             ),
             trailing: Icon(
               Icons.memory,
               size: 40,
-              color: HudTheme.accentCyan.withValues(alpha: 0.1),
+              color: theme.accentCyan.withValues(alpha: 0.1),
             ),
           ),
           const SizedBox(height: 10,),

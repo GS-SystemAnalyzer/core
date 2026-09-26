@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 import 'package:gs_analyzer_ui/providers/settings_provider.dart';
+import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 import 'package:gs_analyzer_ui/providers/window_provider.dart';
 import 'package:gs_analyzer_ui/models/app_settings.dart';
 
