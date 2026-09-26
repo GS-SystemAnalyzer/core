@@ -4,7 +4,7 @@ import 'package:gs_analyzer_ui/features/dashboard/widgets/custom_progress_indica
 import 'package:gs_analyzer_ui/providers/ram_provider.dart';
 import 'package:gs_analyzer_ui/providers/ram_alert_provider.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/custom_container.dart';
 
 class CpuMemory extends ConsumerStatefulWidget {
@@ -15,16 +15,15 @@ class CpuMemory extends ConsumerStatefulWidget {
 }
 
 class _CpuMemoryState extends ConsumerState<CpuMemory>{
-  // String _formatGB(int bytes) => (bytes / (1024 * 1024 * 1024)).toStringAsFixed(1);
 
   @override
   Widget build(BuildContext context) {
     final ramstate = ref.watch(ramProvider);
     final ramAlert = ref.watch(ramAlertProvider);
-    // final drive = ref.watsch(currentDriveProvider)!;
+    final theme = context.HudTheme;
 
     return CustomContainer(
-      color: HudTheme.bgPanel,
+      color: theme.panel,
       padding: EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -40,7 +39,7 @@ class _CpuMemoryState extends ConsumerState<CpuMemory>{
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: ramAlert.severity == 'critical' ? HudTheme.accentRed : HudTheme.accentAmber,
+                        color: ramAlert.severity == 'critical' ? theme.accentRed : theme.accentAmber,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -58,47 +57,11 @@ class _CpuMemoryState extends ConsumerState<CpuMemory>{
               Icon(
                 Icons.memory,
                 size: 40,
-                color: HudTheme.accentGreen.withValues(alpha: 0.1),
+                color: theme.accentGreen.withValues(alpha: 0.1),
               )
             ],
           ),
           const SizedBox(height: 20,),
-          // ListTile(
-          //   // isThreeLine: true,
-          //   contentPadding: EdgeInsets.zero,
-          //   title: Text(
-          //     'MEM_ALLOCATION',
-          //     style: HudTheme.statGreen,
-          //   ),
-          //   // subtitle: RichText(
-          //   //   text: TextSpan(
-          //   //     text: '${drive.percentageUsed.toStringAsFixed(0)}',
-          //   //     style: TextStyle(
-          //   //       fontSize: 28,
-          //   //       color: Colors.greenAccent
-          //   //     ),
-          //   //     children: [
-          //   //       TextSpan(
-          //   //         text: '%',
-          //   //         style: HudTheme.statGreen
-          //   //       ),
-          //   //       TextSpan(
-          //   //         text: ' of ${_formatGB(drive.totalBytes)}GB',
-          //   //         style: TextStyle(
-          //   //           fontSize: 14,
-          //   //           color: Colors.white
-          //   //         )
-          //   //       )
-          //   //     ]
-          //   //   )
-          //   // ),
-          //   trailing: Icon(
-          //     Icons.analytics_outlined,
-          //     size: 35,
-          //     color: Color(0xFF38453B),
-          //   ),
-          // ),
-          // 
           CustomProgressIndicator(
             label: 'Active', 
             tag: '${ramstate.activeGb.toStringAsFixed(1)} GB', 

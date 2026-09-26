@@ -1,10 +1,8 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/network_provider.dart';
 import 'package:gs_analyzer_ui/utils/formatters.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/custom_container.dart';
 
 class NetRate extends ConsumerStatefulWidget {
@@ -32,32 +30,38 @@ class _NetRateState extends ConsumerState<NetRate> {
   Widget build(BuildContext context) {
     final netState = ref.watch(networkProvider);
     final primary = netState.primaryInterface;
+    final theme = context.HudTheme;
     
     if (primary == null) {
       return CustomContainer(
-        color: HudTheme.bgPanel,
+        color: theme.panel,
         padding: EdgeInsets.all(20),
-        child: const Center(
-          child: CircularProgressIndicator(),
+        child: Center(
+          child:  SizedBox(
+            height: 240,
+            child: Center(
+              child: Text('AWAITING CPU TELEMETRY...', style: theme.label),
+            ),
+          ),
         ),
       );
     }
 
     return 
       CustomContainer(
-        color: HudTheme.bgPanel,
+        color: theme.panel,
         padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'NET IO',
-              style: HudTheme.labelMuted,
+              style: theme.label,
             ),
             const SizedBox(height: 10,),
             Text(
               'ACTIVE: ${_getSimplifiedName(primary.name)}',
-              style: HudTheme.statCyan.copyWith(
+              style: theme.statCyan.copyWith(
                 fontSize: 15,
                 fontWeight: FontWeight.bold
               ),
@@ -66,8 +70,8 @@ class _NetRateState extends ConsumerState<NetRate> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: CircleAvatar(
-                backgroundColor: HudTheme.accentCyan.withValues(alpha: 0.1),
-                foregroundColor: HudTheme.accentCyan,
+                backgroundColor: theme.accentCyan.withValues(alpha: 0.1),
+                foregroundColor: theme.accentCyan,
                 radius: 18,
                 child: Icon(
                   Icons.arrow_downward
@@ -82,7 +86,7 @@ class _NetRateState extends ConsumerState<NetRate> {
               ),
               subtitle: Text(
                 formatRate(primary.rxBytesPerSec),
-                style: HudTheme.statCyan.copyWith(
+                style: theme.statCyan.copyWith(
                   fontSize: 16,
                   fontWeight: FontWeight.bold
                 ),
@@ -91,8 +95,8 @@ class _NetRateState extends ConsumerState<NetRate> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: CircleAvatar(
-                backgroundColor: HudTheme.accentAmber.withValues(alpha: 0.1),
-                foregroundColor: HudTheme.accentAmber,
+                backgroundColor: theme.accentAmber.withValues(alpha: 0.1),
+                foregroundColor: theme.accentAmber,
                 radius: 18,
                 child: Icon(
                   Icons.arrow_upward
@@ -109,29 +113,10 @@ class _NetRateState extends ConsumerState<NetRate> {
                 formatRate(primary.txBytesPerSec),
                 style: TextStyle(
                   fontSize: 16,
-                  color: HudTheme.accentAmber,
+                  color: theme.accentAmber,
                   fontWeight: FontWeight.bold
                 ),
               )
-              
-              // RichText(
-              //   text: TextSpan(
-              //     text: formatRate(primary.txBytesPerSec),
-              //     style: TextStyle(
-              //       fontSize: 16,
-              //       fontWeight: FontWeight.bold
-              //     ),
-              //     children: [
-              //       TextSpan(
-              //         text: ' MB/S',
-              //         style: TextStyle(
-              //           fontSize: 13,
-              //           color: HudTheme.accentAmber
-              //         )
-              //       )
-              //     ]
-              //   )
-              // )
             ),
             const SizedBox(height: 60,)
           ],

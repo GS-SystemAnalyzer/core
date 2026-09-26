@@ -28,6 +28,7 @@ class HudTheme {
       dividerTheme: const DividerThemeData(color: Colors.black12),
       extensions: <ThemeExtension<dynamic>>[
         HudThemeExtension(
+          accentColor: accentColor,
           base: HudColor.lightBgBase,
           panel: HudColor.lightBgPanel,
           textMain: HudColor.lightTextMain,
@@ -110,6 +111,7 @@ class HudTheme {
       dividerTheme: const DividerThemeData(color: Colors.white10),
       extensions: <ThemeExtension<dynamic>>[
         HudThemeExtension(
+          accentColor: accentColor,
           base: HudColor.darkBgBase,
           panel: HudColor.darkBgPanel,
           textMain: HudColor.darkTextMain,

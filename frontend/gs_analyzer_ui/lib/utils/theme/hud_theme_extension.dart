@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
+  final Color accentColor;
   final Color base;
   final Color panel;
   final Color border;
@@ -23,6 +24,7 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
   final BoxDecoration listItemDecoration;
 
   const HudThemeExtension({
+    required this.accentColor,
     required this.base,
     required this.panel,
     required this.border,
@@ -47,6 +49,7 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
 
   @override
   HudThemeExtension copyWith({
+    Color? accentColor,
     Color? base,
     Color? panel,
     Color? border,
@@ -69,6 +72,7 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
     BoxDecoration? listItemDecoration
   }) {
     return HudThemeExtension(
+      accentColor: accentColor ?? this.accentColor,
       base: base ?? this.base, 
       panel: panel ?? this.panel, 
       border: border ?? this.border, 
@@ -97,6 +101,7 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
     if (other == null) return this;
 
     return HudThemeExtension(
+      accentColor: Color.lerp(accentColor, other.accentColor, t)!,
       base: Color.lerp(base, other.base, t)!, 
       panel: Color.lerp(panel, other.panel, t)!, 
       border: Color.lerp(border, other.border, t)!, 
