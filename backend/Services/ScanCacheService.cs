@@ -473,7 +473,7 @@ public class ScanCacheService : IScanCacheService, IDisposable
 			cts,
 			(_, oldCts) =>
 			{
-				try { oldCts.Cancel(); oldCts.Dispose(); } catch { }
+				try { oldCts.Cancel(); } catch { }
 				return cts;
 			});
 
@@ -484,7 +484,7 @@ public class ScanCacheService : IScanCacheService, IDisposable
 				await Task.Delay(500, cts.Token);
 				if (cts.Token.IsCancellationRequested) return;
 
-				_debounceTokens.TryRemove(key, out _);
+				_debounceTokens.TryRemove(new KeyValuePair<string, CancellationTokenSource>(key, cts));
 
 				switch (changeType)
 				{
@@ -512,6 +512,10 @@ public class ScanCacheService : IScanCacheService, IDisposable
 			{
 				_logger.LogWarning(ex, "Error processing debounced watcher event for {Path}", fullPath);
 			}
+			finally
+			{
+				cts.Dispose();
+			}
 		});
 	}
 
@@ -521,7 +525,9 @@ public class ScanCacheService : IScanCacheService, IDisposable
 		InvalidateSubtree(watchedRoot);
 	}
 
-	private static bool IsAppInternalPath(string path)
+	// internal so DiskScannerEngine's watcher filters on the same list; a second, narrower
+	// copy there would let the app's own writes re-trigger a scan.
+	internal static bool IsAppInternalPath(string path)
 	{
 		if (string.IsNullOrWhiteSpace(path)) return true;
 		var lower = path.ToLowerInvariant();
