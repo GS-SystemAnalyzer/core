@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/process_explorer_provider.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/custom_container.dart';
 
 class ProcessFilter extends ConsumerStatefulWidget {
@@ -49,7 +50,7 @@ class _ProcessFilterState extends ConsumerState<ProcessFilter> {
         PopupMenuButton<ProcessStatusFilter>(
             tooltip: 'Filter by status',
             child: CustomContainer(
-              color: Colors.black,
+              color: context.HudTheme.textPaint.withValues(alpha: 0.2),
               padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               child: Text(
                 'FILTER BY: $statusLabel'
@@ -75,7 +76,7 @@ class _ProcessFilterState extends ConsumerState<ProcessFilter> {
         PopupMenuButton<ProcessSortMode>(
             tooltip: 'Sort by:',
             child: CustomContainer(
-              color: Colors.black,
+              color: context.HudTheme.textPaint.withValues(alpha: 0.2),
               padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               child: Text(
                 'SORT BY: $sortLabel'

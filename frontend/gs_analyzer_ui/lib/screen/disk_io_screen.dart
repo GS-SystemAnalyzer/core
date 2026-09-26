@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/disk_io_provider.dart';
 import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 import 'package:gs_analyzer_ui/utils/formatters.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/disk_io_card.dart';
 import 'package:gs_analyzer_ui/widgets/telemetry_history_chart.dart';
 
@@ -32,7 +33,7 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('DISK I/O THROUGHPUT', style: HudTheme.headerCyan),
+              Text('DISK I/O THROUGHPUT', style: context.HudTheme.header),
 
               // View Toggle Strip
               Row(
@@ -57,6 +58,7 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
   }
 
   Widget _buildToggleBtn(String label, bool isSelected) {
+    final theme = context.HudTheme;
     return InkWell(
       onTap: () {
         setState(() {
@@ -67,17 +69,17 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? HudTheme.accentCyan.withValues(alpha: 0.1)
+              ? theme.accentCyan.withValues(alpha: 0.1)
               : Colors.transparent,
           border: Border.all(
-            color: isSelected ? HudTheme.accentCyan : Colors.white10,
+            color: isSelected ? theme.accentCyan : theme.textMain.withValues(alpha: 0.1),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontFamily: HudTheme.fontCore,
-            color: isSelected ? HudTheme.accentCyan : HudTheme.textDim,
+            color: isSelected ? theme.accentCyan : theme.textDim,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             letterSpacing: 1,
           ),
@@ -87,6 +89,7 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
   }
 
   Widget _buildHistoryView() {
+    final theme = context.HudTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -98,12 +101,12 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
                   color: _historyMetric == 'disk_io_read'
-                      ? HudTheme.accentCyan.withValues(alpha: 0.1)
+                      ? theme.accentCyan.withValues(alpha: 0.1)
                       : Colors.transparent,
                   border: Border.all(
                     color: _historyMetric == 'disk_io_read'
-                        ? HudTheme.accentCyan
-                        : Colors.white10,
+                        ? theme.accentCyan
+                        : theme.textMain.withValues(alpha: 0.1),
                   ),
                 ),
                 child: Text(
@@ -112,8 +115,8 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
                     fontFamily: HudTheme.fontCore,
                     fontSize: 12,
                     color: _historyMetric == 'disk_io_read'
-                        ? HudTheme.accentCyan
-                        : HudTheme.textDim,
+                        ? theme.accentCyan
+                        : theme.textDim,
                     fontWeight: _historyMetric == 'disk_io_read'
                         ? FontWeight.bold
                         : FontWeight.normal,
@@ -128,12 +131,12 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
                   color: _historyMetric == 'disk_io_write'
-                      ? HudTheme.accentAmber.withValues(alpha: 0.1)
+                      ? theme.accentAmber.withValues(alpha: 0.1)
                       : Colors.transparent,
                   border: Border.all(
                     color: _historyMetric == 'disk_io_write'
-                        ? HudTheme.accentAmber
-                        : Colors.white10,
+                        ? theme.accentAmber
+                        : theme.textMain.withValues(alpha: 0.1),
                   ),
                 ),
                 child: Text(
@@ -142,8 +145,8 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
                     fontFamily: HudTheme.fontCore,
                     fontSize: 12,
                     color: _historyMetric == 'disk_io_write'
-                        ? HudTheme.accentAmber
-                        : HudTheme.textDim,
+                        ? theme.accentAmber
+                        : theme.textDim,
                     fontWeight: _historyMetric == 'disk_io_write'
                         ? FontWeight.bold
                         : FontWeight.normal,
@@ -162,17 +165,18 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
   }
 
   Widget _buildLiveView(DiskIoState state, HudDensity d) {
+    final theme = context.HudTheme;
     if (state.snapshot == null) {
-      return const Center(
-        child: CircularProgressIndicator(color: HudTheme.primaryBorder),
+      return Center(
+        child: CircularProgressIndicator(color: theme.border),
       );
     }
 
     if (state.snapshot!.disks.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'NO PHYSICAL DISKS DETECTED',
-          style: HudTheme.labelMuted,
+          style: theme.label,
         ),
       );
     }
@@ -209,12 +213,12 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? HudTheme.accentCyan.withValues(alpha: 0.1)
+                            ? theme.accentCyan.withValues(alpha: 0.1)
                             : Colors.transparent,
                         border: Border.all(
                           color: isSelected
-                              ? HudTheme.accentCyan
-                              : Colors.white10,
+                              ? theme.accentCyan
+                              : theme.textMain.withValues(alpha: 0.1),
                         ),
                       ),
                       child: Row(
@@ -223,8 +227,8 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
                             Icons.storage_outlined,
                             size: 14,
                             color: isSelected
-                                ? HudTheme.accentCyan
-                                : HudTheme.textDim,
+                                ? theme.accentCyan
+                                : theme.textDim,
                           ),
                           const SizedBox(width: 6),
                           Text(
@@ -236,8 +240,8 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
                                   ? FontWeight.bold
                                   : FontWeight.normal,
                               color: isSelected
-                                  ? HudTheme.accentCyan
-                                  : HudTheme.textDim,
+                                  ? theme.accentCyan
+                                  : theme.textDim,
                             ),
                           ),
                         ],
@@ -256,12 +260,12 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
           // Multi-Disk Overview Grid/List if more than 1 disk
           if (disks.length > 1) ...[
             SizedBox(height: d.gap * 2),
-            const Text(
+            Text(
               'ALL PHYSICAL DISKS',
               style: TextStyle(
                 fontFamily: HudTheme.fontCore,
                 fontSize: 12,
-                color: HudTheme.textDim,
+                color: theme.textDim,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.5,
               ),
@@ -282,10 +286,10 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
                     color: isCurrent
-                        ? HudTheme.accentCyan.withValues(alpha: 0.05)
-                        : HudTheme.bgPanel,
+                        ? theme.accentCyan.withValues(alpha: 0.05)
+                        : theme.panel,
                     border: Border.all(
-                      color: isCurrent ? HudTheme.accentCyan : Colors.white10,
+                      color: isCurrent ? theme.accentCyan : theme.textMain.withValues(alpha: 0.1),
                     ),
                   ),
                   child: Row(
@@ -296,45 +300,45 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
                           fontFamily: HudTheme.fontCore,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: isCurrent ? HudTheme.accentCyan : Colors.white,
+                          color: isCurrent ? theme.accentCyan : theme.textMain,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         letters,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: HudTheme.fontCore,
                           fontSize: 11,
-                          color: HudTheme.accentCyan,
+                          color: theme.accentCyan,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           disk.model,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: HudTheme.fontCore,
                             fontSize: 11,
-                            color: HudTheme.textDim,
+                            color: theme.textDim,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
                         'R: ${formatRate(disk.readBytesPerSec)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: HudTheme.fontCore,
                           fontSize: 11,
-                          color: HudTheme.accentCyan,
+                          color: theme.accentCyan,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Text(
                         'W: ${formatRate(disk.writeBytesPerSec)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: HudTheme.fontCore,
                           fontSize: 11,
-                          color: HudTheme.accentAmber,
+                          color: theme.accentAmber,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -344,10 +348,10 @@ class _DiskIoScreenState extends ConsumerState<DiskIoScreen> {
                           fontFamily: HudTheme.fontCore,
                           fontSize: 11,
                           color: disk.avgQueueLength < 2.0
-                              ? HudTheme.accentGreen
+                              ? theme.accentGreen
                               : disk.avgQueueLength <= 5.0
-                                  ? HudTheme.accentAmber
-                                  : HudTheme.accentRed,
+                                  ? theme.accentAmber
+                                  : theme.accentRed,
                           fontWeight: FontWeight.bold,
                         ),
                       ),

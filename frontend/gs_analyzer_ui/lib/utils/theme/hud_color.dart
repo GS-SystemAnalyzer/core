@@ -16,23 +16,25 @@ class HudColor {
 
   static const Color darkTextMain = Colors.white;
   static const Color darkTextMuted = Colors.white70;
-  static const darkTextDim = Colors.white54;
+  static const Color darkTextDim = Colors.white54;
+  static const Color darkTextPaint = Colors.black;
 
   // ----------LIGHT MODE-----------------
-  static const Color lightBgBase = Color(0xFFF5F5F5);
+  static const Color lightBgBase = Color(0xFFFEEF2F5);
   static const Color lightBgPanel = Color(0xFFFFFFFF);
-  static const Color lightPrimaryBorder = Color(0xFF0097A7);
+  static const Color lightPrimaryBorder = Color(0xFF00838F);
 
-  static const Color lightAccentCyan = Colors.cyanAccent;
+  static const Color lightAccentCyan = Color(0xFF00838F);
   static const Color lightAccentGreen = Color(0xFF2E7D32);
   static const Color lightAccentRed = Color(0xFFC62828);
-  static const Color lightAccentAmber = Color(0xFFE65100);
-  static const Color lightAccentPurple = Color(0xFFE040FB);
-  static const Color lightAccentBlue = Color(0xFF448AFF);
+  static const Color lightAccentAmber = Color(0xFFB45309);
+  static const Color lightAccentPurple = Color(0xFF7B1FA2);
+  static const Color lightAccentBlue = Color(0xFF1565C0);
 
-  static const Color lightTextMain = Color(0xFF111111);
-  static const Color lightTextMuted = Color(0xFF555555);
-  static const lightTextDim = Color(0xFF888888);
+  static const Color lightTextMain = Color(0xFF0F172A);
+  static const Color lightTextMuted = Color(0xFF475569);
+  static const lightTextDim = Color(0xFF64748B);
+  static const Color lightTextPaint = Color(0xFF94A3B8);
 
   static Color resolveAccent(
     String? accentKey, [

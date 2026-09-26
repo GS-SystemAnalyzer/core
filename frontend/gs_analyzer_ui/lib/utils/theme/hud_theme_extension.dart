@@ -14,6 +14,7 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
   final Color textMain;
   final Color textMuted;
   final Color textDim;
+  final Color textPaint;
   final TextStyle header;
   final TextStyle label;
   final TextStyle statGreen;
@@ -37,6 +38,7 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
     required this.textMain,
     required this.textMuted,
     required this.textDim,
+    required this.textPaint,
     required this.header,
     required this.label,
     required this.statGreen,
@@ -62,6 +64,7 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
     Color? textMain,
     Color? textMuted,
     Color? textDim,
+    Color? textPaint,
     TextStyle? header,
     TextStyle?label,
     TextStyle? statGreen,
@@ -85,6 +88,7 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
       textMain: textMain ?? this.textMain, 
       textMuted: textMuted ?? this.textMuted, 
       textDim: textDim ?? this.textDim, 
+      textPaint: textPaint ?? this.textPaint,
       header: header ?? this.header,
       label: label ?? this.label,
       statGreen: statGreen ?? this.statGreen,
@@ -114,6 +118,7 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
       textMain: Color.lerp(textMain, other.textMain, t)!, 
       textMuted: Color.lerp(textMuted, other.textMuted, t)!, 
       textDim: Color.lerp(textDim, other.textDim, t)!, 
+      textPaint: Color.lerp(textPaint, other.textPaint, t)!,
       header: TextStyle.lerp(header, other.header, t)!,
       label: TextStyle.lerp(label, other.label, t)!,
       actionRed: TextStyle.lerp(actionRed, other.actionRed, t)!,

@@ -27,7 +27,7 @@ class _CpuLoadReportState extends ConsumerState<CpuLoadReport> {
         child: SizedBox(
           height: 240,
           child: Center(
-            child: Text('AWAITING CPU TELEMETRY...', style: theme.label),
+            child: Text('COLLECTING DATA — CHECK BACK IN A MOMENT', style: theme.label),
           ),
         ),
       );

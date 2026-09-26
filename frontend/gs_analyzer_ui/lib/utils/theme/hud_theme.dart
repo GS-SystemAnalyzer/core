@@ -41,6 +41,7 @@ class HudTheme {
           accentBlue: HudColor.lightAccentBlue,
           textMuted: HudColor.lightTextMuted,
           textDim: HudColor.lightTextDim,
+          textPaint: HudColor.lightTextPaint,
           header: TextStyle(
             fontFamily: fontCore,
             color: accentColor,
@@ -77,7 +78,7 @@ class HudTheme {
             color: HudColor.lightTextMuted
           ),
           hudPanelDecoration: BoxDecoration(
-            color: HudColor.darkBgPanel,
+            color: HudColor.lightBgPanel,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: HudColor.lightPrimaryBorder.withValues(alpha: 0.3))
           ), 
@@ -124,6 +125,7 @@ class HudTheme {
           accentBlue: HudColor.darkAccentBlue,
           textMuted: HudColor.darkTextMuted,
           textDim: HudColor.darkTextDim,
+          textPaint: HudColor.darkTextPaint,
           header: TextStyle(
             fontFamily: fontCore,
             color: accentColor,

@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 class ComingSoon extends StatefulWidget {
   final Widget child;
@@ -19,6 +20,7 @@ class _ComingSoonState extends State<ComingSoon> {
 
   @override
   Widget build(BuildContext context) {
+    final hud = context.HudTheme;
     if (_isUnlocked) {
       return widget.child;
     }
@@ -31,7 +33,7 @@ class _ComingSoonState extends State<ComingSoon> {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 7, sigmaY: 7),
               child: Container(
-                color: Colors.black.withValues(alpha: 0.1),
+                color: hud.textPaint.withValues(alpha: 0.1),
                 child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -44,10 +46,10 @@ class _ComingSoonState extends State<ComingSoon> {
                             });
                           }
                         },
-                        child: const Icon(
+                        child: Icon(
                           Icons.lock,
                           size: 45,
-                          color: Colors.white,
+                          color: hud.textMain,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -65,7 +67,7 @@ class _ComingSoonState extends State<ComingSoon> {
                         style: TextStyle(
                           fontSize: 10,
                           letterSpacing: 1.2,
-                          color: Colors.white.withValues(alpha: 0.6),
+                          color: hud.textMain.withValues(alpha: 0.6),
                         ),
                       ),
                     ],

@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:gs_analyzer_ui/providers/telemetry_history_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:intl/intl.dart';
 import 'package:gs_analyzer_ui/utils/formatters.dart';
 
@@ -40,11 +41,11 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
     final notifier = ref.read(
       telemetryHistoryProvider(_currentMetricKey).notifier,
     );
-
+    final theme = context.HudTheme;
     return Container(
       decoration: BoxDecoration(
-        color: HudTheme.bgPanel,
-        border: Border.all(color: Colors.white10),
+        color: theme.panel,
+        border: Border.all(color: theme.textMain.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -118,15 +119,16 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
   }
 
   Widget _buildHeaderTitle() {
+    final theme = context.HudTheme;
     if (_currentMetricKey == 'network_rx') {
-      return const Text('NETWORK RX (DOWNLOAD)', style: HudTheme.headerCyan);
+      return Text('NETWORK RX (DOWNLOAD)', style: theme.header);
     }
     if (_currentMetricKey == 'network_tx') {
-      return const Text(
+      return Text(
         'NETWORK TX (UPLOAD)',
         style: TextStyle(
           fontFamily: HudTheme.fontCore,
-          color: HudTheme.accentAmber,
+          color: theme.accentAmber,
           fontSize: 16,
           fontWeight: FontWeight.bold,
           letterSpacing: 2,
@@ -134,29 +136,31 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
       );
     }
     String title = _currentMetricKey.toUpperCase().replaceAll('_', ' ');
-    return Text(title, style: HudTheme.headerCyan);
+    return Text(title, style: theme.header);
   }
 
   Widget _buildRamToggle() {
     final isPercent = _currentMetricKey == 'ram_percent';
+    final theme = context.HudTheme;
     return Row(
       children: [
-        Text('GB', style: isPercent ? HudTheme.labelMuted : HudTheme.statCyan),
+        Text('GB', style: isPercent ? theme.label : theme.statCyan),
         Switch(
           value: isPercent,
-          activeColor: HudTheme.accentCyan,
+          activeThumbColor: theme.accentCyan,
           onChanged: (val) {
             setState(() {
               _currentMetricKey = val ? 'ram_percent' : 'ram';
             });
           },
         ),
-        Text('%', style: isPercent ? HudTheme.statCyan : HudTheme.labelMuted),
+        Text('%', style: isPercent ? theme.statCyan : theme.label),
       ],
     );
   }
 
   Widget _buildTimeRangeSelector(int currentMinutes, Function(int) onSelect) {
+    final theme = context.HudTheme;
     return Row(
       children: [5, 15, 30, 60].map((mins) {
         final isSelected = currentMinutes == mins;
@@ -167,17 +171,17 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               border: Border.all(
-                color: isSelected ? HudTheme.accentCyan : Colors.white10,
+                color: isSelected ? theme.accentCyan : Colors.white10,
               ),
               color: isSelected
-                  ? HudTheme.accentCyan.withValues(alpha: 0.1)
+                  ? theme.accentCyan.withValues(alpha: 0.1)
                   : Colors.transparent,
             ),
             child: Text(
               label,
               style: TextStyle(
                 fontFamily: HudTheme.fontCore,
-                color: isSelected ? HudTheme.accentCyan : HudTheme.textDim,
+                color: isSelected ? theme.accentCyan : theme.textDim,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -191,34 +195,36 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
     final displayValue = unit == 'B/s'
         ? formatRate(value)
         : '${value.toStringAsFixed(1)} $unit';
+        final theme = context.HudTheme;
     return Row(
       children: [
-        Text('$label: ', style: HudTheme.labelMuted),
-        Text(displayValue, style: HudTheme.statGreen),
+        Text('$label: ', style: theme.label),
+        Text(displayValue, style: theme.statGreen),
       ],
     );
   }
 
   Widget _buildChartContent(TelemetryHistoryState state) {
+    final theme = context.HudTheme;
     if (state.isLoading &&
         (state.response == null || state.response!.points.isEmpty)) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: HudTheme.accentCyan),
+            CircularProgressIndicator(color: theme.accentCyan),
             SizedBox(height: 16),
-            Text('LOADING HISTORY...', style: HudTheme.labelMuted),
+            Text('LOADING HISTORY...', style: theme.label),
           ],
         ),
       );
     }
 
     if (state.response == null || state.response!.points.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'COLLECTING DATA — CHECK BACK IN A MOMENT',
-          style: HudTheme.labelMuted,
+          style: theme.label,
         ),
       );
     }
@@ -228,8 +234,8 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
     final isPercent = unit == '%' || _currentMetricKey.contains('percent');
     final isRate = unit == 'B/s' || _currentMetricKey.startsWith('network_');
     final chartColor = _currentMetricKey == 'network_tx'
-        ? HudTheme.accentAmber
-        : HudTheme.accentCyan;
+        ? theme.accentAmber
+        : theme.accentCyan;
 
     final spots = points.map((p) {
       return FlSpot(p.timestamp.millisecondsSinceEpoch.toDouble(), p.value);
@@ -276,7 +282,7 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
                 if (isRate) {
                   return Text(
                     formatRate(value),
-                    style: HudTheme.labelMuted.copyWith(fontSize: 9),
+                    style: theme.label.copyWith(fontSize: 9),
                     textAlign: TextAlign.right,
                   );
                 }
@@ -284,7 +290,7 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
                   isPercent
                       ? value.toInt().toString()
                       : value.toStringAsFixed(1),
-                  style: HudTheme.labelMuted.copyWith(fontSize: 10),
+                  style: theme.label.copyWith(fontSize: 10),
                   textAlign: TextAlign.right,
                 );
               },
@@ -302,7 +308,7 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
                     DateFormat('HH:mm').format(date),
-                    style: HudTheme.labelMuted.copyWith(fontSize: 10),
+                    style: theme.label.copyWith(fontSize: 10),
                   ),
                 );
               },
@@ -315,7 +321,7 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
         ),
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
-            getTooltipColor: (touchedSpot) => HudTheme.bgPanel,
+            getTooltipColor: (touchedSpot) => theme.panel,
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((spot) {
                 final date = DateTime.fromMillisecondsSinceEpoch(

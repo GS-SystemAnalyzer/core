@@ -43,7 +43,7 @@ class _ThermalSensorState extends ConsumerState<ThermalSensor> {
               ),
               const SizedBox(height: 17,),
               CustomContainer(
-                color: Colors.black,
+                color: theme.textPaint.withValues(alpha: 0.2),
                 child: ListTile(
                   leading: Icon(Icons.thermostat, color: theme.accentCyan,),
                     title: Text(
@@ -59,7 +59,7 @@ class _ThermalSensorState extends ConsumerState<ThermalSensor> {
               ),
               const SizedBox(height: 15,),
               CustomContainer(
-                color: Colors.black,
+                color: theme.textPaint.withValues(alpha: 0.2),
                 child: ListTile(
                   leading: Icon(Icons.thermostat, color: theme.accentGreen,),
                   title: Text(
@@ -75,7 +75,7 @@ class _ThermalSensorState extends ConsumerState<ThermalSensor> {
               ),
               const SizedBox(height: 15,),
               CustomContainer(
-                color: Colors.black,
+                color: theme.textPaint.withValues(alpha: 0.2),
                 child: ListTile(
                   leading: Icon(Icons.thermostat, color: theme.border),
                   title: Text(

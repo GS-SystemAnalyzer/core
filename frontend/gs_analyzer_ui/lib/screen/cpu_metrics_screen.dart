@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:gs_analyzer_ui/providers/cpu_provider.dart';
 import 'package:gs_analyzer_ui/models/cpu_snapshot.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/telemetry_history_chart.dart';
 import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 
@@ -22,6 +23,7 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
     final cpuState = ref.watch(cpuProvider);
     final snapshot = cpuState.snapshot;
     final d = ref.watch(hudDensityProvider);
+    final theme = context.HudTheme;
 
     return Padding(
       padding: EdgeInsets.all(d.panelPad),
@@ -31,7 +33,7 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('CPU TELEMETRY MODULE', style: HudTheme.headerCyan),
+              Text('CPU TELEMETRY MODULE', style: theme.header),
 
               // Custom Toggle Strip
               Row(
@@ -48,11 +50,11 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: HudTheme.accentRed.withValues(alpha: 0.2),
-                    border: Border.all(color: HudTheme.accentRed),
+                    color: theme.accentRed.withValues(alpha: 0.2),
+                    border: Border.all(color: theme.accentRed),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text('CRITICAL LOAD', style: HudTheme.actionRed),
+                  child: Text('CRITICAL LOAD', style: theme.actionRed),
                 ),
             ],
           ),
@@ -60,9 +62,9 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
           if (_showHistory)
             const Expanded(child: TelemetryHistoryChart(metricKey: 'cpu'))
           else if (snapshot == null)
-            const Expanded(
+            Expanded(
               child: Center(
-                child: CircularProgressIndicator(color: HudTheme.primaryBorder),
+                child: CircularProgressIndicator(color: theme.border),
               ),
             )
           else
@@ -79,6 +81,7 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
   }
 
   Widget _buildToggleBtn(String label, bool isSelected) {
+    final theme = context.HudTheme;
     return InkWell(
       onTap: () {
         setState(() {
@@ -89,17 +92,17 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? HudTheme.accentCyan.withValues(alpha: 0.1)
+              ? theme.accentCyan.withValues(alpha: 0.1)
               : Colors.transparent,
           border: Border.all(
-            color: isSelected ? HudTheme.accentCyan : Colors.white10,
+            color: isSelected ? theme.accentCyan : theme.textMain.withValues(alpha: 0.1),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontFamily: HudTheme.fontCore,
-            color: isSelected ? HudTheme.accentCyan : HudTheme.textDim,
+            color: isSelected ? theme.accentCyan : theme.textDim,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             letterSpacing: 1,
           ),
@@ -113,17 +116,18 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
     CpuSnapshot snapshot,
     HudDensity d,
   ) {
+    final theme = context.HudTheme;
     return Container(
       padding: EdgeInsets.all(d.panelPad),
-      decoration: HudTheme.hudPanelDecoration,
+      decoration: theme.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text('CPU UTILIZATION [AVG]', style: HudTheme.labelMuted),
-              Icon(Icons.memory_outlined, color: HudTheme.accentCyan, size: 24),
+            children: [
+              Text('CPU UTILIZATION [AVG]', style: theme.label),
+              Icon(Icons.memory_outlined, color: theme.accentCyan, size: 24),
             ],
           ),
           const SizedBox(height: 8),
@@ -134,7 +138,7 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
               Text(
                 '${snapshot.averageLoad.toStringAsFixed(1)}%',
                 style: TextStyle(
-                  color: HudTheme.accentCyan,
+                  color: theme.accentCyan,
                   fontSize: d.valueSize,
                   fontWeight: FontWeight.bold,
                   fontFamily: HudTheme.fontCore,
@@ -147,7 +151,7 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
             fit: BoxFit.scaleDown,
             child: Text(
               'FREQ → ${snapshot.currentFrequencyGhz} Ghz | PROC → ${snapshot.totalProcesses} | THREADS → ${snapshot.totalThreads} | HANDLES → ${snapshot.totalHandles}',
-              style: HudTheme.bodyText,
+              style: theme.body,
             ),
           ),
           SizedBox(height: d.gap),
@@ -173,17 +177,18 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
   }
 
   Widget _buildCacheChip(String label, String value) {
+    final theme = context.HudTheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: HudTheme.accentCyan.withValues(alpha: 0.1),
-        border: Border.all(color: HudTheme.accentCyan.withValues(alpha: 0.3)),
+        color: theme.accentCyan.withValues(alpha: 0.1),
+        border: Border.all(color: theme.accentCyan.withValues(alpha: 0.3)),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         '$label: $value',
-        style: HudTheme.statGreen.copyWith(
-          color: HudTheme.accentCyan,
+        style: theme.statGreen.copyWith(
+          color: theme.accentCyan,
           fontSize: 12,
         ),
       ),
@@ -191,6 +196,7 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
   }
 
   Widget _buildCoreCharts(Map<String, List<double>> coreGroups) {
+    final theme = context.HudTheme;
     List<BarChartGroupData> barGroups = [];
     List<String> groupLabels = [];
     int xIndex = 0;
@@ -202,7 +208,7 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
         rods.add(
           BarChartRodData(
             toY: coreLoad,
-            color: coreLoad > 80.0 ? HudTheme.accentAmber : HudTheme.accentCyan,
+            color: coreLoad > 80.0 ? theme.accentAmber : theme.accentCyan,
             width: 12,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
           ),
@@ -222,7 +228,7 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
           drawVerticalLine: false,
           getDrawingHorizontalLine: (value) {
             return FlLine(
-              color: Colors.white12,
+              color: theme.textMain.withValues(alpha: 0.12),
               strokeWidth: 1,
               dashArray: [4, 4],
             );
@@ -242,7 +248,7 @@ class _CpuMetricsScreenState extends ConsumerState<CpuMetricsScreen> {
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       groupLabels[value.toInt()],
-                      style: HudTheme.labelMuted,
+                      style: theme.label
                     ),
                   );
                 }

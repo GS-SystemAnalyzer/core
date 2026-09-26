@@ -44,8 +44,8 @@ class _CpuMemoryState extends ConsumerState<CpuMemory>{
                       ),
                       child: Text(
                         ramAlert.severity == 'critical' ? 'CRITICAL' : 'PRESSURE',
-                        style: const TextStyle(
-                          color: Colors.black,
+                        style: TextStyle(
+                          color: theme.textPaint,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
@@ -70,12 +70,12 @@ class _CpuMemoryState extends ConsumerState<CpuMemory>{
             color: AlwaysStoppedAnimation(Colors.greenAccent),
           ),
           const SizedBox(height: 20,),
-          // Spacer(),
+          Spacer(),
           Row(
             children: [
               Expanded(
                 child: CustomContainer(
-                  color: Colors.black,
+                  color: theme.textPaint.withValues(alpha: 0.2),
                   padding: EdgeInsets.all(8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,7 +101,7 @@ class _CpuMemoryState extends ConsumerState<CpuMemory>{
               const SizedBox(width: 10,),
               Expanded(
                 child: CustomContainer(
-                  color: Colors.black,
+                  color: theme.textPaint.withValues(alpha: 0.2),
                   padding: EdgeInsets.all(8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
