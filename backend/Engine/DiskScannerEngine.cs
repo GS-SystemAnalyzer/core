@@ -74,10 +74,22 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 		"GSAnalyzer", "scanner_memory.json");
 	private FileSystemWatcher? _liveRader;
 	private readonly object _radarLock = new object();
-	// Debounce and cap are both 1000ms, so a burst coalesces into one broadcast a second
-	// after its first event. Equal values make the cap, not the reset, decide when it fires.
-	private readonly TimeSpan _radarCooldown = TimeSpan.FromMilliseconds(1000);
+	private const int MaxRadarViewDepth = 2;
+	private static readonly string[] _highChurnSegments =
+	[
+		@"\windows\prefetch\",
+		@"\programdata\microsoft\search\",
+		@"\appdata\local\packages\",
+		@"\$recycle.bin\",
+		@"\system volume information\"
+	];
+
+	// Bursts coalesce within 1000ms; cooldown limits broadcasts to once per 5000ms to stop
+	// rescan loops on busy drive roots like C:/.
+	private readonly TimeSpan _radarDebounce = TimeSpan.FromMilliseconds(1000);
 	private readonly TimeSpan _radarBurstCap = TimeSpan.FromMilliseconds(1000);
+	private readonly TimeSpan _radarCooldown = TimeSpan.FromMilliseconds(5000);
+	private DateTime _lastRadarBroadcastUtc = DateTime.MinValue;
 	private string? _radarTargetPath;
 	private CancellationTokenSource? _radarDebounceCts;
 	private DateTime _radarBurstStartedUtc = DateTime.MinValue;
@@ -547,6 +559,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 		_radarDebounceCts?.Dispose();
 		_radarDebounceCts = null;
 		_radarBurstStartedUtc = DateTime.MinValue;
+		_lastRadarBroadcastUtc = DateTime.MinValue;
 		_radarTargetPath = null;
 
 		if (_liveRader == null) return;
@@ -609,7 +622,46 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 
 		_watcherLog?.LogEvent(DateTimeOffset.UtcNow, kind, e.FullPath, oldPath, isDirectory);
 
-		ScheduleRadarBroadcast(sender as FileSystemWatcher);
+		// Cache invalidation and event logging are unconditional; gate only the UI broadcast
+		// by view depth and system churn to prevent permanent refresh loops on drive roots.
+		string? root;
+		lock (_radarLock)
+		{
+			root = _radarTargetPath;
+		}
+
+		if (!string.IsNullOrEmpty(root) && !IsHighChurnPath(e.FullPath) && IsWithinViewDepth(root, e.FullPath))
+		{
+			ScheduleRadarBroadcast(sender as FileSystemWatcher);
+		}
+	}
+
+	private static bool IsWithinViewDepth(string watchedRoot, string fullPath)
+	{
+		try
+		{
+			var rel = Path.GetRelativePath(watchedRoot, fullPath);
+			if (rel.StartsWith("..", StringComparison.Ordinal)) return false;
+			if (rel == ".") return true;
+			var depth = rel.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries).Length;
+			return depth <= MaxRadarViewDepth;
+		}
+		catch
+		{
+			return false;
+		}
+	}
+
+	private static bool IsHighChurnPath(string fullPath)
+	{
+		var norm = fullPath.Replace('/', '\\');
+		if (!norm.EndsWith('\\')) norm += '\\';
+		foreach (var segment in _highChurnSegments)
+		{
+			if (norm.Contains(segment, StringComparison.OrdinalIgnoreCase))
+				return true;
+		}
+		return false;
 	}
 
 	// Broadcasts the watched ROOT, not the changed folder: the Flutter consumer compares the
@@ -626,6 +678,12 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 		{
 			if (_disposed || !ReferenceEquals(watcher, _liveRader) || string.IsNullOrEmpty(_radarTargetPath)) return;
 
+			// Cooldown rate-limits broadcasts for the same watched root to at most once per 5s.
+			if (_radarDebounceCts == null && (DateTime.UtcNow - _lastRadarBroadcastUtc) < _radarCooldown)
+			{
+				return;
+			}
+
 			if (_radarDebounceCts == null) _radarBurstStartedUtc = DateTime.UtcNow;
 
 			retired = _radarDebounceCts;
@@ -635,7 +693,6 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 		}
 
 		retired?.Cancel();
-		retired?.Dispose();
 
 		_ = BroadcastRadarAsync(watcher, mine, burstDeadline);
 	}
@@ -646,7 +703,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 		{
 			// Trailing debounce, but never wait past the burst cap - a continuous event
 			// stream would otherwise reset the timer forever and never broadcast at all.
-			var wait = _radarCooldown;
+			var wait = _radarDebounce;
 			var remaining = burstDeadline - DateTime.UtcNow;
 			if (remaining < wait) wait = remaining;
 			if (wait > TimeSpan.Zero) await Task.Delay(wait, cts.Token);
@@ -659,16 +716,20 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 
 				_radarDebounceCts = null;
 				_radarBurstStartedUtc = DateTime.MinValue;
+				_lastRadarBroadcastUtc = DateTime.UtcNow;
 				watchedRoot = _radarTargetPath.Replace("\\", "/");
 			}
 
 			await _hub.Clients.All.SendAsync("SectorChanged", watchedRoot);
-			cts.Dispose();
 		}
 		catch (OperationCanceledException) { }
 		catch (Exception ex)
 		{
 			_logger.LogDebug(ex, "Failed to broadcast SectorChanged for the watched sector");
+		}
+		finally
+		{
+			cts.Dispose();
 		}
 	}
 

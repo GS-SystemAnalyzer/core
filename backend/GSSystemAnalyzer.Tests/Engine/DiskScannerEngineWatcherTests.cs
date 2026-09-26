@@ -48,7 +48,7 @@ public sealed class DiskScannerEngineWatcherTests : IDisposable
 	[Fact]
 	public async Task NestedFileChange_ReachesTheHub_ThroughTheRealWatcher()
 	{
-		var nested = Directory.CreateDirectory(Path.Combine(_tempRoot, "a", "b", "c"));
+		var nested = Directory.CreateDirectory(Path.Combine(_tempRoot, "subfolder"));
 		var harness = CreateHarness();
 		harness.Engine.MoveRadarToSector(_tempRoot);
 
@@ -67,14 +67,97 @@ public sealed class DiskScannerEngineWatcherTests : IDisposable
 		harness.Engine.MoveRadarToSector(_tempRoot);
 		var watcher = GetQuietWatcher(harness.Engine);
 
-		var nestedFile = Path.Combine(_tempRoot, "one", "two", "leaf.txt");
+		var nestedFile = Path.Combine(_tempRoot, "one", "leaf.txt");
 		RaiseChanged(harness.Engine, watcher, nestedFile);
 
 		var sector = await harness.FirstBroadcast.Task.WaitAsync(BroadcastWait);
 
 		Assert.Equal(Normalize(_tempRoot), sector);
-		Assert.DoesNotContain("one/two", sector);
+		Assert.DoesNotContain("one", sector);
 		Assert.DoesNotContain("\\", sector);
+	}
+
+	// --- Revision 2: depth gating, churn suppression, and rate-bound cooldown ----------------
+
+	[Fact]
+	public async Task Depth3Change_InvalidatesCacheAndLogs_ProducesNoBroadcast()
+	{
+		var harness = CreateHarness();
+		harness.Engine.MoveRadarToSector(_tempRoot);
+		var watcher = GetQuietWatcher(harness.Engine);
+
+		var deepFile = Path.Combine(_tempRoot, "one", "two", "deep.txt");
+		RaiseChanged(harness.Engine, watcher, deepFile);
+
+		await Task.Delay(SettleMs);
+
+		Assert.Empty(harness.Broadcasts);
+		harness.Cache.Verify(
+			c => c.HandleWatcherEvent(deepFile, WatcherChangeTypes.Changed),
+			Times.Once);
+		harness.WatcherLog.Verify(
+			l => l.LogEvent(
+				It.IsAny<DateTimeOffset>(), WatcherChangeKind.Modified,
+				deepFile, null, false),
+			Times.Once);
+	}
+
+	[Theory]
+	[InlineData(@"windows\prefetch\test.pf")]
+	[InlineData(@"programdata\microsoft\search\test.db")]
+	[InlineData(@"appdata\local\packages\pkg.dat")]
+	[InlineData(@"$recycle.bin\item.dat")]
+	[InlineData(@"system volume information\wps.dat")]
+	public async Task HighChurnSystemPaths_ProduceNoBroadcast_StillInvalidateAndLog(string relativeChurnPath)
+	{
+		var harness = CreateHarness();
+		harness.Engine.MoveRadarToSector(_tempRoot);
+		var watcher = GetQuietWatcher(harness.Engine);
+
+		var churnFile = Path.Combine(_tempRoot, relativeChurnPath);
+		RaiseChanged(harness.Engine, watcher, churnFile);
+
+		await Task.Delay(SettleMs);
+
+		Assert.Empty(harness.Broadcasts);
+		harness.Cache.Verify(
+			c => c.HandleWatcherEvent(churnFile, WatcherChangeTypes.Changed),
+			Times.Once);
+		harness.WatcherLog.Verify(
+			l => l.LogEvent(
+				It.IsAny<DateTimeOffset>(), WatcherChangeKind.Modified,
+				churnFile, null, false),
+			Times.Once);
+	}
+
+	[Fact]
+	public async Task BroadcastCooldown_RateLimitsBroadcasts_AndPermitsAfterWindow()
+	{
+		var harness = CreateHarness();
+		harness.Engine.MoveRadarToSector(_tempRoot);
+		var watcher = GetQuietWatcher(harness.Engine);
+
+		// Event 1 at T=0
+		RaiseChanged(harness.Engine, watcher, Path.Combine(_tempRoot, "first.txt"));
+		var sector1 = await harness.FirstBroadcast.Task.WaitAsync(BroadcastWait);
+		Assert.Equal(Normalize(_tempRoot), sector1);
+		Assert.Single(harness.Broadcasts);
+
+		// Event 2 within cooldown window (5000ms)
+		RaiseChanged(harness.Engine, watcher, Path.Combine(_tempRoot, "second.txt"));
+		await Task.Delay(SettleMs);
+		Assert.Single(harness.Broadcasts);
+
+		// Fast-forward last broadcast timestamp by reflection to simulate cooldown expiration
+		var lastBroadcastField = typeof(DiskScannerEngine)
+			.GetField("_lastRadarBroadcastUtc", BindingFlags.Instance | BindingFlags.NonPublic);
+		Assert.NotNull(lastBroadcastField);
+		lastBroadcastField.SetValue(harness.Engine, DateTime.UtcNow - TimeSpan.FromSeconds(10));
+
+		// Event 3 after cooldown window
+		RaiseChanged(harness.Engine, watcher, Path.Combine(_tempRoot, "third.txt"));
+		await Task.Delay(SettleMs);
+		Assert.Equal(2, harness.Broadcasts.Count);
 	}
 
 	// --- Step 1 + 5: bursts coalesce, and nothing is dropped on the way to the cache --------
@@ -122,8 +205,8 @@ public sealed class DiskScannerEngineWatcherTests : IDisposable
 		await Task.Delay(SettleMs);
 
 		Assert.True(
-			harness.Broadcasts.Count >= 2,
-			$"expected the burst cap to force repeated broadcasts, saw {harness.Broadcasts.Count}");
+			harness.Broadcasts.Count >= 1,
+			$"expected the burst cap to force a broadcast without starving, saw {harness.Broadcasts.Count}");
 	}
 
 	// --- Step 6: overflow resyncs the subtree through the purpose-built path -----------------

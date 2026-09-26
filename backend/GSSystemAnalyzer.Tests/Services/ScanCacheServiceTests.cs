@@ -7,6 +7,7 @@ using GSSystemAnalyzer.Models.SettingDtos;
 using GSSystemAnalyzer.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -44,9 +45,9 @@ public class ScanCacheServiceTests
 		_mockSettings.Setup(s => s.Current).Returns(_currentSettings);
 	}
 
-	private ScanCacheService CreateService()
+	private ScanCacheService CreateService(ILogger<ScanCacheService>? logger = null)
 	{
-		return new ScanCacheService(_mockSettings.Object, NullLogger<ScanCacheService>.Instance);
+		return new ScanCacheService(_mockSettings.Object, logger ?? NullLogger<ScanCacheService>.Instance);
 	}
 
 	[Fact]
@@ -427,6 +428,38 @@ public class ScanCacheServiceTests
 		Assert.Equal(4096, reloaded[@"C:\Alpha"].Size);
 		Assert.Equal(@"C:\Alpha\a.txt", reloaded[@"C:\Alpha"].Extensions![".txt"].LargestFilePath);
 		Assert.Null(reloaded[@"C:\Beta"].Extensions);
+	}
+
+	[Fact]
+	public async Task HandleWatcherEvent_RapidRepeatedEvents_NoDisposeException_InvalidatesTarget()
+	{
+		var mockLogger = new Mock<ILogger<ScanCacheService>>();
+		using var service = CreateService(mockLogger.Object);
+
+		var dir = @"C:\Data\Folder1";
+		var file = @"C:\Data\Folder1\file.txt";
+		var node = new CachedDirNode(dir, Array.Empty<string>(), new[] { new CachedFileEntry("file.txt", ".txt", 100, DateTime.UtcNow) }, 100, 100, DateTimeOffset.UtcNow, false);
+		service.SetNode(node, @"C:\");
+
+		Assert.NotNull(service.GetNode(dir));
+
+		for (var i = 0; i < 50; i++)
+		{
+			service.HandleWatcherEvent(file, WatcherChangeTypes.Changed);
+		}
+
+		await Task.Delay(800);
+
+		mockLogger.Verify(
+			l => l.Log(
+				LogLevel.Warning,
+				It.IsAny<EventId>(),
+				It.IsAny<It.IsAnyType>(),
+				It.IsAny<Exception>(),
+				It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+			Times.Never);
+
+		Assert.Null(service.GetNode(dir));
 	}
 }
 

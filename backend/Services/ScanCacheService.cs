@@ -473,7 +473,7 @@ public class ScanCacheService : IScanCacheService, IDisposable
 			cts,
 			(_, oldCts) =>
 			{
-				try { oldCts.Cancel(); oldCts.Dispose(); } catch { }
+				try { oldCts.Cancel(); } catch { }
 				return cts;
 			});
 
@@ -484,7 +484,7 @@ public class ScanCacheService : IScanCacheService, IDisposable
 				await Task.Delay(500, cts.Token);
 				if (cts.Token.IsCancellationRequested) return;
 
-				_debounceTokens.TryRemove(key, out _);
+				_debounceTokens.TryRemove(new KeyValuePair<string, CancellationTokenSource>(key, cts));
 
 				switch (changeType)
 				{
@@ -511,6 +511,10 @@ public class ScanCacheService : IScanCacheService, IDisposable
 			catch (Exception ex)
 			{
 				_logger.LogWarning(ex, "Error processing debounced watcher event for {Path}", fullPath);
+			}
+			finally
+			{
+				cts.Dispose();
 			}
 		});
 	}
