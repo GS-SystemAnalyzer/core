@@ -54,20 +54,18 @@ class _GSAnalyzerAppState extends ConsumerState<GSAnalyzerApp>
   }
 
   void _initNotifications() {
-    NotificationService().setOnSelectNotification(
-      (payload) {
-        if (payload != null && payload.startsWith('storage:')) {
-          final driveName = payload.substring('storage:'.length);
-          ref.read(navigationProvider.notifier).state = AppRoute.storage;
-          if (driveName.isNotEmpty) {
-            ref.read(selectedDriveNameProvider.notifier).state = driveName;
-          }
-          ref.read(storageViewProvider.notifier).state = StorageView.drivePicker;
-        } else if (payload == 'memory') {
-          ref.read(navigationProvider.notifier).state = AppRoute.memory;
+    NotificationService().setOnSelectNotification((payload) {
+      if (payload != null && payload.startsWith('storage:')) {
+        final driveName = payload.substring('storage:'.length);
+        ref.read(navigationProvider.notifier).state = AppRoute.storage;
+        if (driveName.isNotEmpty) {
+          ref.read(selectedDriveNameProvider.notifier).state = driveName;
         }
-      },
-    );
+        ref.read(storageViewProvider.notifier).state = StorageView.drivePicker;
+      } else if (payload == 'memory') {
+        ref.read(navigationProvider.notifier).state = AppRoute.memory;
+      }
+    });
   }
 
   Future<void> _checkInitialState() async {
@@ -95,8 +93,6 @@ class _GSAnalyzerAppState extends ConsumerState<GSAnalyzerApp>
 
   @override
   Widget build(BuildContext context) {
-
-
     final theme = ref.watch(
       settingsProvider.select((s) => s.currentSettings?.appearance.theme),
     );
@@ -104,14 +100,15 @@ class _GSAnalyzerAppState extends ConsumerState<GSAnalyzerApp>
       settingsProvider.select((s) => s.currentSettings?.appearance.accentColor),
     );
 
-    final accentColor = HudColor.resolveAccent(accentKey);
+    final lightAccent = HudColor.resolveAccent(accentKey, Brightness.light);
+    final darkAccent = HudColor.resolveAccent(accentKey, Brightness.dark);
     final themeMode = HudTheme.resolveThemeMode(theme);
 
     return MaterialApp(
       scaffoldMessengerKey: snackbarKey,
       debugShowCheckedModeBanner: false,
-      theme: HudTheme.lightTheme(accentColor),
-      darkTheme: HudTheme.darkTheme(accentColor),
+      theme: HudTheme.lightTheme(lightAccent),
+      darkTheme: HudTheme.darkTheme(darkAccent),
       themeMode: themeMode,
       home: const MasterLayout(),
     );

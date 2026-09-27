@@ -47,44 +47,51 @@ class HudTheme {
             color: accentColor,
             fontWeight: FontWeight.bold,
             fontSize: 18,
-            letterSpacing: 2
+            letterSpacing: 2,
           ),
           statGreen: TextStyle(
             fontFamily: fontCore,
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: HudColor.lightAccentGreen
+            color: HudColor.lightAccentGreen,
           ),
-          statCyan: TextStyle(
+          valueStyle: TextStyle(
             fontSize: 13,
             fontFamily: fontCore,
-            color: HudColor.lightAccentCyan
+            fontWeight: FontWeight.bold,
+            color: HudColor.lightAccentCyan,
           ),
           actionRed: TextStyle(
             fontSize: 14,
             fontFamily: fontCore,
             fontWeight: FontWeight.bold,
-            color: HudColor.lightAccentRed
+            color: HudColor.lightAccentRed,
           ),
-          label: TextStyle(
+          labelStyle: TextStyle(
             fontSize: 12,
             letterSpacing: 1,
             fontFamily: fontCore,
-            color: HudColor.lightTextDim
+            color: HudColor.lightTextDim,
           ),
           body: TextStyle(
             fontSize: 13,
             fontFamily: fontCore,
-            color: HudColor.lightTextMuted
+            color: HudColor.lightTextMuted,
           ),
           hudPanelDecoration: BoxDecoration(
             color: HudColor.lightBgPanel,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: HudColor.lightPrimaryBorder.withValues(alpha: 0.3))
-          ), 
+            border: Border.all(
+              color: HudColor.lightPrimaryBorder.withValues(alpha: 0.3),
+            ),
+          ),
           listItemDecoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: HudColor.lightTextMain.withValues(alpha: 0.1)))
-          )
+            border: Border(
+              bottom: BorderSide(
+                color: HudColor.lightTextMain.withValues(alpha: 0.1),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -131,44 +138,51 @@ class HudTheme {
             color: accentColor,
             fontWeight: FontWeight.bold,
             fontSize: 18,
-            letterSpacing: 2
+            letterSpacing: 2,
           ),
           statGreen: TextStyle(
             fontFamily: fontCore,
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: HudColor.darkAccentGreen
+            color: HudColor.darkAccentGreen,
           ),
-          statCyan: TextStyle(
+          valueStyle: TextStyle(
             fontSize: 13,
             fontFamily: fontCore,
-            color: HudColor.darkAccentCyan
+            fontWeight: FontWeight.bold,
+            color: HudColor.darkAccentCyan,
           ),
           actionRed: TextStyle(
             fontSize: 14,
             fontFamily: fontCore,
             fontWeight: FontWeight.bold,
-            color: HudColor.darkAccentRed
+            color: HudColor.darkAccentRed,
           ),
-          label: TextStyle(
+          labelStyle: TextStyle(
             fontSize: 12,
             letterSpacing: 1,
             fontFamily: fontCore,
-            color: HudColor.darkTextDim
+            color: HudColor.darkTextDim,
           ),
           body: TextStyle(
             fontSize: 13,
             fontFamily: fontCore,
-            color: HudColor.darkTextMuted
+            color: HudColor.darkTextMuted,
           ),
           hudPanelDecoration: BoxDecoration(
             color: HudColor.darkBgPanel,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: HudColor.darkPrimaryBorder.withValues(alpha: 0.3))
-          ), 
+            border: Border.all(
+              color: HudColor.darkPrimaryBorder.withValues(alpha: 0.3),
+            ),
+          ),
           listItemDecoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: HudColor.darkTextMain.withValues(alpha: 0.1)))
-          )
+            border: Border(
+              bottom: BorderSide(
+                color: HudColor.darkTextMain.withValues(alpha: 0.1),
+              ),
+            ),
+          ),
         ),
       ],
     );

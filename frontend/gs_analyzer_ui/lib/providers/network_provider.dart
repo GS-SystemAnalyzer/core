@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/models/network_telemetry.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
@@ -145,6 +144,8 @@ class NetworkNotifier extends StateNotifier<NetworkState> {
   }
 }
 
-final networkProvider = StateNotifierProvider<NetworkNotifier, NetworkState>((ref) {
+final networkProvider = StateNotifierProvider<NetworkNotifier, NetworkState>((
+  ref,
+) {
   return NetworkNotifier();
 });

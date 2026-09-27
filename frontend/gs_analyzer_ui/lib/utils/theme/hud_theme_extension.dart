@@ -16,13 +16,17 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
   final Color textDim;
   final Color textPaint;
   final TextStyle header;
-  final TextStyle label;
+  final TextStyle labelStyle;
+  final TextStyle valueStyle;
   final TextStyle statGreen;
-  final TextStyle statCyan;
   final TextStyle actionRed;
   final TextStyle body;
   final BoxDecoration hudPanelDecoration;
   final BoxDecoration listItemDecoration;
+
+  //for backward compartibility
+  TextStyle get label => labelStyle;
+  TextStyle get statCyan => valueStyle;
 
   const HudThemeExtension({
     required this.accentColor,
@@ -40,13 +44,13 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
     required this.textDim,
     required this.textPaint,
     required this.header,
-    required this.label,
+    required this.labelStyle,
+    required this.valueStyle,
     required this.statGreen,
-    required this.statCyan,
     required this.actionRed,
     required this.body,
     required this.hudPanelDecoration,
-    required this.listItemDecoration
+    required this.listItemDecoration,
   });
 
   @override
@@ -66,37 +70,37 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
     Color? textDim,
     Color? textPaint,
     TextStyle? header,
-    TextStyle?label,
+    TextStyle? labelStyle,
+    TextStyle? valueStyle,
     TextStyle? statGreen,
-    TextStyle? statCyan,
     TextStyle? actionRed,
     TextStyle? body,
     BoxDecoration? hudPanelDecoration,
-    BoxDecoration? listItemDecoration
+    BoxDecoration? listItemDecoration,
   }) {
     return HudThemeExtension(
       accentColor: accentColor ?? this.accentColor,
-      base: base ?? this.base, 
-      panel: panel ?? this.panel, 
-      border: border ?? this.border, 
-      accentCyan: accentCyan ?? this.accentCyan, 
-      accentGreen: accentGreen ?? this.accentGreen, 
-      accentRed: accentRed ?? this.accentRed, 
-      accentAmber: accentAmber ?? this.accentAmber, 
-      accentPurple: accentPurple ?? this.accentPurple, 
-      accentBlue: accentBlue ?? this.accentBlue, 
-      textMain: textMain ?? this.textMain, 
-      textMuted: textMuted ?? this.textMuted, 
-      textDim: textDim ?? this.textDim, 
+      base: base ?? this.base,
+      panel: panel ?? this.panel,
+      border: border ?? this.border,
+      accentCyan: accentCyan ?? this.accentCyan,
+      accentGreen: accentGreen ?? this.accentGreen,
+      accentRed: accentRed ?? this.accentRed,
+      accentAmber: accentAmber ?? this.accentAmber,
+      accentPurple: accentPurple ?? this.accentPurple,
+      accentBlue: accentBlue ?? this.accentBlue,
+      textMain: textMain ?? this.textMain,
+      textMuted: textMuted ?? this.textMuted,
+      textDim: textDim ?? this.textDim,
       textPaint: textPaint ?? this.textPaint,
       header: header ?? this.header,
-      label: label ?? this.label,
+      labelStyle: labelStyle ?? this.labelStyle,
+      valueStyle: valueStyle ?? this.valueStyle,
       statGreen: statGreen ?? this.statGreen,
-      statCyan: statCyan ?? this.statCyan,
       actionRed: actionRed ?? this.actionRed,
       body: body ?? this.body,
-      hudPanelDecoration: hudPanelDecoration ?? this.hudPanelDecoration, 
-      listItemDecoration: listItemDecoration ?? this.listItemDecoration
+      hudPanelDecoration: hudPanelDecoration ?? this.hudPanelDecoration,
+      listItemDecoration: listItemDecoration ?? this.listItemDecoration,
     );
   }
 
@@ -106,27 +110,35 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
 
     return HudThemeExtension(
       accentColor: Color.lerp(accentColor, other.accentColor, t)!,
-      base: Color.lerp(base, other.base, t)!, 
-      panel: Color.lerp(panel, other.panel, t)!, 
-      border: Color.lerp(border, other.border, t)!, 
-      accentCyan: Color.lerp(accentCyan, other.accentCyan, t)!, 
-      accentGreen: Color.lerp(accentGreen, other.accentGreen, t)!, 
-      accentRed: Color.lerp(accentRed, other.accentRed, t)!, 
-      accentAmber: Color.lerp(accentAmber, other.accentAmber, t)!, 
-      accentPurple: Color.lerp(accentPurple, other.accentPurple, t)!, 
-      accentBlue: Color.lerp(accentBlue, other.accentBlue, t)!, 
-      textMain: Color.lerp(textMain, other.textMain, t)!, 
-      textMuted: Color.lerp(textMuted, other.textMuted, t)!, 
-      textDim: Color.lerp(textDim, other.textDim, t)!, 
+      base: Color.lerp(base, other.base, t)!,
+      panel: Color.lerp(panel, other.panel, t)!,
+      border: Color.lerp(border, other.border, t)!,
+      accentCyan: Color.lerp(accentCyan, other.accentCyan, t)!,
+      accentGreen: Color.lerp(accentGreen, other.accentGreen, t)!,
+      accentRed: Color.lerp(accentRed, other.accentRed, t)!,
+      accentAmber: Color.lerp(accentAmber, other.accentAmber, t)!,
+      accentPurple: Color.lerp(accentPurple, other.accentPurple, t)!,
+      accentBlue: Color.lerp(accentBlue, other.accentBlue, t)!,
+      textMain: Color.lerp(textMain, other.textMain, t)!,
+      textMuted: Color.lerp(textMuted, other.textMuted, t)!,
+      textDim: Color.lerp(textDim, other.textDim, t)!,
       textPaint: Color.lerp(textPaint, other.textPaint, t)!,
       header: TextStyle.lerp(header, other.header, t)!,
-      label: TextStyle.lerp(label, other.label, t)!,
-      actionRed: TextStyle.lerp(actionRed, other.actionRed, t)!,
+      labelStyle: TextStyle.lerp(labelStyle, other.labelStyle, t)!,
+      valueStyle: TextStyle.lerp(valueStyle, other.valueStyle, t)!,
       statGreen: TextStyle.lerp(statGreen, other.statGreen, t)!,
-      statCyan: TextStyle.lerp(statCyan, other.statCyan, t)!,
+      actionRed: TextStyle.lerp(actionRed, other.actionRed, t)!,
       body: TextStyle.lerp(body, other.body, t)!,
-      hudPanelDecoration: BoxDecoration.lerp(hudPanelDecoration, other.hudPanelDecoration, t)!,
-      listItemDecoration: BoxDecoration.lerp(listItemDecoration, other.listItemDecoration, t)!
+      hudPanelDecoration: BoxDecoration.lerp(
+        hudPanelDecoration,
+        other.hudPanelDecoration,
+        t,
+      )!,
+      listItemDecoration: BoxDecoration.lerp(
+        listItemDecoration,
+        other.listItemDecoration,
+        t,
+      )!,
     );
   }
 }

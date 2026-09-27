@@ -13,14 +13,13 @@ class HudColor {
   static const Color darkAccentPurple = Color(0xFFAA20C0);
   static const Color darkAccentBlue = Color(0xFF2864C7);
 
-
   static const Color darkTextMain = Colors.white;
   static const Color darkTextMuted = Colors.white70;
   static const Color darkTextDim = Colors.white54;
   static const Color darkTextPaint = Colors.black;
 
   // ----------LIGHT MODE-----------------
-  static const Color lightBgBase = Color(0xFFFEEF2F5);
+  static const Color lightBgBase = Color(0xFFEEF2F5);
   static const Color lightBgPanel = Color(0xFFFFFFFF);
   static const Color lightPrimaryBorder = Color(0xFF00838F);
 
@@ -44,25 +43,25 @@ class HudColor {
 
     switch (accentKey?.toLowerCase()) {
       case 'cyan':
-      return isDark ? darkAccentCyan : lightAccentCyan;
+        return isDark ? darkAccentCyan : lightAccentCyan;
 
       case 'green':
-      return isDark ? darkAccentGreen : lightAccentGreen;
+        return isDark ? darkAccentGreen : lightAccentGreen;
 
       case 'amber':
-      return isDark ? darkAccentAmber : lightAccentAmber;
+        return isDark ? darkAccentAmber : lightAccentAmber;
 
       case 'red':
-      return isDark ? darkAccentRed : lightAccentRed;
+        return isDark ? darkAccentRed : lightAccentRed;
 
       case 'purple':
-      return isDark ? darkAccentPurple : lightAccentPurple;
+        return isDark ? darkAccentPurple : lightAccentPurple;
 
       case 'blue':
-      return isDark ? darkAccentBlue : lightAccentBlue;
+        return isDark ? darkAccentBlue : lightAccentBlue;
 
       default:
-      return isDark ? darkAccentCyan : lightAccentCyan;
+        return isDark ? darkAccentCyan : lightAccentCyan;
     }
   }
 }

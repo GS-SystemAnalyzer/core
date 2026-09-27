@@ -5,8 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gs_analyzer_ui/models/extension_breakdown_model.dart';
 import 'package:gs_analyzer_ui/providers/extension_breakdown_provider.dart';
 import 'package:gs_analyzer_ui/providers/file_type_provider.dart';
-import 'package:gs_analyzer_ui/services/api_service.dart';
-import 'package:riverpod/riverpod.dart' as riverpod;
 import 'package:gs_analyzer_ui/widgets/extension_breakdown_screen.dart';
 
 const _root = r'C:\TestDrive';

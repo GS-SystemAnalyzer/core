@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:gs_analyzer_ui/models/temp_cleaner_model.dart';
 import 'package:gs_analyzer_ui/providers/temp_cleaner_provider.dart';
 
 // Since ApiService is constructed internally in TempCleanerNotifier,

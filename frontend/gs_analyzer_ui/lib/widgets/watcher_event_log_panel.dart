@@ -4,7 +4,6 @@ import 'package:gs_analyzer_ui/models/watcher_event.dart';
 import 'package:gs_analyzer_ui/providers/watcher_log_provider.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:intl/intl.dart';
-import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:gs_analyzer_ui/utils/csv_exporter.dart';
 
@@ -12,7 +11,8 @@ class WatcherEventLogPanel extends ConsumerStatefulWidget {
   const WatcherEventLogPanel({Key? key}) : super(key: key);
 
   @override
-  ConsumerState<WatcherEventLogPanel> createState() => _WatcherEventLogPanelState();
+  ConsumerState<WatcherEventLogPanel> createState() =>
+      _WatcherEventLogPanelState();
 }
 
 class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
@@ -38,7 +38,9 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
       final isScrolling = _scrollController.offset > 0;
       if (isScrolling != _isUserScrolling) {
         _isUserScrolling = isScrolling;
-        ref.read(watcherLogProvider.notifier).setAutoScrollLock(_isUserScrolling);
+        ref
+            .read(watcherLogProvider.notifier)
+            .setAutoScrollLock(_isUserScrolling);
       }
     }
   }
@@ -76,22 +78,33 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.monitor_heart_outlined, color: HudTheme.accentCyan),
+                      Icon(
+                        Icons.monitor_heart_outlined,
+                        color: HudTheme.accentCyan,
+                      ),
                       const SizedBox(width: 12),
                       Text(
                         'WATCHER EVENT LOG',
-                        style: HudTheme.headerCyan.copyWith(color: HudTheme.accentCyan),
+                        style: HudTheme.headerCyan.copyWith(
+                          color: HudTheme.accentCyan,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white10,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           '${events.length} / 500',
-                          style: TextStyle(color: HudTheme.textDim, fontSize: 12),
+                          style: TextStyle(
+                            color: HudTheme.textDim,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ],
@@ -115,7 +128,11 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
     );
   }
 
-  Widget _buildToolbar(WatcherLogState logState, WatcherLogNotifier notifier, List<WatcherEvent> currentEvents) {
+  Widget _buildToolbar(
+    WatcherLogState logState,
+    WatcherLogNotifier notifier,
+    List<WatcherEvent> currentEvents,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
@@ -124,20 +141,47 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
           Row(
             children: [
               _buildFilterChip('ALL', null, logState.filterKind, notifier),
-              _buildFilterChip('CREATED', WatcherChangeKind.created, logState.filterKind, notifier),
-              _buildFilterChip('MODIFIED', WatcherChangeKind.modified, logState.filterKind, notifier),
-              _buildFilterChip('DELETED', WatcherChangeKind.deleted, logState.filterKind, notifier),
-              _buildFilterChip('RENAMED', WatcherChangeKind.renamed, logState.filterKind, notifier),
+              _buildFilterChip(
+                'CREATED',
+                WatcherChangeKind.created,
+                logState.filterKind,
+                notifier,
+              ),
+              _buildFilterChip(
+                'MODIFIED',
+                WatcherChangeKind.modified,
+                logState.filterKind,
+                notifier,
+              ),
+              _buildFilterChip(
+                'DELETED',
+                WatcherChangeKind.deleted,
+                logState.filterKind,
+                notifier,
+              ),
+              _buildFilterChip(
+                'RENAMED',
+                WatcherChangeKind.renamed,
+                logState.filterKind,
+                notifier,
+              ),
             ],
           ),
           Row(
             children: [
               ElevatedButton.icon(
-                icon: Icon(logState.isPaused ? Icons.play_arrow : Icons.pause, size: 16),
+                icon: Icon(
+                  logState.isPaused ? Icons.play_arrow : Icons.pause,
+                  size: 16,
+                ),
                 label: Text(logState.isPaused ? 'RESUME' : 'PAUSE'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: logState.isPaused ? HudTheme.accentAmber.withValues(alpha: 0.2) : Colors.white10,
-                  foregroundColor: logState.isPaused ? HudTheme.accentAmber : Colors.white,
+                  backgroundColor: logState.isPaused
+                      ? HudTheme.accentAmber.withValues(alpha: 0.2)
+                      : Colors.white10,
+                  foregroundColor: logState.isPaused
+                      ? HudTheme.accentAmber
+                      : Colors.white,
                   elevation: 0,
                 ),
                 onPressed: () => notifier.togglePause(),
@@ -146,12 +190,19 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
               OutlinedButton.icon(
                 icon: const Icon(Icons.download, size: 16),
                 label: const Text('CSV'),
-                style: OutlinedButton.styleFrom(foregroundColor: HudTheme.accentCyan, side: const BorderSide(color: HudTheme.accentCyan)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: HudTheme.accentCyan,
+                  side: const BorderSide(color: HudTheme.accentCyan),
+                ),
                 onPressed: () => _exportCsv(currentEvents),
               ),
               const SizedBox(width: 8),
               IconButton(
-                icon: const Icon(Icons.delete_forever, color: HudTheme.accentRed, size: 20),
+                icon: const Icon(
+                  Icons.delete_forever,
+                  color: HudTheme.accentRed,
+                  size: 20,
+                ),
                 tooltip: 'Clear Log',
                 onPressed: () => notifier.clearLog(),
                 padding: EdgeInsets.zero,
@@ -164,12 +215,24 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
     );
   }
 
-  Widget _buildFilterChip(String label, WatcherChangeKind? kind, WatcherChangeKind? currentFilter, WatcherLogNotifier notifier) {
+  Widget _buildFilterChip(
+    String label,
+    WatcherChangeKind? kind,
+    WatcherChangeKind? currentFilter,
+    WatcherLogNotifier notifier,
+  ) {
     final isSelected = kind == currentFilter;
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
       child: ChoiceChip(
-        label: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, fontFamily: HudTheme.fontCore)),
+        label: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            fontFamily: HudTheme.fontCore,
+          ),
+        ),
         selected: isSelected,
         onSelected: (bool selected) {
           if (selected) {
@@ -180,8 +243,12 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
         },
         selectedColor: HudTheme.accentCyan.withValues(alpha: 0.2),
         backgroundColor: Colors.transparent,
-        side: BorderSide(color: isSelected ? HudTheme.accentCyan : Colors.white10),
-        labelStyle: TextStyle(color: isSelected ? HudTheme.accentCyan : HudTheme.textDim),
+        side: BorderSide(
+          color: isSelected ? HudTheme.accentCyan : Colors.white10,
+        ),
+        labelStyle: TextStyle(
+          color: isSelected ? HudTheme.accentCyan : HudTheme.textDim,
+        ),
       ),
     );
   }
@@ -191,7 +258,10 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
       return Padding(
         padding: const EdgeInsets.all(32.0),
         child: Center(
-          child: Text('NO EVENTS IN BUFFER', style: HudTheme.bodyText.copyWith(color: HudTheme.textDim)),
+          child: Text(
+            'NO EVENTS IN BUFFER',
+            style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+          ),
         ),
       );
     }
@@ -240,11 +310,20 @@ class _WatcherEventRow extends StatelessWidget {
         alignment: Alignment.centerLeft,
         child: Row(
           children: [
-            const Icon(Icons.warning_amber, color: HudTheme.accentAmber, size: 16),
+            const Icon(
+              Icons.warning_amber,
+              color: HudTheme.accentAmber,
+              size: 16,
+            ),
             const SizedBox(width: 8),
             Text(
               '⚠ EVENT BUFFER OVERFLOW — SOME CHANGES NOT RECORDED',
-              style: TextStyle(color: HudTheme.accentAmber, fontWeight: FontWeight.bold, fontSize: 12, fontFamily: HudTheme.fontCore),
+              style: TextStyle(
+                color: HudTheme.accentAmber,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                fontFamily: HudTheme.fontCore,
+              ),
             ),
           ],
         ),
@@ -289,7 +368,14 @@ class _WatcherEventRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 70,
-            child: Text(timeStr, style: TextStyle(color: HudTheme.textDim, fontSize: 12, fontFamily: HudTheme.fontCore)),
+            child: Text(
+              timeStr,
+              style: TextStyle(
+                color: HudTheme.textDim,
+                fontSize: 12,
+                fontFamily: HudTheme.fontCore,
+              ),
+            ),
           ),
           Icon(icon, color: color, size: 16),
           const SizedBox(width: 8),
@@ -297,13 +383,20 @@ class _WatcherEventRow extends StatelessWidget {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 // Middle ellipsis approach (or standard text ellipsis)
-                // standard ellipsis is at the end. For middle ellipsis, we can use a custom widget, 
-                // but standard flutter Text has no direct middle ellipsis. 
-                // Wait, TextOverflow.ellipsis does end ellipsis. 
+                // standard ellipsis is at the end. For middle ellipsis, we can use a custom widget,
+                // but standard flutter Text has no direct middle ellipsis.
+                // Wait, TextOverflow.ellipsis does end ellipsis.
                 // We'll just use end ellipsis to keep it performant, but if the prompt strictly says middle ellipsis,
                 // we can split the string.
                 // "middle-ellipsised path"
-                return _MiddleEllipsisText(text: pathText, style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: HudTheme.fontCore));
+                return _MiddleEllipsisText(
+                  text: pathText,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontFamily: HudTheme.fontCore,
+                  ),
+                );
               },
             ),
           ),
@@ -315,7 +408,15 @@ class _WatcherEventRow extends StatelessWidget {
                 color: Colors.white10,
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text('×${event.occurrences}', style: TextStyle(color: HudTheme.textDim, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: HudTheme.fontCore)),
+              child: Text(
+                '×${event.occurrences}',
+                style: TextStyle(
+                  color: HudTheme.textDim,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: HudTheme.fontCore,
+                ),
+              ),
             ),
         ],
       ),
@@ -345,10 +446,12 @@ class _MiddleEllipsisText extends StatelessWidget {
 
         int start = text.length ~/ 2;
         int end = start;
-        
+
         // Fast approximation
         String truncated = text;
-        while (textPainter.width > constraints.maxWidth && start > 0 && end < text.length) {
+        while (textPainter.width > constraints.maxWidth &&
+            start > 0 &&
+            end < text.length) {
           start--;
           end++;
           truncated = '${text.substring(0, start)}...${text.substring(end)}';
