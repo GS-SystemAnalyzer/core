@@ -47,9 +47,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
-                color: Colors.redAccent,
+                color: hud.accentRed,
                 size: 48,
               ),
               const SizedBox(height: 16),
@@ -429,8 +429,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       backgroundColor: success
-                          ? Colors.green.shade900
-                          : Colors.red.shade900,
+                          ? hud.accentGreen.withValues(alpha: 0.09)
+                          : hud.accentRed.withValues(alpha: 0.09),
                       content: Text(
                         success
                             ? 'Cache cleared. Run a new Directory Scan to repopulate.'
@@ -507,6 +507,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     SettingsNotifier notifier,
   ) {
     final currentTheme = app.theme.toLowerCase();
+    final hud = context.HudTheme;
     final isLight = currentTheme == 'cyber_light' || currentTheme == 'light';
     final isSystem = currentTheme == 'system';
     final isDark = (currentTheme == 'cyber_dark' || currentTheme == 'dark') || (!isLight && !isSystem);
@@ -550,9 +551,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              _colorSwatch('cyan', Colors.cyan, app, notifier),
-              _colorSwatch('green', Colors.greenAccent, app, notifier),
-              _colorSwatch('amber', Colors.amber, app, notifier),
+              _colorSwatch('cyan', hud.accentCyan, app, notifier),
+              _colorSwatch('green', hud.accentGreen, app, notifier),
+              _colorSwatch('amber', hud.accentAmber, app, notifier),
             ],
           ),
         ],
@@ -714,8 +715,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           height: 45,
           child: OutlinedButton(
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.redAccent),
-              foregroundColor: Colors.redAccent,
+              side: BorderSide(color: hud.accentRed),
+              foregroundColor: hud.accentRed,
             ),
             onPressed: () => _confirmReset(context, notifier),
             child: const Text(
