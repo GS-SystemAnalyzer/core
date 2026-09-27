@@ -57,7 +57,7 @@ class _CpuMemoryState extends ConsumerState<CpuMemory>{
               Icon(
                 Icons.memory,
                 size: 40,
-                color: theme.accentGreen.withValues(alpha: 0.1),
+                color: theme.accentGreen.withValues(alpha: 0.25),
               )
             ],
           ),

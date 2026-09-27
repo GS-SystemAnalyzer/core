@@ -68,7 +68,7 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
             ),
           ),
 
-          const Divider(height: 1, color: Colors.white10),
+          Divider(height: 1, color: theme.textMain.withValues(alpha: 0.1)),
 
           // Chart Area
           Expanded(
@@ -78,7 +78,7 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
             ),
           ),
 
-          const Divider(height: 1, color: Colors.white10),
+          Divider(height: 1, color: theme.textMain.withValues(alpha: 0.1)),
 
           // Stats Strip
           if (state.response != null)
@@ -171,7 +171,7 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               border: Border.all(
-                color: isSelected ? theme.accentCyan : Colors.white10,
+                color: isSelected ? theme.accentCyan : theme.textMain.withValues(alpha: 0.1),
               ),
               color: isSelected
                   ? theme.accentCyan.withValues(alpha: 0.1)
@@ -257,13 +257,13 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
           horizontalInterval: isPercent ? 25 : null,
           getDrawingHorizontalLine: (value) {
             return FlLine(
-              color: Colors.white10,
+              color: theme.textMain.withValues(alpha: 0.1),
               strokeWidth: 1,
               dashArray: [4, 4],
             );
           },
           getDrawingVerticalLine: (value) {
-            return FlLine(color: Colors.white10, strokeWidth: 1);
+            return FlLine(color: theme.textMain.withValues(alpha: 0.1), strokeWidth: 1);
           },
         ),
         titlesData: FlTitlesData(
@@ -317,7 +317,7 @@ class _TelemetryHistoryChartState extends ConsumerState<TelemetryHistoryChart> {
         ),
         borderData: FlBorderData(
           show: true,
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: theme.textMain.withValues(alpha: 0.1)),
         ),
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(

@@ -29,7 +29,7 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
       width: width,
       decoration: BoxDecoration(
         color: theme.panel,
-        border: Border(right: BorderSide(color: Colors.white10)),
+        border: Border(right: BorderSide(color: theme.textMain.withValues(alpha: 0.1))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,7 +81,7 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
                 ],
               ),
             ),
-            const Divider(color: Colors.white10, height: 1),
+            Divider(color: theme.textMain.withValues(alpha: 0.1), height: 1),
             const SizedBox(height: 8),
           ],
 
@@ -262,13 +262,13 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
         .watch(settingsProvider)
         .hasUnsavedChanges;
         final theme = context.HudTheme;
-    final color = isSelected ? theme.accentCyan : theme.textDim;
+    final color = isSelected ? theme.accentColor : theme.textDim;
 
     final accentLine = Container(
       width: 3,
       height: 16,
       decoration: BoxDecoration(
-        color: isSelected ? theme.accentCyan : Colors.transparent,
+        color: isSelected ? theme.accentColor : Colors.transparent,
         borderRadius: BorderRadius.circular(2),
       ),
     );
@@ -276,13 +276,13 @@ class _GlobalSidebarWidgetState extends ConsumerState<GlobalSidebarWidget> {
     return InkWell(
       onTap: () =>
           ref.read(navigationProvider.notifier).state = AppRoute.settings,
-      hoverColor: Colors.white.withValues(alpha: 0.05),
+      hoverColor: theme.textMain.withValues(alpha: 0.05),
       child: Container(
         height: 40,
         margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
           color: isSelected
-              ? Colors.white.withValues(alpha: 0.05)
+              ? theme.textMain.withValues(alpha: 0.05)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
         ),

@@ -5,8 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/cpu_provider.dart';
 import 'package:gs_analyzer_ui/providers/thermal_provider.dart';
 import 'package:gs_analyzer_ui/models/thermal_telemetry.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/telemetry_history_chart.dart';
 import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 
@@ -28,6 +29,7 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
     final telemetry = thermalState.telemetry;
     final cpuState = ref.watch(cpuProvider).snapshot;
     final d = ref.watch(hudDensityProvider);
+    final hud = context.HudTheme;
 
     return Padding(
       padding: EdgeInsets.all(d.panelPad),
@@ -37,7 +39,7 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('THERMAL RADAR MODULE', style: HudTheme.headerCyan),
+              Text('THERMAL RADAR MODULE', style: hud.header),
 
               Row(
                 children: [
@@ -53,13 +55,13 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: HudTheme.accentRed.withValues(alpha: 0.2),
-                    border: Border.all(color: HudTheme.accentRed),
+                    color: hud.accentRed.withValues(alpha: 0.2),
+                    border: Border.all(color: hud.accentRed),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text(
+                  child: Text(
                     'OVERHEAT ALERT',
-                    style: HudTheme.actionRed,
+                    style: hud.actionRed,
                   ),
                 ),
             ],
@@ -71,9 +73,9 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
               child: TelemetryHistoryChart(metricKey: 'thermal_cpu_package'),
             )
           else if (telemetry == null)
-            const Expanded(
+            Expanded(
               child: Center(
-                child: CircularProgressIndicator(color: HudTheme.accentAmber),
+                child: CircularProgressIndicator(color: hud.accentAmber),
               ),
             )
           else
@@ -115,6 +117,7 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
   }
 
   Widget _buildToggleBtn(String label, bool isSelected) {
+    final hud = context.HudTheme;
     return InkWell(
       onTap: () {
         setState(() {
@@ -125,17 +128,17 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? HudTheme.accentCyan.withValues(alpha: 0.1)
+              ? hud.accentCyan.withValues(alpha: 0.1)
               : Colors.transparent,
           border: Border.all(
-            color: isSelected ? HudTheme.accentCyan : Colors.white10,
+            color: isSelected ? hud.accentCyan : hud.textMain.withValues(alpha: 0.1),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontFamily: HudTheme.fontCore,
-            color: isSelected ? HudTheme.accentCyan : HudTheme.textDim,
+            color: isSelected ? hud.accentCyan : hud.textDim,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             letterSpacing: 1,
           ),
@@ -156,6 +159,7 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
     dynamic cpuState,
     HudDensity d,
   ) {
+    final hud = context.HudTheme;
     return _ThermalSection(
       title: 'CPU',
       icon: Icons.memory_outlined,
@@ -168,8 +172,8 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
             children: [
               Text(
                 'PKG: ${telemetry.cpuPackageCelsius?.toStringAsFixed(1) ?? 'N/A'}°C',
-                style: const TextStyle(
-                  color: HudTheme.accentCyan,
+                style:TextStyle(
+                  color: hud.accentCyan,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                   fontFamily: HudTheme.fontCore,
@@ -182,11 +186,11 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: HudTheme.accentRed.withValues(alpha: 0.2),
-                    border: Border.all(color: HudTheme.accentRed),
+                    color: hud.accentRed.withValues(alpha: 0.2),
+                    border: Border.all(color: hud.accentRed),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text('THROTTLING', style: HudTheme.actionRed),
+                  child: Text('THROTTLING', style: hud.actionRed),
                 ),
               // Later is i can access the power directly from the hardware
               // Text(
@@ -194,7 +198,7 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
               //   style: HudTheme.statGreen,
               Text(
                 'POWER: ${_getDisplayPower(telemetry, cpuState)}',
-                style: HudTheme.statGreen,
+                style: hud.statGreen,
               ),
             ],
           ),
@@ -253,8 +257,8 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
         HudLabel('$label: '),
         Text(
           '${temp.toStringAsFixed(1)}°C',
-          style: HudTheme.bodyText.copyWith(
-            color: HudTheme.textMain,
+          style: context.HudTheme.body.copyWith(
+            color: context.HudTheme.textMain,
             fontSize: 16,
           ),
         ),
@@ -269,8 +273,8 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
       d: d,
       child: Text(
         'NAME: ${telemetry.nvmeCelsius}°C',
-        style: HudTheme.bodyText.copyWith(
-          color: HudTheme.textMain,
+        style: context.HudTheme.body.copyWith(
+          color: context.HudTheme.textMain,
           fontSize: 16,
         ),
       ),
@@ -300,30 +304,32 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
   }
 
   Widget _buildFanRow(String label, int rpm) {
-    Color rpmColor = HudTheme.accentGreen;
+    final hud = context.HudTheme;
+    Color rpmColor = hud.accentGreen;
     if (rpm > 3500)
-      rpmColor = HudTheme.accentRed;
+      rpmColor = hud.accentRed;
     else if (rpm > 2000)
-      rpmColor = HudTheme.accentAmber;
+      rpmColor = hud.accentAmber;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         HudLabel('$label: '),
-        Text('$rpm RPM', style: HudTheme.statGreen.copyWith(color: rpmColor)),
+        Text('$rpm RPM', style: hud.statGreen.copyWith(color: rpmColor)),
       ],
     );
   }
 
   Widget _buildAdvancedSection(HudDensity d) {
+    final hud = context.HudTheme;
     return Material(
-      color: HudTheme.bgPanel,
+      color: hud.panel,
       borderRadius: BorderRadius.circular(12),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          collapsedIconColor: HudTheme.textDim,
-          iconColor: HudTheme.accentCyan,
+          collapsedIconColor: hud.textDim,
+          iconColor: hud.accentCyan,
           onExpansionChanged: (expanded) =>
               setState(() => _isAdvancedExpanded = expanded),
           title: Row(
@@ -331,8 +337,8 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
               Icon(
                 Icons.tune_outlined,
                 color: _isAdvancedExpanded
-                    ? HudTheme.accentCyan
-                    : HudTheme.textDim,
+                    ? hud.accentCyan
+                    : hud.textDim,
                 size: 20,
               ),
               const SizedBox(width: 12),
@@ -365,18 +371,19 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
   }
 
   Widget _buildAdvancedRow(String label, String value) {
+    final hud = context.HudTheme;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('$label: ', style: HudTheme.labelMuted),
+        Text('$label: ', style: hud.label),
         Text(
           '$value ',
-          style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+          style: hud.body.copyWith(color: hud.textDim),
         ),
-        const Text(
+        Text(
           '[v3.0]',
           style: TextStyle(
-            color: Colors.white24,
+            color: hud.textMain.withValues(alpha: 0.24),
             fontSize: 10,
             fontFamily: HudTheme.fontCore,
           ),
@@ -438,13 +445,13 @@ class _ThermalSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.all(d.panelPad),
-      decoration: HudTheme.hudPanelDecoration,
+      decoration: context.HudTheme.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: HudTheme.textDim, size: 20),
+              Icon(icon, color: context.HudTheme.textDim, size: 20),
               const SizedBox(width: 12),
               HudLabel(title),
             ],
@@ -464,11 +471,12 @@ class _ThermalChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color tempColor = HudTheme.accentGreen;
+    final hud = context.HudTheme;
+    Color tempColor = hud.accentGreen;
     if (celsius > 85)
-      tempColor = HudTheme.accentRed;
+      tempColor = hud.accentRed;
     else if (celsius > 70)
-      tempColor = HudTheme.accentAmber;
+      tempColor = hud.accentAmber;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -479,11 +487,11 @@ class _ThermalChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$label:', style: HudTheme.labelMuted),
+          Text('$label:', style: hud.label),
           const SizedBox(width: 4),
           Text(
             '${celsius.toStringAsFixed(0)}°',
-            style: HudTheme.statGreen.copyWith(color: tempColor),
+            style: hud.statGreen.copyWith(color: tempColor),
           ),
         ],
       ),

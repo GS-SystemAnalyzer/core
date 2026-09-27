@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import '../models/drive_info.dart';
 import '../providers/drive_stats_provider.dart';
 import '../providers/settings_provider.dart';
-import '../utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';
@@ -26,11 +27,12 @@ class StorageScreen extends ConsumerWidget {
     final currentDrive = ref.watch(currentDriveProvider);
     final drives = ref.watch(drivesProvider);
     final d = ref.watch(hudDensityProvider);
+    final hud = context.HudTheme;
 
     Widget buildBody() {
       if (drives.isEmpty) {
         return Center(
-          child: CircularProgressIndicator(color: HudTheme.accentCyan),
+          child: CircularProgressIndicator(color: hud.accentCyan),
         );
       }
 
@@ -43,7 +45,7 @@ class StorageScreen extends ConsumerWidget {
         children: [
           const DiskAlertBannerList(),
           _DriveSelectorBar(drives: drives, selectedDrive: currentDrive),
-          const Divider(color: Colors.white10, height: 1),
+          Divider(color: hud.textMain.withValues(alpha: 0.1), height: 1),
 
           Expanded(
             child: ListView(
@@ -117,11 +119,11 @@ class StorageScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: HudTheme.bgPanel,
+      backgroundColor: hud.panel,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text('STORAGE MATRICES', style: HudTheme.headerCyan),
+        title: Text('STORAGE MATRICES', style: hud.header),
         actions: [
           if (currentDrive != null)
             _ExportScanButton(drive: currentDrive),
@@ -163,6 +165,7 @@ class _ScanLaunchTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hud = context.HudTheme;
     return Padding(
       padding: EdgeInsets.only(bottom: d.gap),
       child: Material(
@@ -172,10 +175,10 @@ class _ScanLaunchTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           child: Container(
             padding: EdgeInsets.all(d.panelPad),
-            decoration: HudTheme.hudPanelDecoration,
+            decoration: hud.hudPanelDecoration,
             child: Row(
               children: [
-                Icon(icon, color: HudTheme.accentCyan),
+                Icon(icon, color: hud.accentCyan),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -183,21 +186,21 @@ class _ScanLaunchTile extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: HudTheme.headerCyan.copyWith(
-                          color: HudTheme.accentCyan,
+                        style: hud.header.copyWith(
+                          color: hud.accentCyan,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         subtitle,
-                        style: HudTheme.bodyText.copyWith(
-                          color: HudTheme.textDim,
+                        style: hud.body.copyWith(
+                          color: hud.textDim,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: HudTheme.textDim),
+                Icon(Icons.chevron_right, color: hud.textDim),
               ],
             ),
           ),
@@ -248,16 +251,17 @@ class _DriveTab extends ConsumerWidget {
     // Connect threshold to user settings!
     final alertSettings = ref.watch(settingsProvider).currentSettings?.alerts;
     final redThreshold = alertSettings?.diskThresholdPercent ?? 90;
+    final hud = context.HudTheme;
 
     final activeAlert = ref.watch(diskAlertsProvider)[drive.name];
     final bool isAlerting = activeAlert != null;
     final Color alertDotColor =
-        (activeAlert?.isCritical ?? false) ? Colors.redAccent : Colors.amber;
+        (activeAlert?.isCritical ?? false) ? hud.accentRed : hud.accentAmber;
 
     Color getStatusColor() {
-      if (drive.percentageUsed >= redThreshold) return Colors.redAccent;
-      if (drive.percentageUsed >= redThreshold - 10) return Colors.amber;
-      return HudTheme.accentCyan; // Green or Cyan for healthy
+      if (drive.percentageUsed >= redThreshold) return hud.accentRed;
+      if (drive.percentageUsed >= redThreshold - 10) return hud.accentAmber;
+      return hud.accentCyan; // Green or Cyan for healthy
     }
 
     return Container(
@@ -265,11 +269,11 @@ class _DriveTab extends ConsumerWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isActive
-            ? Colors.white.withValues(alpha: 0.05)
+            ? hud.textMain.withValues(alpha: 0.05)
             : Colors.transparent,
         border: Border(
           bottom: BorderSide(
-            color: isActive ? HudTheme.accentCyan : Colors.transparent,
+            color: isActive ? hud.accentCyan : Colors.transparent,
             width: 3,
           ),
         ),
@@ -281,15 +285,15 @@ class _DriveTab extends ConsumerWidget {
             children: [
               Icon(
                 getIcon(),
-                color: isActive ? HudTheme.accentCyan : HudTheme.textDim,
+                color: isActive ? hud.accentCyan : hud.textDim,
                 size: 16,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   drive.displayName,
-                  style: HudTheme.bodyText.copyWith(
-                    color: isActive ? HudTheme.accentCyan : HudTheme.textDim,
+                  style: hud.body.copyWith(
+                    color: isActive ? hud.accentCyan : hud.textDim,
                     fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -319,7 +323,7 @@ class _DriveTab extends ConsumerWidget {
           const SizedBox(height: 8),
           LinearProgressIndicator(
             value: drive.percentageUsed / 100,
-            backgroundColor: Colors.white10,
+            backgroundColor: hud.textMain.withValues(alpha: 0.1),
             color: getStatusColor(),
             minHeight: 2,
           ),
@@ -342,16 +346,17 @@ class _DriveDetailCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final alertSettings = ref.watch(settingsProvider).currentSettings?.alerts;
     final redThreshold = alertSettings?.diskThresholdPercent ?? 90;
+    final hud = context.HudTheme;
 
     final Color statusColor = drive.percentageUsed >= redThreshold
-        ? Colors.redAccent
+        ? hud.accentRed
         : (drive.percentageUsed >= redThreshold - 10
-              ? Colors.amber
-              : HudTheme.accentCyan);
+              ? hud.accentAmber
+              : hud.accentCyan);
 
     return Container(
       padding: EdgeInsets.all(d.panelPad),
-      decoration: HudTheme.hudPanelDecoration,
+      decoration: hud.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -361,8 +366,8 @@ class _DriveDetailCard extends ConsumerWidget {
               Expanded(
                 child: Text(
                   'DRIVE: ${drive.displayName}',
-                  style: HudTheme.headerCyan.copyWith(
-                    color: HudTheme.accentCyan,
+                  style: hud.header.copyWith(
+                    color: hud.accentCyan,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -372,8 +377,8 @@ class _DriveDetailCard extends ConsumerWidget {
                   padding: const EdgeInsets.only(left: 8),
                   child: Text(
                     '● CRITICAL SPACE',
-                    style: HudTheme.bodyText.copyWith(
-                      color: Colors.redAccent,
+                    style: hud.body.copyWith(
+                      color: hud.accentRed,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -381,15 +386,15 @@ class _DriveDetailCard extends ConsumerWidget {
               _WhatChangedButton(drive: drive),
             ],
           ),
-          Divider(color: Colors.white10, height: d.gap * 3, thickness: 1),
+          Divider(color: hud.textMain.withValues(alpha: 0.1), height: d.gap * 3, thickness: 1),
 
           Wrap(
             spacing: d.gap * 3,
             runSpacing: d.gap,
             children: [
-              _buildMetaTag('TYPE', drive.type.toUpperCase()),
-              _buildMetaTag('FORMAT', drive.format.toUpperCase()),
-              _buildMetaTag('MOUNT', drive.name.toUpperCase()),
+              _buildMetaTag('TYPE', drive.type.toUpperCase(), context),
+              _buildMetaTag('FORMAT', drive.format.toUpperCase(), context),
+              _buildMetaTag('MOUNT', drive.name.toUpperCase(), context),
             ],
           ),
           SizedBox(height: d.gap * 2),
@@ -401,7 +406,7 @@ class _DriveDetailCard extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: drive.percentageUsed / 100,
-                    backgroundColor: Colors.white10,
+                    backgroundColor: hud.textMain.withValues(alpha: 0.1),
                     color: statusColor,
                     minHeight: 16,
                   ),
@@ -410,7 +415,7 @@ class _DriveDetailCard extends ConsumerWidget {
               const SizedBox(width: 16),
               Text(
                 '${drive.percentageUsed.toStringAsFixed(1)}%',
-                style: HudTheme.bodyText,
+                style: hud.body,
               ),
             ],
           ),
@@ -421,15 +426,15 @@ class _DriveDetailCard extends ConsumerWidget {
               final wide = constraints.maxWidth > 520;
               final used = Text(
                 'USED: ${_formatGB(drive.usedBytes)} GB',
-                style: HudTheme.bodyText.copyWith(color: statusColor),
+                style: hud.body.copyWith(color: statusColor),
               );
               final free = Text(
                 'FREE: ${_formatGB(drive.freeBytes)} GB',
-                style: HudTheme.bodyText,
+                style: hud.body,
               );
               final total = Text(
                 'TOTAL: ${_formatGB(drive.totalBytes)} GB',
-                style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+                style: hud.body.copyWith(color: hud.textDim),
               );
 
               if (wide) {
@@ -455,16 +460,17 @@ class _DriveDetailCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildMetaTag(String label, String value) {
+  Widget _buildMetaTag(String label, String value, BuildContext context) {
+    final hud = context.HudTheme;
     return Row(
       children: [
         Text(
           '$label: ',
-          style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+          style: hud.body.copyWith(color: hud.textDim),
         ),
         Text(
           value,
-          style: HudTheme.bodyText.copyWith(fontWeight: FontWeight.bold),
+          style: hud.body.copyWith(fontWeight: FontWeight.bold),
         ),
       ],
     );
@@ -482,6 +488,7 @@ class _WhatChangedButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final changeCount = ref.watch(diffChangeCountProvider(drive.name));
+    final hud = context.HudTheme;
 
     return Tooltip(
       message: 'WHAT CHANGED',
@@ -497,9 +504,9 @@ class _WhatChangedButton extends ConsumerWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              const Icon(
+              Icon(
                 Icons.difference_outlined,
-                color: HudTheme.accentCyan,
+                color: hud.accentCyan,
                 size: 20,
               ),
               if (changeCount > 0)
@@ -513,14 +520,14 @@ class _WhatChangedButton extends ConsumerWidget {
                     ),
                     constraints: const BoxConstraints(minWidth: 16),
                     decoration: BoxDecoration(
-                      color: HudTheme.accentAmber,
+                      color: hud.accentAmber,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       changeCount > 99 ? '99+' : '$changeCount',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.black,
+                      style: TextStyle(
+                        color: hud.textPaint,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                         fontFamily: HudTheme.fontCore,
@@ -545,6 +552,7 @@ class _ExportScanButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dirState = ref.watch(directoryProvider);
     final fileTypesAsync = ref.watch(fileTypesProvider(drive.name));
+    final hud = context.HudTheme;
 
     final hasCachedScan = (dirState.allNodes.isNotEmpty &&
             dirState.currentPath.toUpperCase().startsWith(drive.name.toUpperCase())) ||
@@ -560,14 +568,14 @@ class _ExportScanButton extends ConsumerWidget {
           padding: const EdgeInsets.only(right: 16),
           child: TextButton.icon(
             onPressed: null,
-            icon: const Icon(
+            icon: Icon(
               Icons.arrow_downward,
               size: 14,
-              color: HudTheme.textDim,
+              color: hud.textDim,
             ),
             label: Text(
               'EXPORT',
-              style: HudTheme.labelMuted.copyWith(color: HudTheme.textDim),
+              style: hud.label.copyWith(color: hud.textDim),
             ),
           ),
         ),
@@ -578,9 +586,9 @@ class _ExportScanButton extends ConsumerWidget {
       padding: const EdgeInsets.only(right: 16),
       child: TextButton.icon(
         style: TextButton.styleFrom(
-          foregroundColor: HudTheme.accentCyan,
-          backgroundColor: HudTheme.accentCyan.withValues(alpha: 0.1),
-          side: const BorderSide(color: HudTheme.accentCyan, width: 1),
+          foregroundColor: hud.accentCyan,
+          backgroundColor: hud.accentCyan.withValues(alpha: 0.1),
+          side: BorderSide(color: hud.accentCyan, width: 1),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
         onPressed: () {
@@ -589,15 +597,15 @@ class _ExportScanButton extends ConsumerWidget {
             builder: (_) => ExportScanDialog(driveName: drive.name),
           );
         },
-        icon: const Icon(
+        icon: Icon(
           Icons.arrow_downward,
           size: 14,
-          color: HudTheme.accentCyan,
+          color: hud.accentCyan,
         ),
         label: Text(
           'EXPORT',
-          style: HudTheme.labelMuted.copyWith(
-            color: HudTheme.accentCyan,
+          style: hud.label.copyWith(
+            color: hud.accentCyan,
             fontWeight: FontWeight.bold,
           ),
         ),

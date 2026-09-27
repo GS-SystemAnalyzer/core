@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/telemetry_history_chart.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 
 class TelemetryHistoryScreen extends ConsumerWidget {
@@ -12,6 +11,7 @@ class TelemetryHistoryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = context.HudTheme;
     final d = ref.watch(hudDensityProvider);
+    final hud = context.HudTheme;
     return Scaffold(
       backgroundColor: theme.base,
       body: Padding(
@@ -19,18 +19,12 @@ class TelemetryHistoryScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'TELEMETRY HISTORY',
-              style: TextStyle(
-                fontFamily: HudTheme.fontCore,
-                color: HudTheme.primaryBorder,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 3,
-              ),
+              style:hud.header
             ),
             const SizedBox(height: 8),
-            const Text('SYSTEM-WIDE METRIC TRENDS', style: HudTheme.labelMuted),
+            Text('SYSTEM-WIDE METRIC TRENDS', style: hud.label),
             const SizedBox(height: 24),
             Expanded(
               child: ListView(

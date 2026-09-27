@@ -70,7 +70,7 @@ class _CpuLoadReportState extends ConsumerState<CpuLoadReport> {
             trailing: Icon(
               Icons.memory,
               size: 40,
-              color: theme.accentCyan.withValues(alpha: 0.1),
+              color: theme.accentCyan.withValues(alpha: 0.25),
             ),
           ),
           const SizedBox(height: 10,),
