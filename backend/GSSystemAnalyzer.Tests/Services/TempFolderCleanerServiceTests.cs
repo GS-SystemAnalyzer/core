@@ -152,6 +152,33 @@ public class TempFolderCleanerServiceTests : IDisposable
 	}
 
 	[Fact]
+	public void TempFolderDictionary_DirectResolution_MatchesServiceResolution()
+	{
+		var dictTargets = TempFolderDictionary.ResolveCleanTargets();
+		var svcTargets = TempFolderCleanerService.ResolveCleanTargets();
+
+		Assert.Equal(dictTargets.Count, svcTargets.Count);
+		for (var i = 0; i < dictTargets.Count; i++)
+		{
+			Assert.Equal(dictTargets[i].Path, svcTargets[i].Path);
+			Assert.Equal(dictTargets[i].Label, svcTargets[i].Label);
+			Assert.Equal(dictTargets[i].Category, svcTargets[i].Category);
+		}
+	}
+
+	[Fact]
+	public void TempFolderDictionary_ResolveTempPaths_ReturnsCleanStrings()
+	{
+		var paths = TempFolderDictionary.ResolveTempPaths();
+		Assert.NotEmpty(paths);
+		Assert.All(paths, p =>
+		{
+			Assert.True(Path.IsPathRooted(p));
+			Assert.True(Directory.Exists(p));
+		});
+	}
+
+	[Fact]
 	public async Task Preview_CorrectlySumsSizes()
 	{
 		var svc = CreateService();
