@@ -156,13 +156,12 @@ void main() {
       final lightAlertText = tester.widget<Text>(find.text('OVERHEAT ALERT'));
       expect(lightAlertText.style?.color, equals(HudColor.lightAccentRed));
 
-      final alertBadgeFinder = find.ancestor(
+      final alertBannerFinder = find.ancestor(
         of: find.text('OVERHEAT ALERT'),
         matching: find.byType(Container),
       ).first;
-      final lightAlertDec = tester.widget<Container>(alertBadgeFinder).decoration as BoxDecoration;
-      expect(lightAlertDec.color, equals(HudColor.lightAccentRed.withValues(alpha: 0.2)));
-      expect((lightAlertDec.border as Border).top.color, equals(HudColor.lightAccentRed));
+      final lightAlertContainer = tester.widget<Container>(alertBannerFinder);
+      expect(lightAlertContainer.color, equals(HudColor.lightAccentRed.withValues(alpha: 0.2)));
 
       // 2. Dark Mode Overheat Alert
       await tester.pumpWidget(
@@ -186,9 +185,8 @@ void main() {
       final darkAlertText = tester.widget<Text>(find.text('OVERHEAT ALERT'));
       expect(darkAlertText.style?.color, equals(HudColor.darkAccentRed));
 
-      final darkAlertDec = tester.widget<Container>(alertBadgeFinder).decoration as BoxDecoration;
-      expect(darkAlertDec.color, equals(HudColor.darkAccentRed.withValues(alpha: 0.2)));
-      expect((darkAlertDec.border as Border).top.color, equals(HudColor.darkAccentRed));
+      final darkAlertContainer = tester.widget<Container>(alertBannerFinder);
+      expect(darkAlertContainer.color, equals(HudColor.darkAccentRed.withValues(alpha: 0.2)));
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();

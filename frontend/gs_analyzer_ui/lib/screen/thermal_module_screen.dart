@@ -31,42 +31,41 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
     final d = ref.watch(hudDensityProvider);
     final hud = context.HudTheme;
 
-    return Padding(
-      padding: EdgeInsets.all(d.panelPad),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('THERMAL RADAR MODULE', style: hud.header),
-
-              Row(
-                children: [
-                  _buildToggleBtn('LIVE VIEW', !_showHistory),
-                  _buildToggleBtn('HISTORY', _showHistory),
-                ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (thermalState.isCritical && !_showHistory)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            color: hud.accentRed.withValues(alpha: 0.2),
+            child: Center(
+              child: Text(
+                'OVERHEAT ALERT',
+                style: hud.actionRed,
               ),
-
-              if (thermalState.isCritical && !_showHistory)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: hud.accentRed.withValues(alpha: 0.2),
-                    border: Border.all(color: hud.accentRed),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'OVERHEAT ALERT',
-                    style: hud.actionRed,
-                  ),
-                ),
-            ],
+            ),
           ),
-          const SizedBox(height: 24),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.all(d.panelPad),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('THERMAL RADAR MODULE', style: hud.header),
+
+                    Row(
+                      children: [
+                        _buildToggleBtn('LIVE VIEW', !_showHistory),
+                        _buildToggleBtn('HISTORY', _showHistory),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
 
           if (_showHistory)
             const Expanded(
@@ -111,9 +110,12 @@ class _ThermalModuleScreenState extends ConsumerState<ThermalModuleScreen> {
                 ),
               ),
             ),
-        ],
+          ],
+        ),
       ),
-    );
+    ),
+  ],
+);
   }
 
   Widget _buildToggleBtn(String label, bool isSelected) {
