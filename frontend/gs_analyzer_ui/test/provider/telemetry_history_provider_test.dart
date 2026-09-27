@@ -53,7 +53,6 @@ void main() {
       ).thenAnswer((_) async => mockResponse);
 
       container.listen(telemetryHistoryProvider('cpu'), (_, __) {});
-      final notifier = container.read(telemetryHistoryProvider('cpu').notifier);
       await Future.delayed(Duration.zero);
 
       final state = container.read(telemetryHistoryProvider('cpu'));

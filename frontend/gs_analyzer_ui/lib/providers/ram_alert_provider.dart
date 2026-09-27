@@ -1,4 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/models/ram_alert.dart';
 
@@ -14,6 +13,8 @@ class RamAlertNotifier extends StateNotifier<RamAlert?> {
   }
 }
 
-final ramAlertProvider = StateNotifierProvider<RamAlertNotifier, RamAlert?>((ref) {
+final ramAlertProvider = StateNotifierProvider<RamAlertNotifier, RamAlert?>((
+  ref,
+) {
   return RamAlertNotifier();
 });

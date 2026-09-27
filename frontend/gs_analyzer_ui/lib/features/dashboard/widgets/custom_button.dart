@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/cpu_provider.dart';
 import 'package:gs_analyzer_ui/providers/ram_provider.dart';
 import 'package:gs_analyzer_ui/providers/thermal_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 class CustomButton extends ConsumerWidget {
   final EdgeInsets? padding;
@@ -22,24 +22,25 @@ class CustomButton extends ConsumerWidget {
     final CpuState = ref.watch(cpuProvider);
     final thermalState = ref.watch(thermalProvider);
     final stable = !ramState.isCritical && !CpuState.isCritical && !thermalState.isCritical;
+    final theme = context.HudTheme;
 
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: stable ? HudTheme.accentCyan.withValues(alpha: 0.1) : HudTheme.accentRed.withValues(alpha: 0.1)
+        color: stable ? theme.accentCyan.withValues(alpha: 0.1) : theme.accentRed.withValues(alpha: 0.1)
       ),
       child: Row(
         children: [
           Icon(
             icon,
             size: 9,
-            color: stable ? HudTheme.accentCyan : HudTheme.accentRed,
+            color: stable ? theme.accentCyan : theme.accentRed,
           ),
           const SizedBox(width: 5,),
           Text(
             stable ? 'SYSTEM STABLE' : 'SYSTEM UNSTABLE',
             style: TextStyle(
-              color: stable ? HudTheme.accentCyan : HudTheme.accentRed,
+              color: stable ? theme.accentCyan : theme.accentRed,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.4
             ),

@@ -6,7 +6,7 @@ import 'package:gs_analyzer_ui/screen/analyzer_dashboard.dart';
 import 'package:gs_analyzer_ui/screen/ram_scannner_screen.dart';
 import 'package:gs_analyzer_ui/screen/settings_screen.dart';
 import 'package:gs_analyzer_ui/screen/thermal_module_screen.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/coming_soon.dart';
 import 'package:gs_analyzer_ui/widgets/global_sidebar_widget.dart';
 import 'package:gs_analyzer_ui/screen/storage_screen.dart';
@@ -39,7 +39,7 @@ class MasterLayout extends ConsumerWidget {
     });
 
     return Scaffold(
-      backgroundColor: HudTheme.bgBase,
+      backgroundColor: context.HudTheme.base,
       body: Row(
         children: [
           const GlobalSidebarWidget(),

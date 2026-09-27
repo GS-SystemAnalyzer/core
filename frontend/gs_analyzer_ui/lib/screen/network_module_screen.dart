@@ -5,7 +5,8 @@ import 'package:gs_analyzer_ui/models/network_telemetry.dart';
 import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 import 'package:gs_analyzer_ui/providers/network_provider.dart';
 import 'package:gs_analyzer_ui/utils/formatters.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/telemetry_history_chart.dart';
 
 class NetworkModuleScreen extends ConsumerStatefulWidget {
@@ -33,7 +34,7 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('NETWORK MODULE', style: HudTheme.headerCyan),
+              Text('NETWORK MODULE', style: context.HudTheme.header),
 
               // View Toggle Strip
               Row(
@@ -58,6 +59,7 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
   }
 
   Widget _buildToggleBtn(String label, bool isSelected) {
+    final hud = context.HudTheme;
     return InkWell(
       onTap: () {
         setState(() {
@@ -68,17 +70,17 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? HudTheme.accentCyan.withValues(alpha: 0.1)
+              ? hud.accentCyan.withValues(alpha: 0.1)
               : Colors.transparent,
           border: Border.all(
-            color: isSelected ? HudTheme.accentCyan : Colors.white10,
+            color: isSelected ? hud.accentCyan : hud.textMain.withValues(alpha: 0.1),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontFamily: HudTheme.fontCore,
-            color: isSelected ? HudTheme.accentCyan : HudTheme.textDim,
+            color: isSelected ? hud.accentCyan : hud.textDim,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             letterSpacing: 1,
           ),
@@ -88,6 +90,7 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
   }
 
   Widget _buildHistoryView(HudDensity d) {
+    final hud = context.HudTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -99,25 +102,25 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
                   color: _historyMetric == 'network_rx'
-                      ? HudTheme.accentCyan.withValues(alpha: 0.15)
+                      ? hud.accentCyan.withValues(alpha: 0.15)
                       : Colors.transparent,
                   border: Border.all(
                     color: _historyMetric == 'network_rx'
-                        ? HudTheme.accentCyan
-                        : Colors.white10,
+                        ? hud.accentCyan
+                        : hud.textMain.withValues(alpha: 0.1),
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.arrow_downward, size: 14, color: HudTheme.accentCyan),
+                    Icon(Icons.arrow_downward, size: 14, color: hud.accentCyan),
                     const SizedBox(width: 6),
                     Text(
                       'RX (DOWNLOAD)',
                       style: TextStyle(
                         fontFamily: HudTheme.fontCore,
                         color: _historyMetric == 'network_rx'
-                            ? HudTheme.accentCyan
-                            : HudTheme.textDim,
+                            ? hud.accentCyan
+                            : hud.textDim,
                         fontSize: 12,
                       ),
                     ),
@@ -132,25 +135,25 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
                   color: _historyMetric == 'network_tx'
-                      ? HudTheme.accentAmber.withValues(alpha: 0.15)
+                      ? hud.accentAmber.withValues(alpha: 0.15)
                       : Colors.transparent,
                   border: Border.all(
                     color: _historyMetric == 'network_tx'
-                        ? HudTheme.accentAmber
-                        : Colors.white10,
+                        ? hud.accentAmber
+                        : hud.textMain.withValues(alpha: 0.1),
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.arrow_upward, size: 14, color: HudTheme.accentAmber),
+                    Icon(Icons.arrow_upward, size: 14, color: hud.accentAmber),
                     const SizedBox(width: 6),
                     Text(
                       'TX (UPLOAD)',
                       style: TextStyle(
                         fontFamily: HudTheme.fontCore,
                         color: _historyMetric == 'network_tx'
-                            ? HudTheme.accentAmber
-                            : HudTheme.textDim,
+                            ? hud.accentAmber
+                            : hud.textDim,
                         fontSize: 12,
                       ),
                     ),
@@ -203,18 +206,19 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
     NetworkState state,
     HudDensity d,
   ) {
+    final hud = context.HudTheme;
     if (primary == null || !primary.isUp) {
       return Container(
         padding: EdgeInsets.all(d.panelPad),
-        decoration: HudTheme.hudPanelDecoration,
+        decoration: hud.hudPanelDecoration,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text('ACTIVE INTERFACE', style: HudTheme.labelMuted),
-                Icon(Icons.wifi_off, color: HudTheme.textDim, size: 20),
+              children: [
+                Text('ACTIVE INTERFACE', style: hud.label),
+                Icon(Icons.wifi_off, color: hud.textDim, size: 20),
               ],
             ),
             const SizedBox(height: 24),
@@ -225,7 +229,7 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
                   'NO ACTIVE INTERFACE',
                   style: TextStyle(
                     fontFamily: HudTheme.fontCore,
-                    color: HudTheme.textDim,
+                    color: hud.textDim,
                     fontSize: 18,
                     letterSpacing: 2,
                     fontWeight: FontWeight.bold,
@@ -244,7 +248,7 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
 
     return Container(
       padding: EdgeInsets.all(d.panelPad),
-      decoration: HudTheme.hudPanelDecoration,
+      decoration: hud.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -255,9 +259,9 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
               Expanded(
                 child: Text(
                   'ACTIVE: ${primary.name.toUpperCase()}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: HudTheme.fontCore,
-                    color: HudTheme.accentCyan,
+                    color: hud.accentCyan,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.5,
@@ -266,7 +270,7 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
               ),
               Text(
                 primary.interfaceType.toUpperCase(),
-                style: HudTheme.labelMuted.copyWith(fontSize: 11),
+                style: hud.label.copyWith(fontSize: 11),
               ),
             ],
           ),
@@ -274,7 +278,7 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
             const SizedBox(height: 4),
             Text(
               primary.description,
-              style: HudTheme.bodyText.copyWith(color: HudTheme.textDim, fontSize: 12),
+              style: hud.body.copyWith(color: hud.textDim, fontSize: 12),
             ),
           ],
           const SizedBox(height: 16),
@@ -287,7 +291,7 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
                   'RX (DOWNLOAD)',
                   formatRate(primary.rxBytesPerSec),
                   Icons.arrow_downward,
-                  HudTheme.accentCyan,
+                  hud.accentCyan,
                 ),
               ),
               const SizedBox(width: 16),
@@ -296,7 +300,7 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
                   'TX (UPLOAD)',
                   formatRate(primary.txBytesPerSec),
                   Icons.arrow_upward,
-                  HudTheme.accentAmber,
+                  hud.accentAmber,
                 ),
               ),
             ],
@@ -324,12 +328,12 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('60-SECOND THROUGHPUT', style: HudTheme.labelMuted),
+              Text('60-SECOND THROUGHPUT', style: hud.label),
               Row(
                 children: [
-                  _buildLegendItem('RX', HudTheme.accentCyan),
+                  _buildLegendItem('RX', hud.accentCyan),
                   const SizedBox(width: 16),
-                  _buildLegendItem('TX', HudTheme.accentAmber),
+                  _buildLegendItem('TX', hud.accentAmber),
                 ],
               ),
             ],
@@ -366,7 +370,7 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: HudTheme.labelMuted.copyWith(fontSize: 10)),
+              Text(label, style: context.HudTheme.label.copyWith(fontSize: 10)),
               const SizedBox(height: 2),
               Text(
                 value,
@@ -385,22 +389,23 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
   }
 
   Widget _buildSubStatTile(String label, String value) {
+    final hud = context.HudTheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.02),
-        border: Border.all(color: Colors.white10),
+        color: hud.textMain.withValues(alpha: 0.02),
+        border: Border.all(color: hud.textMain.withValues(alpha: 0.1)),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: HudTheme.labelMuted.copyWith(fontSize: 11)),
+          Text(label, style: hud.label.copyWith(fontSize: 11)),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: HudTheme.fontCore,
-              color: Colors.white,
+              color: hud.textMain,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -436,12 +441,13 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
   }
 
   Widget _buildDualLineChart(NetworkState state) {
+    final hud = context.HudTheme;
     final rxSpots = state.rxRollingSpots;
     final txSpots = state.txRollingSpots;
 
     if (rxSpots.isEmpty) {
-      return const Center(
-        child: Text('COLLECTING THROUGHPUT DATA...', style: HudTheme.labelMuted),
+      return Center(
+        child: Text('COLLECTING THROUGHPUT DATA...', style: hud.label),
       );
     }
 
@@ -461,7 +467,7 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
           drawHorizontalLine: true,
           getDrawingHorizontalLine: (value) {
             return FlLine(
-              color: Colors.white10,
+              color: hud.textMain.withValues(alpha: 0.1),
               strokeWidth: 1,
               dashArray: [4, 4],
             );
@@ -482,7 +488,7 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
                   padding: const EdgeInsets.only(right: 4.0),
                   child: Text(
                     formatRate(value),
-                    style: HudTheme.labelMuted.copyWith(fontSize: 9),
+                    style: hud.label.copyWith(fontSize: 9),
                     textAlign: TextAlign.right,
                   ),
                 );
@@ -492,16 +498,16 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
         ),
         borderData: FlBorderData(
           show: true,
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: hud.textMain.withValues(alpha: 0.1)),
         ),
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
-            getTooltipColor: (touchedSpot) => HudTheme.bgPanel,
+            getTooltipColor: (touchedSpot) => hud.panel,
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((spot) {
                 final isRx = spot.barIndex == 0;
                 final label = isRx ? 'RX' : 'TX';
-                final color = isRx ? HudTheme.accentCyan : HudTheme.accentAmber;
+                final color = isRx ? hud.accentCyan : hud.accentAmber;
                 return LineTooltipItem(
                   '$label: ${formatRate(spot.y)}',
                   TextStyle(
@@ -520,26 +526,26 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
           LineChartBarData(
             spots: rxSpots,
             isCurved: true,
-            color: HudTheme.accentCyan,
+            color: hud.accentCyan,
             barWidth: 2,
             isStrokeCapRound: true,
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: HudTheme.accentCyan.withValues(alpha: 0.1),
+              color: hud.accentCyan.withValues(alpha: 0.1),
             ),
           ),
           // TX Bar Data (Amber)
           LineChartBarData(
             spots: txSpots,
             isCurved: true,
-            color: HudTheme.accentAmber,
+            color: hud.accentAmber,
             barWidth: 2,
             isStrokeCapRound: true,
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: HudTheme.accentAmber.withValues(alpha: 0.1),
+              color: hud.accentAmber.withValues(alpha: 0.1),
             ),
           ),
         ],
@@ -551,18 +557,19 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
   Widget _buildSessionTotalsCard(NetInterfaceSnapshot? primary, HudDensity d) {
     final rxTotal = primary?.sessionRxBytes ?? 0;
     final txTotal = primary?.sessionTxBytes ?? 0;
+    final hud = context.HudTheme;
 
     return Container(
       padding: EdgeInsets.all(d.panelPad),
-      decoration: HudTheme.hudPanelDecoration,
+      decoration: hud.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text('SESSION TOTALS', style: HudTheme.labelMuted),
-              Icon(Icons.data_usage, color: HudTheme.accentCyan, size: 18),
+            children: [
+              Text('SESSION TOTALS', style: hud.label),
+              Icon(Icons.data_usage, color: hud.accentCyan, size: 18),
             ],
           ),
           const SizedBox(height: 12),
@@ -571,12 +578,12 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
               Expanded(
                 child: Row(
                   children: [
-                    const Text('RECEIVED: ', style: HudTheme.labelMuted),
+                    Text('RECEIVED: ', style: hud.label),
                     Text(
                       formatBytes(rxTotal),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: HudTheme.fontCore,
-                        color: HudTheme.accentCyan,
+                        color: hud.accentCyan,
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                       ),
@@ -587,12 +594,12 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
               Expanded(
                 child: Row(
                   children: [
-                    const Text('SENT: ', style: HudTheme.labelMuted),
+                    Text('SENT: ', style: hud.label),
                     Text(
                       formatBytes(txTotal),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: HudTheme.fontCore,
-                        color: HudTheme.accentAmber,
+                        color: hud.accentAmber,
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                       ),
@@ -614,29 +621,30 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
   ) {
     final interfaces = snapshot?.interfaces ?? [];
     final primaryId = snapshot?.primaryInterfaceId;
+    final hud = context.HudTheme;
 
     return Container(
       padding: EdgeInsets.all(d.panelPad),
-      decoration: HudTheme.hudPanelDecoration,
+      decoration: hud.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('ALL INTERFACES', style: HudTheme.labelMuted),
+              Text('ALL INTERFACES', style: hud.label),
               Text(
                 '${interfaces.length} TOTAL',
-                style: HudTheme.labelMuted.copyWith(fontSize: 11),
+                style: hud.label.copyWith(fontSize: 11),
               ),
             ],
           ),
           const SizedBox(height: 12),
           if (interfaces.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 16.0),
               child: Center(
-                child: Text('NO NETWORK ADAPTERS DETECTED', style: HudTheme.labelMuted),
+                child: Text('NO NETWORK ADAPTERS DETECTED', style: hud.label),
               ),
             )
           else
@@ -644,9 +652,9 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: interfaces.length,
-              separatorBuilder: (context, index) => const Divider(
+              separatorBuilder: (context, index) => Divider(
                 height: 1,
-                color: Colors.white10,
+                color: hud.textMain.withValues(alpha: 0.1),
               ),
               itemBuilder: (context, index) {
                 final nic = interfaces[index];
@@ -666,7 +674,7 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
                         Icon(
                           nic.isUp ? Icons.circle : Icons.circle_outlined,
                           size: 10,
-                          color: nic.isUp ? HudTheme.accentCyan : HudTheme.textDim,
+                          color: nic.isUp ? hud.accentCyan : hud.textDim,
                         ),
                         const SizedBox(width: 10),
 
@@ -683,7 +691,7 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
                                       nic.name.toUpperCase(),
                                       style: TextStyle(
                                         fontFamily: HudTheme.fontCore,
-                                        color: nic.isUp ? Colors.white : HudTheme.textDim,
+                                        color: nic.isUp ? hud.textMain : hud.textDim,
                                         fontWeight: FontWeight.w600,
                                         fontSize: 13,
                                       ),
@@ -698,15 +706,15 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
                                         vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: HudTheme.accentCyan.withValues(alpha: 0.15),
-                                        border: Border.all(color: HudTheme.accentCyan, width: 0.8),
+                                        color: hud.accentCyan.withValues(alpha: 0.15),
+                                        border: Border.all(color: hud.accentCyan, width: 0.8),
                                         borderRadius: BorderRadius.circular(2),
                                       ),
-                                      child: const Text(
+                                      child: Text(
                                         'PINNED',
                                         style: TextStyle(
                                           fontFamily: HudTheme.fontCore,
-                                          color: HudTheme.accentCyan,
+                                          color: hud.accentCyan,
                                           fontSize: 9,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -718,7 +726,7 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
                               const SizedBox(height: 2),
                               Text(
                                 nic.interfaceType,
-                                style: HudTheme.labelMuted.copyWith(fontSize: 11),
+                                style: hud.label.copyWith(fontSize: 11),
                               ),
                             ],
                           ),
@@ -735,31 +743,31 @@ class _NetworkModuleScreenState extends ConsumerState<NetworkModuleScreen> {
                                     children: [
                                       Text(
                                         formatRate(nic.rxBytesPerSec),
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontFamily: HudTheme.fontCore,
-                                          color: HudTheme.accentCyan,
+                                          color: hud.accentCyan,
                                           fontSize: 12,
                                         ),
                                       ),
                                       const SizedBox(width: 2),
-                                      const Icon(Icons.arrow_downward, size: 12, color: HudTheme.accentCyan),
+                                      Icon(Icons.arrow_downward, size: 12, color: hud.accentCyan),
                                       const SizedBox(width: 8),
                                       Text(
                                         formatRate(nic.txBytesPerSec),
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontFamily: HudTheme.fontCore,
-                                          color: HudTheme.accentAmber,
+                                          color: hud.accentAmber,
                                           fontSize: 12,
                                         ),
                                       ),
                                       const SizedBox(width: 2),
-                                      const Icon(Icons.arrow_upward, size: 12, color: HudTheme.accentAmber),
+                                      Icon(Icons.arrow_upward, size: 12, color: hud.accentAmber),
                                     ],
                                   )
                                 : Text(
                                     'DOWN',
-                                    style: HudTheme.labelMuted.copyWith(
-                                      color: HudTheme.textDim,
+                                    style: hud.label.copyWith(
+                                      color: hud.textDim,
                                       fontSize: 12,
                                     ),
                                   ),

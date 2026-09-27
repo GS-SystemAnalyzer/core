@@ -22,7 +22,6 @@ import 'package:gs_analyzer_ui/models/scan_diff.dart';
 import 'package:gs_analyzer_ui/models/cache_stats.dart';
 import 'package:gs_analyzer_ui/models/scan_export_options.dart';
 import 'package:gs_analyzer_ui/models/automation_rule.dart';
-import 'dart:typed_data';
 
 class ApiService {
   final http.Client _client;
@@ -36,7 +35,8 @@ class ApiService {
   static const String settingsUrl = 'http://localhost:5200/api/settings';
   static const String driveUrl = 'http://localhost:5200/api/drives';
   static const String auditUrl = 'http://localhost:5200/api/audit';
-  static const String telemetryHistoryUrl = 'http://localhost:5200/api/telemetry/history';
+  static const String telemetryHistoryUrl =
+      'http://localhost:5200/api/telemetry/history';
   static const String tempFilesUrl = 'http://localhost:5200/api/tempfiles';
   static const String startupUrl = 'http://localhost:5200/api/startup';
   static const String schedulesUrl = 'http://localhost:5200/api/schedules';
@@ -461,7 +461,10 @@ class ApiService {
     return null;
   }
 
-  Future<FileTypeResult> getFileTypes(String root, {bool refresh = false}) async {
+  Future<FileTypeResult> getFileTypes(
+    String root, {
+    bool refresh = false,
+  }) async {
     final query = <String, String>{'root': root};
     if (refresh) query['refresh'] = 'true';
     final uri = Uri.parse(
@@ -485,7 +488,10 @@ class ApiService {
     );
   }
 
-  Future<ExtensionBreakdownResult> getExtensionBreakdown(String root, {bool refresh = false}) async {
+  Future<ExtensionBreakdownResult> getExtensionBreakdown(
+    String root, {
+    bool refresh = false,
+  }) async {
     final query = <String, String>{'root': root};
     if (refresh) query['refresh'] = 'true';
     final uri = Uri.parse(
@@ -509,9 +515,7 @@ class ApiService {
 
   Future<bool> clearCache() async {
     try {
-      final response = await _client.delete(
-        Uri.parse(cacheUrl),
-      );
+      final response = await _client.delete(Uri.parse(cacheUrl));
       if (response.statusCode == 200) {
         appLogger.i('[API] Cache cleared successfully.');
         return true;
@@ -526,12 +530,11 @@ class ApiService {
 
   Future<CacheStats?> getCacheStats() async {
     try {
-      final response = await _client.get(
-        Uri.parse('$cacheUrl/stats'),
-      );
+      final response = await _client.get(Uri.parse('$cacheUrl/stats'));
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
-        final data = json.containsKey('data') && json['data'] is Map<String, dynamic>
+        final data =
+            json.containsKey('data') && json['data'] is Map<String, dynamic>
             ? json['data'] as Map<String, dynamic>
             : json;
         return CacheStats.fromJson(data);
@@ -828,7 +831,9 @@ class ApiService {
         final jsonBody = jsonDecode(response.body) as Map<String, dynamic>;
         return DiskIoSnapshotCollection.fromJson(jsonBody);
       } else {
-        appLogger.i('Failed to fetch disk I/O snapshot: ${response.statusCode}');
+        appLogger.i(
+          'Failed to fetch disk I/O snapshot: ${response.statusCode}',
+        );
         return null;
       }
     } catch (e) {
@@ -840,10 +845,12 @@ class ApiService {
   // --- WATCHER EVENT LOG ---
 
   Future<List<dynamic>> getWatcherLog({int limit = 500, String? kind}) async {
-    var uri = Uri.parse('$watcherUrl/log').replace(queryParameters: {
-      'limit': limit.toString(),
-      if (kind != null) 'kind': kind,
-    });
+    var uri = Uri.parse('$watcherUrl/log').replace(
+      queryParameters: {
+        'limit': limit.toString(),
+        if (kind != null) 'kind': kind,
+      },
+    );
 
     try {
       final response = await _client.get(uri);
@@ -887,11 +894,13 @@ class ApiService {
     ScanExportFormat format = ScanExportFormat.json,
     bool redactPaths = false,
   }) async {
-    final uri = Uri.parse('http://localhost:5200/api/scan/export').replace(queryParameters: {
-      'root': root,
-      'format': format.value,
-      'redactPaths': redactPaths.toString(),
-    });
+    final uri = Uri.parse('http://localhost:5200/api/scan/export').replace(
+      queryParameters: {
+        'root': root,
+        'format': format.value,
+        'redactPaths': redactPaths.toString(),
+      },
+    );
 
     final response = await _client.get(uri);
     if (response.statusCode == 200) {
@@ -899,7 +908,9 @@ class ApiService {
     } else if (response.statusCode == 409) {
       throw const DiffNoScanException();
     } else {
-      throw Exception('Failed to export scan report: HTTP ${response.statusCode}');
+      throw Exception(
+        'Failed to export scan report: HTTP ${response.statusCode}',
+      );
     }
   }
 
@@ -910,11 +921,15 @@ class ApiService {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((json) => AutomationRule.fromJson(json)).toList();
     } else {
-      throw Exception('Failed to load automation rules: HTTP ${response.statusCode}');
+      throw Exception(
+        'Failed to load automation rules: HTTP ${response.statusCode}',
+      );
     }
   }
 
-  Future<AutomationRule> createAutomationRule(Map<String, dynamic> request) async {
+  Future<AutomationRule> createAutomationRule(
+    Map<String, dynamic> request,
+  ) async {
     final uri = Uri.parse('$automationUrl/rules');
     final response = await _client.post(
       uri,
@@ -925,13 +940,18 @@ class ApiService {
       return AutomationRule.fromJson(jsonDecode(response.body));
     } else if (response.statusCode == 400) {
       final json = jsonDecode(response.body);
-      throw Exception(json['message'] ?? 'Validation error on rule root allowlist');
+      throw Exception(
+        json['message'] ?? 'Validation error on rule root allowlist',
+      );
     } else {
       throw Exception('Failed to create rule: HTTP ${response.statusCode}');
     }
   }
 
-  Future<AutomationRule> updateAutomationRule(String id, Map<String, dynamic> request) async {
+  Future<AutomationRule> updateAutomationRule(
+    String id,
+    Map<String, dynamic> request,
+  ) async {
     final uri = Uri.parse('$automationUrl/rules/$id');
     final response = await _client.put(
       uri,

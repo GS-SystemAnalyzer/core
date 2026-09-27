@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/models/app_settings.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/scheduled_scans_panel.dart';
 import 'package:intl/intl.dart';
 import 'package:gs_analyzer_ui/providers/cache_stats_provider.dart';
@@ -29,32 +29,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    final hud = context.HudTheme;
 
     if (state.isLoading && state.currentSettings == null) {
       return Scaffold(
-        backgroundColor: HudTheme.bgBase,
+        backgroundColor: hud.base,
         body: Center(
-          child: CircularProgressIndicator(color: HudTheme.accentCyan),
+          child: CircularProgressIndicator(color: hud.accentCyan),
         ),
       );
     }
 
     if (state.currentSettings == null) {
       return Scaffold(
-        backgroundColor: HudTheme.bgBase,
+        backgroundColor: hud.base,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
-                color: Colors.redAccent,
+                color: hud.accentRed,
                 size: 48,
               ),
               const SizedBox(height: 16),
               Text(
                 'FAILED TO LOAD CONFIGURATION',
-                style: HudTheme.headerCyan.copyWith(color: Colors.redAccent),
+                style: hud.header.copyWith(color: hud.accentRed),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
@@ -70,11 +71,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final settings = state.currentSettings!;
 
     return Scaffold(
-      backgroundColor: HudTheme.bgBase,
+      backgroundColor: hud.base,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text('DEFENSE GRID CONFIG', style: HudTheme.headerCyan),
+        title: Text('DEFENSE GRID CONFIG', style: hud.header),
         actions: [
           if (state.hasUnsavedChanges)
             Center(
@@ -82,8 +83,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 padding: const EdgeInsets.only(right: 16.0),
                 child: Text(
                   '● UNSAVED CHANGES',
-                  style: HudTheme.bodyText.copyWith(
-                    color: Colors.amber,
+                  style: hud.body.copyWith(
+                    color: hud.accentAmber,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -115,9 +116,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           if (state.isLoading)
             Container(
-              color: Colors.black54,
+              color: hud.textPaint.withValues(alpha: 0.54),
               child: Center(
-                child: CircularProgressIndicator(color: HudTheme.accentCyan),
+                child: CircularProgressIndicator(color: hud.accentCyan),
               ),
             ),
         ],
@@ -133,6 +134,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     SettingsNotifier notifier,
     BuildContext context,
   ) {
+    final hud = context.HudTheme;
     return _SettingsSection(
       title: 'SCAN PARAMETERS',
       errorFilter: 'Scan',
@@ -167,12 +169,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               ...scan.excludedPaths.map(
                 (path) => Chip(
-                  label: Text(path, style: HudTheme.bodyText),
-                  backgroundColor: Colors.white10,
-                  deleteIcon: const Icon(
+                  label: Text(path, style: hud.body),
+                  backgroundColor: hud.textMain.withValues(alpha: 0.1),
+                  deleteIcon: Icon(
                     Icons.close,
                     size: 16,
-                    color: Colors.white70,
+                    color: hud.textMain.withValues(alpha: 0.70),
                   ),
                   onDeleted: () {
                     scan.excludedPaths.remove(path);
@@ -183,10 +185,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ActionChip(
                 label: Text(
                   '+ ADD',
-                  style: HudTheme.bodyText.copyWith(color: HudTheme.accentCyan),
+                  style: hud.body.copyWith(color: hud.accentCyan),
                 ),
-                backgroundColor: HudTheme.accentCyan.withValues(alpha: 0.1),
-                side: BorderSide(color: HudTheme.accentCyan),
+                backgroundColor: hud.accentCyan.withValues(alpha: 0.1),
+                side: BorderSide(color: hud.accentCyan),
                 onPressed: () => _showAddPathDialog(context, scan, notifier),
               ),
             ],
@@ -369,6 +371,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     WidgetRef ref,
   ) {
     final statsAsync = ref.watch(cacheStatsProvider);
+    final hud = context.HudTheme;
 
     return _SettingsSection(
       title: 'MEMORY & CACHE',
@@ -417,7 +420,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             alignment: Alignment.centerRight,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: HudTheme.accentRed,
+                backgroundColor: hud.accentRed,
               ),
               onPressed: () async {
                 final success = await notifier.clearCache();
@@ -426,13 +429,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       backgroundColor: success
-                          ? Colors.green.shade900
-                          : Colors.red.shade900,
+                          ? hud.accentGreen.withValues(alpha: 0.09)
+                          : hud.accentRed.withValues(alpha: 0.09),
                       content: Text(
                         success
                             ? 'Cache cleared. Run a new Directory Scan to repopulate.'
                             : 'Failed to clear cache. Is the backend running?',
-                        style: HudTheme.bodyText,
+                        style: hud.body,
                       ),
                     ),
                   );
@@ -459,8 +462,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       final hitRate = stats?.formattedHitRate ?? '0%';
                       return Text(
                         'CACHED: $nodes NODES · $memory · HIT RATE $hitRate',
-                        style: HudTheme.bodyText.copyWith(
-                          color: Colors.white38,
+                        style: hud.body.copyWith(
+                          color: hud.textMain.withValues(alpha: 0.38),
                           fontSize: 11,
                           letterSpacing: 1.2,
                           fontWeight: FontWeight.w600,
@@ -469,8 +472,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     },
                     loading: () => Text(
                       'CACHED: FETCHING STATS...',
-                      style: HudTheme.bodyText.copyWith(
-                        color: Colors.white38,
+                      style: hud.body.copyWith(
+                        color: hud.textMain.withValues(alpha: 0.38),
                         fontSize: 11,
                         letterSpacing: 1.2,
                         fontWeight: FontWeight.w600,
@@ -478,8 +481,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     error: (_, __) => Text(
                       'CACHED: STATS OFFLINE',
-                      style: HudTheme.bodyText.copyWith(
-                        color: Colors.white38,
+                      style: hud.body.copyWith(
+                        color: hud.textMain.withValues(alpha: 0.38),
                         fontSize: 11,
                         letterSpacing: 1.2,
                         fontWeight: FontWeight.w600,
@@ -503,6 +506,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     SettingsState state,
     SettingsNotifier notifier,
   ) {
+    final currentTheme = app.theme.toLowerCase();
+    final hud = context.HudTheme;
+    final isLight = currentTheme == 'cyber_light' || currentTheme == 'light';
+    final isSystem = currentTheme == 'system';
+    final isDark = (currentTheme == 'cyber_dark' || currentTheme == 'dark') || (!isLight && !isSystem);
     return _SettingsSection(
       title: 'APPEARANCE',
       errorFilter: 'Appearance',
@@ -517,6 +525,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             app.showAnimations = val;
             notifier.updateUI();
           }),
+          _buildToggle('DARK MODE', isDark, (val) {
+            if (val) {
+              app.theme = 'cyber_dark';
+            }
+            notifier.updateUI();
+          }),
+          _buildToggle('LIGHT MODE', isLight, (val) {
+            if (val) {
+              app.theme = 'cyber_light';
+            }
+            notifier.updateUI();
+          }),
+          _buildToggle('SYSTEM MODE', isSystem, (val) {
+            if (val) {
+              app.theme = 'system';
+            }
+            notifier.updateUI();
+          }),
           const SizedBox(height: 16),
           Align(
             alignment: Alignment.centerLeft,
@@ -525,9 +551,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              _colorSwatch('cyan', Colors.cyan, app, notifier),
-              _colorSwatch('green', Colors.greenAccent, app, notifier),
-              _colorSwatch('amber', Colors.amber, app, notifier),
+              _colorSwatch('cyan', hud.accentCyan, app, notifier),
+              _colorSwatch('green', hud.accentGreen, app, notifier),
+              _colorSwatch('amber', hud.accentAmber, app, notifier),
             ],
           ),
         ],
@@ -543,9 +569,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     // Read the *saved* port so we can detect unsaved port changes
     final savedPort = state.savedSettings?.advanced.backendPort ?? 5200;
     final portChanged = adv.backendPort != savedPort;
+    final hud = context.HudTheme;
 
     return Container(
-      decoration: HudTheme.hudPanelDecoration,
+      decoration: hud.hudPanelDecoration,
       child: Material(
         color: Colors.transparent,
         child: Theme(
@@ -553,7 +580,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: ExpansionTile(
             title: Text(
               'ADVANCED ▾',
-              style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+              style: hud.body.copyWith(color: hud.textDim),
             ),
             childrenPadding: const EdgeInsets.all(16),
           children: [
@@ -566,23 +593,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.amber.withValues(alpha: 0.1),
-                  border: Border.all(color: Colors.amber),
+                  color: hud.accentAmber.withValues(alpha: 0.1),
+                  border: Border.all(color: hud.accentAmber),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.warning_amber_rounded,
-                      color: Colors.amber,
+                      color: hud.accentAmber,
                       size: 18,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Port change requires a full backend restart to take effect.',
-                        style: HudTheme.bodyText.copyWith(
-                          color: Colors.amber,
+                        style: hud.body.copyWith(
+                          color: hud.accentAmber,
                           fontSize: 12,
                         ),
                       ),
@@ -642,6 +669,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     SettingsState state,
     SettingsNotifier notifier,
   ) {
+    final hud = context.HudTheme;
     return Column(
       children: [
         SizedBox(
@@ -650,11 +678,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: state.hasUnsavedChanges
-                  ? HudTheme.accentCyan
-                  : Colors.white10,
+                  ? hud.accentCyan
+                  : hud.textMain.withValues(alpha: 0.1),
               foregroundColor: state.hasUnsavedChanges
-                  ? Colors.black
-                  : Colors.white54,
+                  ? hud.textPaint
+                  : hud.textMain.withValues(alpha: 0.54),
             ),
             onPressed: state.hasUnsavedChanges
                 ? () async {
@@ -664,11 +692,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         SnackBar(
                           content: Text(
                             'SETTINGS SAVED SUCESSFULLY',
-                            style: HudTheme.bodyText.copyWith(
-                              color: Colors.black,
+                            style: hud.body.copyWith(
+                              color: hud.textPaint,
                             ),
                           ),
-                          backgroundColor: HudTheme.accentCyan,
+                          backgroundColor: hud.accentCyan,
                           duration: const Duration(seconds: 2),
                         ),
                       );
@@ -687,8 +715,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           height: 45,
           child: OutlinedButton(
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.redAccent),
-              foregroundColor: Colors.redAccent,
+              side: BorderSide(color: hud.accentRed),
+              foregroundColor: hud.accentRed,
             ),
             onPressed: () => _confirmReset(context, notifier),
             child: const Text(
@@ -702,25 +730,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _confirmReset(BuildContext context, SettingsNotifier notifier) {
+    final hud = context.HudTheme;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: HudTheme.bgBase,
+        backgroundColor: hud.base,
         title: Text(
           'INITIATE RESET?',
-          style: HudTheme.headerCyan.copyWith(color: Colors.redAccent),
+          style: hud.header.copyWith(color: hud.accentRed),
         ),
         content: Text(
           'This will wipe all configurations and restore factory defaults',
-          style: HudTheme.bodyText,
+          style: hud.body,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('CANCEL', style: HudTheme.bodyText),
+            child: Text('CANCEL', style: hud.body),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            style: ElevatedButton.styleFrom(backgroundColor: hud.accentRed),
             onPressed: () async {
               Navigator.pop(ctx);
               final success = await notifier.resetToDefaults();
@@ -729,17 +758,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   SnackBar(
                     content: Text(
                       'RESTORED TO FACTORY DEFAULTS',
-                      style: HudTheme.bodyText.copyWith(color: Colors.white),
+                      style: hud.body.copyWith(color: hud.textMain),
                     ),
-                    backgroundColor: Colors.redAccent,
+                    backgroundColor: hud.accentRed,
                     duration: const Duration(seconds: 2),
                   ),
                 );
               }
             },
-            child: const Text(
+            child: Text(
               'CONFIRM OVERWRITE ',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: hud.textMain),
             ),
           ),
         ],
@@ -752,22 +781,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ScanSettings scan,
     SettingsNotifier notifier,
   ) {
+    final hud = context.HudTheme;
     String input = '';
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: HudTheme.bgBase,
-        title: Text('ADD EXCLUSION PATH', style: HudTheme.headerCyan),
+        backgroundColor: hud.base,
+        title: Text('ADD EXCLUSION PATH', style: hud.header),
         content: TextField(
-          style: HudTheme.bodyText,
+          style: hud.body,
           decoration: InputDecoration(
             hintText: 'C:/My/Secret/Folder',
-            hintStyle: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+            hintStyle: hud.body.copyWith(color: hud.textDim),
             enabledBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: HudTheme.accentCyan),
+              borderSide: BorderSide(color: hud.accentCyan),
             ),
             focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: HudTheme.accentCyan),
+              borderSide: BorderSide(color: hud.accentCyan),
             ),
           ),
           onChanged: (v) => input = v,
@@ -775,11 +805,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('CANCEL', style: HudTheme.bodyText),
+            child: Text('CANCEL', style: hud.body),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: HudTheme.accentCyan,
+              backgroundColor: hud.accentCyan,
             ),
             onPressed: () {
               if (input.isNotEmpty && !scan.excludedPaths.contains(input)) {
@@ -788,7 +818,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               }
               Navigator.pop(ctx);
             },
-            child: const Text('ADD', style: TextStyle(color: Colors.black)),
+            child: Text('ADD', style: TextStyle(color: hud.textPaint)),
           ),
         ],
       ),
@@ -814,7 +844,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         decoration: BoxDecoration(
           color: color,
           shape: BoxShape.circle,
-          border: isSelected ? Border.all(color: Colors.white, width: 3) : null,
+          border: isSelected ? Border.all(color: context.HudTheme.textMain.withValues(alpha: 0.1), width: 3) : null,
           boxShadow: isSelected
               ? [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 8)]
               : null,
@@ -843,8 +873,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             min: min,
             max: max,
             divisions: divisions,
-            activeColor: HudTheme.accentCyan,
-            inactiveColor: Colors.white12,
+            activeColor: context.HudTheme.accentCyan,
+            inactiveColor: context.HudTheme.textMain.withValues(alpha: 0.12),
             onChanged: onChanged,
           ),
         ),
@@ -870,7 +900,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             HudLabel(label),
             Switch(
               value: value,
-              activeThumbColor: HudTheme.accentCyan,
+              activeThumbColor: context.HudTheme.accentCyan,
               onChanged: onChanged,
             ),
           ],
@@ -898,8 +928,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               padding: const EdgeInsets.only(bottom: 8.0),
               child: Text(
                 e,
-                style: HudTheme.bodyText.copyWith(
-                  color: Colors.redAccent,
+                style: context.HudTheme.body.copyWith(
+                  color: context.HudTheme.accentRed,
                   fontSize: 12,
                 ),
               ),
@@ -925,15 +955,16 @@ class _SettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hud = context.HudTheme;
     return Container(
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.only(bottom: 16),
-      decoration: HudTheme.hudPanelDecoration,
+      decoration: hud.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: HudTheme.headerCyan.copyWith(letterSpacing: 2)),
-          const Divider(color: Colors.white10, height: 24, thickness: 1),
+          Text(title, style: hud.header.copyWith(letterSpacing: 2)),
+          Divider(color: hud.textMain.withValues(alpha: 0.1), height: 24, thickness: 1),
 
           if (state.validationErrors.any(
             (e) => e.toLowerCase().contains(errorFilter.toLowerCase()),
@@ -947,8 +978,8 @@ class _SettingsSection extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Text(
                       e,
-                      style: HudTheme.bodyText.copyWith(
-                        color: Colors.redAccent,
+                      style: hud.body.copyWith(
+                        color: hud.accentRed,
                         fontSize: 12,
                       ),
                     ),
@@ -996,6 +1027,7 @@ class _CacheRefreshButtonState extends State<_CacheRefreshButton>
 
   @override
   Widget build(BuildContext context) {
+    final hud = context.HudTheme;
     return Tooltip(
       message: 'Refresh cache diagnostics',
       child: Material(
@@ -1003,15 +1035,15 @@ class _CacheRefreshButtonState extends State<_CacheRefreshButton>
         child: InkWell(
           onTap: _handleTap,
           borderRadius: BorderRadius.circular(6),
-          hoverColor: Colors.white10,
+          hoverColor: hud.textMain.withValues(alpha: 0.1),
           child: Padding(
             padding: const EdgeInsets.all(6.0),
             child: RotationTransition(
               turns: _controller,
-              child: const Icon(
+              child: Icon(
                 Icons.refresh,
                 size: 15,
-                color: HudTheme.accentCyan,
+                color: hud.accentCyan,
               ),
             ),
           ),

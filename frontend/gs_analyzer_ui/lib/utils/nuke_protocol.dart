@@ -31,8 +31,6 @@ Future<void> executeNukeProtocol(
 
   if (targetsToNuke.isEmpty) return;
 
-  final isBulk = targetsToNuke.length > 1;
-
   ref.invalidate(nukeProgressProvider);
   ref.invalidate(nukeCompletedProvider);
   ref.invalidate(nukeTargetProvider);

@@ -5,35 +5,37 @@ import 'package:gs_analyzer_ui/models/disk_io_telemetry.dart';
 import 'package:gs_analyzer_ui/providers/disk_io_provider.dart';
 import 'package:gs_analyzer_ui/utils/formatters.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 class DiskIoCard extends ConsumerWidget {
   final DiskIoSnapshot? overrideDisk;
 
   const DiskIoCard({super.key, this.overrideDisk});
 
-  Color _getQueueColor(double queueLength) {
-    if (queueLength < 2.0) return HudTheme.accentGreen;
-    if (queueLength <= 5.0) return HudTheme.accentAmber;
-    return HudTheme.accentRed;
+  Color _getQueueColor(double queueLength, BuildContext context) {
+    if (queueLength < 2.0) return context.HudTheme.accentGreen;
+    if (queueLength <= 5.0) return context.HudTheme.accentAmber;
+    return context.HudTheme.accentRed;
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(diskIoProvider);
     final disk = overrideDisk ?? ref.watch(currentDriveDiskIoProvider);
+    final hud = context.HudTheme;
 
     if (disk == null) {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: HudTheme.bgBase,
-          border: Border.all(color: Colors.white10),
+          color: hud.base,
+          border: Border.all(color: hud.textMain.withValues(alpha: 0.1)),
         ),
-        child: const SizedBox(
+        child: SizedBox(
           height: 80,
           child: Center(
-            child: LinearProgressIndicator(color: HudTheme.accentCyan),
+            child: LinearProgressIndicator(color: hud.accentCyan),
           ),
         ),
       );
@@ -49,13 +51,13 @@ class DiskIoCard extends ConsumerWidget {
         ? 100.0
         : disk.activeTimePercent;
 
-    final queueColor = _getQueueColor(disk.avgQueueLength);
+    final queueColor = _getQueueColor(disk.avgQueueLength, context);
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: HudTheme.bgBase,
-        border: Border.all(color: Colors.white10),
+        color: hud.base,
+        border: Border.all(color: hud.textMain.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,7 +76,7 @@ class DiskIoCard extends ConsumerWidget {
                       fontFamily: HudTheme.fontCore,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: isUnmapped ? HudTheme.textDim : HudTheme.accentCyan,
+                      color: isUnmapped ? hud.textDim : hud.accentCyan,
                     ),
                   ),
                 ],
@@ -82,10 +84,10 @@ class DiskIoCard extends ConsumerWidget {
               Flexible(
                 child: Text(
                   disk.model,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: HudTheme.fontCore,
                     fontSize: 11,
-                    color: HudTheme.textDim,
+                    color: hud.textDim,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -100,44 +102,44 @@ class DiskIoCard extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  const Text(
+                  Text(
                     '▼ READ: ',
                     style: TextStyle(
                       fontFamily: HudTheme.fontCore,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: HudTheme.accentCyan,
+                      color: hud.accentCyan,
                     ),
                   ),
                   Text(
                     formatRate(disk.readBytesPerSec),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: HudTheme.fontCore,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: HudTheme.accentCyan,
+                      color: hud.accentCyan,
                     ),
                   ),
                 ],
               ),
               Row(
                 children: [
-                  const Text(
+                  Text(
                     '▲ WRITE: ',
                     style: TextStyle(
                       fontFamily: HudTheme.fontCore,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: HudTheme.accentAmber,
+                      color: hud.accentAmber,
                     ),
                   ),
                   Text(
                     formatRate(disk.writeBytesPerSec),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: HudTheme.fontCore,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: HudTheme.accentAmber,
+                      color: hud.accentAmber,
                     ),
                   ),
                 ],
@@ -154,21 +156,21 @@ class DiskIoCard extends ConsumerWidget {
                 message: 'Raw: ${disk.activeTimePercent.toStringAsFixed(1)}%',
                 child: Row(
                   children: [
-                    const Text(
+                    Text(
                       'ACTIVE: ',
                       style: TextStyle(
                         fontFamily: HudTheme.fontCore,
                         fontSize: 12,
-                        color: Colors.white70,
+                        color: hud.textMain.withValues(alpha: 0.70),
                       ),
                     ),
                     Text(
                       '${clampedActivePercent.toStringAsFixed(0)}%',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: HudTheme.fontCore,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: hud.textMain,
                       ),
                     ),
                   ],
@@ -176,12 +178,12 @@ class DiskIoCard extends ConsumerWidget {
               ),
               Row(
                 children: [
-                  const Text(
+                  Text(
                     'QUEUE: ',
                     style: TextStyle(
                       fontFamily: HudTheme.fontCore,
                       fontSize: 12,
-                      color: Colors.white70,
+                      color: hud.textMain.withValues(alpha: 0.7),
                     ),
                   ),
                   Text(
@@ -220,13 +222,13 @@ class DiskIoCard extends ConsumerWidget {
                         : [const FlSpot(0, 0)],
                     isCurved: true,
                     curveSmoothness: 0.2,
-                    color: HudTheme.accentCyan,
+                    color: hud.accentCyan,
                     barWidth: 1.8,
                     isStrokeCapRound: true,
                     dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: HudTheme.accentCyan.withValues(alpha: 0.1),
+                      color: hud.accentCyan.withValues(alpha: 0.1),
                     ),
                   ),
                   // Write Rate (Amber)
@@ -236,13 +238,13 @@ class DiskIoCard extends ConsumerWidget {
                         : [const FlSpot(0, 0)],
                     isCurved: true,
                     curveSmoothness: 0.2,
-                    color: HudTheme.accentAmber,
+                    color: hud.accentAmber,
                     barWidth: 1.8,
                     isStrokeCapRound: true,
                     dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: HudTheme.accentAmber.withValues(alpha: 0.1),
+                      color: hud.accentAmber.withValues(alpha: 0.1),
                     ),
                   ),
                 ],
@@ -257,18 +259,18 @@ class DiskIoCard extends ConsumerWidget {
             children: [
               Text(
                 'SESSION READ: ${formatBytes(disk.sessionReadBytes)}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: HudTheme.fontCore,
                   fontSize: 11,
-                  color: Colors.white54,
+                  color: hud.textMain.withValues(alpha: 0.54),
                 ),
               ),
               Text(
                 'SESSION WRITE: ${formatBytes(disk.sessionWriteBytes)}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: HudTheme.fontCore,
                   fontSize: 11,
-                  color: Colors.white54,
+                  color: hud.textMain.withValues(alpha: 0.54),
                 ),
               ),
             ],

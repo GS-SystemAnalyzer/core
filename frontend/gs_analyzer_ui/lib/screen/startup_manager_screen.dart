@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/models/startup_program.dart';
 import 'package:gs_analyzer_ui/providers/startup_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 class StartupManagerScreen extends ConsumerWidget {
   const StartupManagerScreen({super.key});
@@ -11,27 +12,28 @@ class StartupManagerScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(startupProvider);
+    final hud = context.HudTheme;
 
     return Container(
-      color: HudTheme.bgBase,
+      color: hud.base,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.rocket_launch_outlined,
-                color: HudTheme.accentCyan,
+                color: hud.accentCyan,
                 size: 22,
               ),
               const SizedBox(width: 10),
-              const Text('STARTUP MANAGER', style: HudTheme.headerCyan),
+              Text('STARTUP MANAGER', style: hud.header),
               const Spacer(),
               IconButton(
-                icon: const Icon(
+                icon: Icon(
                   Icons.refresh,
-                  color: HudTheme.textDim,
+                  color: hud.textDim,
                   size: 20,
                 ),
                 tooltip: 'Reload',
@@ -40,18 +42,18 @@ class StartupManagerScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'MANAGE PROGRAMS THAT LAUNCH AT LOGIN',
-            style: HudTheme.labelMuted,
+            style: hud.label,
           ),
           const SizedBox(height: 16),
           Expanded(
             child: Container(
-              decoration: HudTheme.hudPanelDecoration,
+              decoration: hud.hudPanelDecoration,
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: state.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(color: HudTheme.accentCyan),
+                loading: () => Center(
+                  child: CircularProgressIndicator(color: hud.accentCyan),
                 ),
                 error: (e, _) => _ErrorPanel(
                   message: e.toString(),
@@ -59,17 +61,17 @@ class StartupManagerScreen extends ConsumerWidget {
                 ),
                 data: (programs) {
                   if (programs.isEmpty) {
-                    return const Center(
+                    return Center(
                       child: Text(
                         'NO STARTUP ENTRIES DETECTED',
-                        style: HudTheme.labelMuted,
+                        style: hud.label,
                       ),
                     );
                   }
                   return ListView.separated(
                     itemCount: programs.length,
                     separatorBuilder: (_, __) =>
-                        const Divider(color: Colors.white10, height: 1),
+                        Divider(color: hud.textMain.withValues(alpha: 0.1), height: 1),
                     itemBuilder: (context, i) =>
                         _StartupRow(program: programs[i]),
                   );
@@ -91,6 +93,7 @@ class _StartupRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(startupProvider.notifier);
+    final hud = context.HudTheme;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
@@ -100,7 +103,7 @@ class _StartupRow extends ConsumerWidget {
             program.isEnabled
                 ? Icons.check_circle_outline
                 : Icons.pause_circle_outline,
-            color: program.isEnabled ? HudTheme.accentGreen : HudTheme.textDim,
+            color: program.isEnabled ? hud.accentGreen : hud.textDim,
             size: 20,
           ),
           const SizedBox(width: 12),
@@ -114,8 +117,8 @@ class _StartupRow extends ConsumerWidget {
                       child: Text(
                         program.name.isEmpty ? '(unnamed)' : program.name,
                         overflow: TextOverflow.ellipsis,
-                        style: HudTheme.bodyText.copyWith(
-                          color: HudTheme.textMain,
+                        style: hud.body.copyWith(
+                          color: hud.textMain,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -131,7 +134,7 @@ class _StartupRow extends ConsumerWidget {
                       : '${program.executablePath} ${program.arguments}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: HudTheme.labelMuted,
+                  style: hud.label,
                 ),
               ],
             ),
@@ -139,13 +142,13 @@ class _StartupRow extends ConsumerWidget {
           const SizedBox(width: 12),
           Switch(
             value: program.isEnabled,
-            activeColor: HudTheme.accentCyan,
+            activeThumbColor: hud.accentCyan,
             onChanged: (_) => _guard(context, () => notifier.toggle(program)),
           ),
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.delete_outline,
-              color: HudTheme.accentRed,
+              color: hud.accentRed,
               size: 20,
             ),
             tooltip: program.isSystemScope
@@ -162,25 +165,26 @@ class _StartupRow extends ConsumerWidget {
     BuildContext context,
     StartupNotifier notifier,
   ) async {
+    final hud = context.HudTheme;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: HudTheme.bgPanel,
-        title: const Text('REMOVE STARTUP ENTRY', style: HudTheme.headerCyan),
+        backgroundColor: hud.panel,
+        title: Text('REMOVE STARTUP ENTRY', style: hud.header),
         content: Text(
           program.isSystemScope
               ? 'Remove "${program.name}" from startup?\n\nThis is a SYSTEM entry and requires administrator privileges.'
               : 'Remove "${program.name}" from startup?',
-          style: HudTheme.bodyText,
+          style: hud.body,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('CANCEL', style: HudTheme.labelMuted),
+            child: Text('CANCEL', style: hud.label),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('REMOVE', style: HudTheme.actionRed),
+            child: Text('REMOVE', style: hud.actionRed),
           ),
         ],
       ),
@@ -198,9 +202,9 @@ class _StartupRow extends ConsumerWidget {
     try {
       await action();
     } on StartupAdminRequiredException catch (e) {
-      _snack(context, e.message, HudTheme.accentAmber);
+      _snack(context, e.message, context.HudTheme.accentAmber);
     } catch (e) {
-      _snack(context, e.toString(), HudTheme.accentRed);
+      _snack(context, e.toString(), context.HudTheme.accentRed);
     }
   }
 
@@ -208,10 +212,10 @@ class _StartupRow extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: HudTheme.bgPanel,
+        backgroundColor: context.HudTheme.panel,
         content: Text(
           msg,
-          style: HudTheme.bodyText.copyWith(color: color),
+          style: context.HudTheme.body.copyWith(color: color),
         ),
       ),
     );
@@ -225,8 +229,9 @@ class _ScopeTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hud = context.HudTheme;
     final isSystem = scope.toLowerCase() == 'system';
-    final color = isSystem ? HudTheme.accentAmber : HudTheme.textDim;
+    final color = isSystem ? hud.accentAmber : hud.textDim;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
@@ -254,33 +259,34 @@ class _ErrorPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hud = context.HudTheme;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.warning_amber_outlined,
-            color: HudTheme.accentRed,
+            color: hud.accentRed,
             size: 32,
           ),
           const SizedBox(height: 12),
-          const Text('STARTUP MODULE ERROR', style: HudTheme.actionRed),
+          Text('STARTUP MODULE ERROR', style: hud.actionRed),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
               message,
               textAlign: TextAlign.center,
-              style: HudTheme.labelMuted,
+              style: hud.label,
             ),
           ),
           const SizedBox(height: 16),
           OutlinedButton(
             onPressed: onRetry,
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: HudTheme.accentCyan),
+              side: BorderSide(color: hud.accentCyan),
             ),
-            child: const Text('RETRY', style: HudTheme.statCyan),
+            child: Text('RETRY', style: hud.statCyan),
           ),
         ],
       ),

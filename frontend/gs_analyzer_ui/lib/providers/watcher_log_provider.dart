@@ -1,4 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/models/watcher_event.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
@@ -24,8 +23,10 @@ class WatcherLogState {
     return WatcherLogState(
       events: events ?? this.events,
       isPaused: isPaused ?? this.isPaused,
-      filterKind: filterKind != null 
-          ? (filterKind == WatcherChangeKind.modified ? this.filterKind : filterKind) // workaround if we need null
+      filterKind: filterKind != null
+          ? (filterKind == WatcherChangeKind.modified
+                ? this.filterKind
+                : filterKind) // workaround if we need null
           : this.filterKind,
     );
   }
@@ -38,7 +39,8 @@ class WatcherLogNotifier extends StateNotifier<WatcherLogState> {
   bool _initialized = false;
   bool _isAutoScrollLocked = false;
 
-  WatcherLogNotifier(this._api, this._telemetry) : super(WatcherLogState(events: [])) {
+  WatcherLogNotifier(this._api, this._telemetry)
+    : super(WatcherLogState(events: [])) {
     _telemetry.onWatcherEventLogged = _onSignalREvent;
     init();
   }
@@ -46,10 +48,10 @@ class WatcherLogNotifier extends StateNotifier<WatcherLogState> {
   Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
-    
+
     final rawLogs = await _api.getWatcherLog(limit: 500);
     final events = rawLogs.map((json) => WatcherEvent.fromJson(json)).toList();
-    
+
     state = WatcherLogState(
       events: events,
       isPaused: state.isPaused,
@@ -59,7 +61,7 @@ class WatcherLogNotifier extends StateNotifier<WatcherLogState> {
 
   void _onSignalREvent(Map<String, dynamic> rawEvent) {
     final event = WatcherEvent.fromJson(rawEvent);
-    
+
     if (state.isPaused || _isAutoScrollLocked) {
       _pendingEvents.insert(0, event);
       if (_pendingEvents.length > 500) {
@@ -76,12 +78,14 @@ class WatcherLogNotifier extends StateNotifier<WatcherLogState> {
     // But since the backend sends the fully updated event with new occurrences count,
     // we just replace it if it's the same path and kind within the same window.
     // Or simplest: if the very top event matches kind and path, replace it.
-    
+
     List<WatcherEvent> newEvents = List.from(state.events);
-    
+
     if (newEvents.isNotEmpty) {
       final top = newEvents.first;
-      if (top.kind == event.kind && top.path == event.path && event.occurrences > top.occurrences) {
+      if (top.kind == event.kind &&
+          top.path == event.path &&
+          event.occurrences > top.occurrences) {
         newEvents[0] = event; // Update in-place
       } else {
         newEvents.insert(0, event);
@@ -147,7 +151,7 @@ class WatcherLogNotifier extends StateNotifier<WatcherLogState> {
       newEvents = newEvents.sublist(0, 500);
     }
     _pendingEvents.clear();
-    
+
     state = WatcherLogState(
       events: newEvents,
       isPaused: false,
@@ -181,8 +185,9 @@ class WatcherLogNotifier extends StateNotifier<WatcherLogState> {
   }
 }
 
-final watcherLogProvider = StateNotifierProvider<WatcherLogNotifier, WatcherLogState>((ref) {
-  final api = ApiService();
-  final telemetryNotifier = ref.read(telemetryProvider.notifier);
-  return WatcherLogNotifier(api, telemetryNotifier.service!);
-});
+final watcherLogProvider =
+    StateNotifierProvider<WatcherLogNotifier, WatcherLogState>((ref) {
+      final api = ApiService();
+      final telemetryNotifier = ref.read(telemetryProvider.notifier);
+      return WatcherLogNotifier(api, telemetryNotifier.service!);
+    });
