@@ -139,15 +139,17 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
           // ── Body ──
           Expanded(
             child: tempState.isLoading
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(color: HudTheme.accentGreen),
-                        SizedBox(height: 24),
+                        const CircularProgressIndicator(color: HudTheme.accentGreen),
+                        const SizedBox(height: 24),
                         Text(
-                          'SCANNING TEMP SECTORS...',
-                          style: TextStyle(
+                          tempState.isCleaning
+                              ? 'PURGING TEMP SECTORS (${tempState.selectedPaths.length} TARGETS)...'
+                              : 'SCANNING TEMP SECTORS...',
+                          style: const TextStyle(
                             color: HudTheme.accentGreen,
                             fontFamily: HudTheme.fontCore,
                             fontWeight: FontWeight.bold,

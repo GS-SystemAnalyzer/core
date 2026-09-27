@@ -6,6 +6,7 @@ import 'package:gs_analyzer_ui/services/api_service.dart';
 
 class TempCleanerState {
   final bool isLoading;
+  final bool isCleaning;
   final TempPreviewResponse? preview;
   final Set<String> selectedPaths;
   final TempCleanResult? cleanResult;
@@ -13,6 +14,7 @@ class TempCleanerState {
 
   TempCleanerState({
     this.isLoading = false,
+    this.isCleaning = false,
     this.preview,
     this.selectedPaths = const {},
     this.cleanResult,
@@ -21,6 +23,7 @@ class TempCleanerState {
 
   TempCleanerState copyWith({
     bool? isLoading,
+    bool? isCleaning,
     TempPreviewResponse? preview,
     Set<String>? selectedPaths,
     TempCleanResult? cleanResult,
@@ -31,6 +34,7 @@ class TempCleanerState {
   }) {
     return TempCleanerState(
       isLoading: isLoading ?? this.isLoading,
+      isCleaning: isCleaning ?? this.isCleaning,
       preview: clearPreview ? null : (preview ?? this.preview),
       selectedPaths: selectedPaths ?? this.selectedPaths,
       cleanResult: clearCleanResult ? null : (cleanResult ?? this.cleanResult),
@@ -41,32 +45,40 @@ class TempCleanerState {
 
 class TempCleanerNotifier extends StateNotifier<TempCleanerState> {
   final Ref ref;
+  final ApiService _apiService;
 
-  TempCleanerNotifier(this.ref) : super(TempCleanerState());
+  TempCleanerNotifier(this.ref, [ApiService? apiService])
+      : _apiService = apiService ?? ApiService(),
+        super(TempCleanerState());
 
   Future<void> fetchPreview() async {
     state = state.copyWith(
       isLoading: true,
+      isCleaning: false,
       clearPreview: true,
       clearCleanResult: true,
       clearError: true,
     );
 
     try {
-      final apiService = ApiService();
-      final result = await apiService.getTempPreview();
+      final result = await _apiService.getTempPreview();
 
       // Auto-select all location paths by default.
       final allPaths = result.locations.map((loc) => loc.path).toSet();
 
       state = state.copyWith(
         isLoading: false,
+        isCleaning: false,
         preview: result,
         selectedPaths: allPaths,
       );
     } catch (e) {
       appLogger.i('TEMP PREVIEW CRASHED: $e');
-      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      state = state.copyWith(
+        isLoading: false,
+        isCleaning: false,
+        errorMessage: e.toString(),
+      );
     }
   }
 
@@ -85,20 +97,41 @@ class TempCleanerNotifier extends StateNotifier<TempCleanerState> {
 
     state = state.copyWith(
       isLoading: true,
+      isCleaning: true,
       clearCleanResult: true,
       clearError: true,
     );
 
     try {
-      final apiService = ApiService();
-      final result = await apiService.cleanTempFiles(
+      final result = await _apiService.cleanTempFiles(
         state.selectedPaths.toList(),
       );
 
-      state = state.copyWith(isLoading: false, cleanResult: result);
+      // Immediately fetch fresh preview so state reflects the actual post-clean filesystem.
+      TempPreviewResponse? freshPreview;
+      Set<String> remainingPaths = const {};
+      try {
+        freshPreview = await _apiService.getTempPreview();
+        remainingPaths = freshPreview.locations.map((loc) => loc.path).toSet();
+      } catch (previewErr) {
+        appLogger.i('TEMP POST-CLEAN PREVIEW FAILED: $previewErr');
+      }
+
+      state = state.copyWith(
+        isLoading: false,
+        isCleaning: false,
+        cleanResult: result,
+        preview: freshPreview,
+        clearPreview: freshPreview == null,
+        selectedPaths: remainingPaths,
+      );
     } catch (e) {
       appLogger.i('TEMP CLEAN CRASHED: $e');
-      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      state = state.copyWith(
+        isLoading: false,
+        isCleaning: false,
+        errorMessage: e.toString(),
+      );
     }
   }
 
