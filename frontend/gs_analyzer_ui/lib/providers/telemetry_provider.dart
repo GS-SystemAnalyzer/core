@@ -21,6 +21,7 @@ import 'package:gs_analyzer_ui/services/notification_service.dart';
 
 import 'cpu_provider.dart';
 import 'nuke_provider.dart';
+import 'temp_cleaner_provider.dart';
 
 class TelemetryState {
   final String status;
@@ -144,10 +145,18 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
       }
     };
 
-    _telemetryService?.onNukeProgress = (percentage, target, completed) {
+    _telemetryService?.onNukeProgress = (percentage, target, completed, total) {
       ref.read(nukeProgressProvider.notifier).state = percentage;
       ref.read(nukeTargetProvider.notifier).state = target;
       ref.read(nukeCompletedProvider.notifier).state = completed;
+      ref.read(nukeTotalProvider.notifier).state = total;
+    };
+
+    _telemetryService?.onTempCleanProgress = (percentage, target, completed, total) {
+      ref.read(tempCleanProgressProvider.notifier).state = percentage;
+      ref.read(tempCleanTargetProvider.notifier).state = target;
+      ref.read(tempCleanCompletedProvider.notifier).state = completed;
+      ref.read(tempCleanTotalProvider.notifier).state = total;
     };
 
     _telemetryService?.onNukeAborted = () {

@@ -15,7 +15,8 @@ class TelemetryService {
     String? target,
   )
   onProgressUpdate;
-  Function(double percentage, String target, int completed)? onNukeProgress;
+  Function(double percentage, String target, int completed, int total)? onNukeProgress;
+  Function(double percentage, String target, int completed, int total)? onTempCleanProgress;
   Function()? onNukeAborted;
   Function(Map<String, dynamic>)? onRamUpdate;
   Function(String? scanId, String path, List<dynamic> chunk)? onDirectoryChunk;
@@ -58,6 +59,7 @@ class TelemetryService {
     _hubConnection.on('ScanProgress', _handleIncomingTelemetry);
     _hubConnection.on('SectorChanged', _handleSectorChanged);
     _hubConnection.on('NukeProgress', _handleNukeProgress);
+    _hubConnection.on('TempCleanProgress', _handleTempCleanProgress);
     _hubConnection.on('NukeAborted', _handleNukeAborted);
     _hubConnection.on('RamUpdate', _handleRamUpdate);
     _hubConnection.on('DirectoryChunk', _handleDirectoryChunk);
@@ -142,10 +144,25 @@ class TelemetryService {
       final data = arguments[0] as Map<String, dynamic>;
 
       final percentage = (data['percentage'] as num?)?.toDouble() ?? 0.0;
-      final target = data['target'] as String? ?? '';
+      final target = data['currentTarget'] as String? ?? (data['target'] as String? ?? '');
       final completed = (data['completed'] as num?)?.toInt() ?? 0;
+      final total = (data['total'] as num?)?.toInt() ?? 0;
       if (onNukeProgress != null) {
-        onNukeProgress!(percentage, target, completed);
+        onNukeProgress!(percentage, target, completed, total);
+      }
+    }
+  }
+
+  void _handleTempCleanProgress(List<Object?>? arguments) {
+    if (arguments != null && arguments.isNotEmpty) {
+      final data = arguments[0] as Map<String, dynamic>;
+
+      final percentage = (data['percentage'] as num?)?.toDouble() ?? 0.0;
+      final target = data['currentTarget'] as String? ?? (data['target'] as String? ?? '');
+      final completed = (data['completed'] as num?)?.toInt() ?? 0;
+      final total = (data['total'] as num?)?.toInt() ?? 0;
+      if (onTempCleanProgress != null) {
+        onTempCleanProgress!(percentage, target, completed, total);
       }
     }
   }
