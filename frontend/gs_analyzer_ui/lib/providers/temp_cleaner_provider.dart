@@ -144,3 +144,8 @@ final tempCleanerProvider =
     StateNotifierProvider<TempCleanerNotifier, TempCleanerState>(
       (ref) => TempCleanerNotifier(ref),
     );
+
+final tempCleanProgressProvider = StateProvider<double>((ref) => 0.0);
+final tempCleanTargetProvider = StateProvider<String>((ref) => '');
+final tempCleanCompletedProvider = StateProvider<int>((ref) => 0);
+final tempCleanTotalProvider = StateProvider<int>((ref) => 0);

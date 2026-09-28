@@ -12,6 +12,7 @@ class NukeProgressDialog extends ConsumerWidget {
     final progress = ref.watch(nukeProgressProvider);
     final target = ref.watch(nukeTargetProvider);
     final completed = ref.watch(nukeCompletedProvider);
+    final total = ref.watch(nukeTotalProvider);
 
     return PopScope(
       canPop: false,
@@ -34,7 +35,7 @@ class NukeProgressDialog extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Completed: $completed',
+              total > 0 ? 'Completed: $completed of $total' : 'Completed: $completed',
               style: HudTheme.bodyText,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

@@ -5,6 +5,7 @@ import 'package:gs_analyzer_ui/providers/temp_cleaner_provider.dart';
 import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/widgets/temp_clean_progress_dialog.dart';
 
 class TempCleanerPanel extends ConsumerStatefulWidget {
   const TempCleanerPanel({super.key});
@@ -138,18 +139,18 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
 
           // ── Body ──
           Expanded(
-            child: tempState.isLoading
-                ? Center(
+            child: (tempState.isLoading && !tempState.isCleaning)
+                ? const Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const CircularProgressIndicator(color: HudTheme.accentGreen),
-                        const SizedBox(height: 24),
+                        CircularProgressIndicator(
+                          color: HudTheme.accentGreen,
+                        ),
+                        SizedBox(height: 24),
                         Text(
-                          tempState.isCleaning
-                              ? 'PURGING TEMP SECTORS (${tempState.selectedPaths.length} TARGETS)...'
-                              : 'SCANNING TEMP SECTORS...',
-                          style: const TextStyle(
+                          'SCANNING TEMP SECTORS...',
+                          style: TextStyle(
                             color: HudTheme.accentGreen,
                             fontFamily: HudTheme.fontCore,
                             fontWeight: FontWeight.bold,
@@ -438,7 +439,28 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
   }
 
   Future<void> _executeClean(TempCleanerNotifier tempNotifier) async {
-    await tempNotifier.cleanSelected();
+    final selectedCount = ref.read(tempCleanerProvider).selectedPaths.length;
+
+    // Reset progress state cleanly: 0.0%, 0 completed, total targets, no residual memory of former runs!
+    ref.read(tempCleanProgressProvider.notifier).state = 0.0;
+    ref.read(tempCleanCompletedProvider.notifier).state = 0;
+    ref.read(tempCleanTotalProvider.notifier).state = selectedCount;
+    ref.read(tempCleanTargetProvider.notifier).state = 'INITIALIZING...';
+
+    // Show Cyber-HUD progress dialog modal
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const TempCleanProgressDialog(),
+    );
+
+    final masterNavigator = Navigator.of(context, rootNavigator: true);
+
+    try {
+      await tempNotifier.cleanSelected();
+    } finally {
+      masterNavigator.pop();
+    }
 
     final resultState = ref.read(tempCleanerProvider);
 
