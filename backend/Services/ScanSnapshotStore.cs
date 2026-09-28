@@ -40,16 +40,37 @@ public class ScanSnapshotStore : IScanSnapshotStore
 		var path = SnapshotPath(root, depth);
 		if (!File.Exists(path)) return null;
 
+		string? json = null;
+		int retries = 5;
+
+		while (true)
+		{
+			try
+			{
+				lock (_fileLock)
+				{
+					if (!File.Exists(path)) return null;
+					json = File.ReadAllText(path);
+				}
+				break;
+			}
+			catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+			{
+				retries--;
+				if (retries == 0)
+				{
+					_logger.LogWarning(ex, "Failed to read scan snapshot at {Path} due to I/O lock", path);
+					return null;
+				}
+				Thread.Sleep(20);
+			}
+		}
+
 		try
 		{
-			string json;
-			lock (_fileLock)
-			{
-				json = File.ReadAllText(path);
-			}
 			return JsonSerializer.Deserialize<ScanSnapshot>(json, _jsonOptions);
 		}
-		catch (Exception ex)
+		catch (JsonException ex)
 		{
 			_logger.LogWarning(ex, "Corrupt scan snapshot at {Path}, discarding", path);
 			try { File.Delete(path); } catch { /* best effort */ }

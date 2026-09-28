@@ -249,9 +249,8 @@ public class TempFolderCleanerServiceTests : IDisposable
 	[Fact]
 	public async Task Clean_AcceptsPathWithTrailingSeparator()
 	{
-		var svc = CreateService();
-		var tempPath = Environment.GetEnvironmentVariable("TEMP") ?? Path.GetTempPath();
-		var withTrailing = tempPath.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+		var svc = CreateService(pathsOverride: new[] { _fakeTempDir });
+		var withTrailing = _fakeTempDir.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
 
 		// Should NOT throw UnauthorizedAccessException
 		var result = await svc.CleanAsync(new List<string> { withTrailing });
@@ -311,5 +310,30 @@ public class TempFolderCleanerServiceTests : IDisposable
 		Assert.Equal(0, result.DeletedFiles);
 		Assert.Equal(0, result.FreedBytes);
 		Assert.Equal(0, result.SkippedFiles);
+	}
+
+	[Fact]
+	public async Task Clean_WithHubContext_BroadcastsTempCleanProgressTicks()
+	{
+		var hub = new Mock<IHubContext<SystemHub>>();
+		var clients = new Mock<IHubClients>();
+		var proxy = new Mock<IClientProxy>();
+		clients.Setup(c => c.All).Returns(proxy.Object);
+		hub.Setup(h => h.Clients).Returns(clients.Object);
+
+		var capturedCalls = new List<string>();
+		proxy.Setup(p => p.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+			 .Callback<string, object?[], CancellationToken>((method, args, ct) => capturedCalls.Add(method))
+			 .Returns(Task.CompletedTask);
+
+		var nuke = CreateNukeService();
+		var svc = new TempFolderCleanerService(nuke, NullLogger<TempFolderCleanerService>.Instance, null, hub.Object, new[] { _fakeTempDir });
+
+		SeedFile("progress_test.tmp", "content");
+		var result = await svc.CleanAsync(new List<string> { _fakeTempDir });
+
+		Assert.Equal(1, result.DeletedFiles);
+		Assert.Contains("TempCleanProgress", capturedCalls);
+		Assert.True(capturedCalls.Count >= 2);
 	}
 }

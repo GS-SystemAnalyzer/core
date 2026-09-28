@@ -5,8 +5,10 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
 namespace GSSystemAnalyzer.Services;
@@ -16,13 +18,14 @@ public class TempFolderCleanerService : ITempFolderCleanerService
 	private readonly INukeProtocolService _nukeService;
 	private readonly ILogger<TempFolderCleanerService> _logger;
 	private readonly IDiskScannerEngine? _scanner;
+	private readonly IHubContext<SystemHub>? _hubContext;
 	private readonly List<string>? _tempPathsOverride;
 
 	public TempFolderCleanerService(
 		INukeProtocolService nukeService,
 		ILogger<TempFolderCleanerService> logger,
 		IEnumerable<string>? tempPathsOverride = null)
-		: this(nukeService, logger, null, tempPathsOverride)
+		: this(nukeService, logger, null, null, tempPathsOverride)
 	{
 	}
 
@@ -31,10 +34,21 @@ public class TempFolderCleanerService : ITempFolderCleanerService
 		ILogger<TempFolderCleanerService> logger,
 		IDiskScannerEngine? scanner,
 		IEnumerable<string>? tempPathsOverride = null)
+		: this(nukeService, logger, scanner, null, tempPathsOverride)
+	{
+	}
+
+	public TempFolderCleanerService(
+		INukeProtocolService nukeService,
+		ILogger<TempFolderCleanerService> logger,
+		IDiskScannerEngine? scanner,
+		IHubContext<SystemHub>? hubContext,
+		IEnumerable<string>? tempPathsOverride = null)
 	{
 		_nukeService = nukeService;
 		_logger = logger;
 		_scanner = scanner;
+		_hubContext = hubContext;
 
 		var overrides = tempPathsOverride?
 			.Where(p => !string.IsNullOrWhiteSpace(p))
@@ -131,7 +145,7 @@ public class TempFolderCleanerService : ITempFolderCleanerService
 
 	public async Task<TempCleanResult> CleanAsync(List<string> paths, CancellationToken cancellationToken = default)
 	{
-		return await Task.Run(() =>
+		return await Task.Run(async () =>
 		{
 			var knownPaths = _tempPathsOverride ?? ResolveTempPaths();
 			var comparer = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
@@ -153,6 +167,20 @@ public class TempFolderCleanerService : ITempFolderCleanerService
 			int totalSkipped = 0;
 			var allDeletedPaths = new List<string>();
 
+			int totalTargets = paths.Count;
+			int processedTargets = 0;
+
+			if (_hubContext != null)
+			{
+				await _hubContext.Clients.All.SendAsync("TempCleanProgress", new
+				{
+					completed = 0,
+					total = totalTargets,
+					percentage = 0.0,
+					currentTarget = "INITIALIZING..."
+				}, cancellationToken);
+			}
+
 			var options = new EnumerationOptions
 			{
 				IgnoreInaccessible = true,
@@ -166,8 +194,26 @@ public class TempFolderCleanerService : ITempFolderCleanerService
 				cancellationToken.ThrowIfCancellationRequested();
 
 				var tempDir = NormalizePath(p);
+				var targetLabel = Path.GetFileName(tempDir);
+				if (string.IsNullOrEmpty(targetLabel)) targetLabel = tempDir;
+
+				if (_hubContext != null)
+				{
+					var startPct = totalTargets > 0 ? Math.Round(((double)processedTargets / totalTargets) * 100, 1) : 0.0;
+					await _hubContext.Clients.All.SendAsync("TempCleanProgress", new
+					{
+						completed = processedTargets,
+						total = totalTargets,
+						percentage = startPct,
+						currentTarget = targetLabel
+					}, cancellationToken);
+				}
+
 				if (!Directory.Exists(tempDir))
+				{
+					processedTargets++;
 					continue;
+				}
 
 				try
 				{
@@ -207,6 +253,20 @@ public class TempFolderCleanerService : ITempFolderCleanerService
 
 				// Clean up empty subdirectories left behind (bottom-up).
 				CleanEmptySubdirectories(tempDir);
+
+				processedTargets++;
+
+				if (_hubContext != null)
+				{
+					var endPct = totalTargets > 0 ? Math.Round(((double)processedTargets / totalTargets) * 100, 1) : 100.0;
+					await _hubContext.Clients.All.SendAsync("TempCleanProgress", new
+					{
+						completed = processedTargets,
+						total = totalTargets,
+						percentage = endPct,
+						currentTarget = targetLabel
+					}, cancellationToken);
+				}
 			}
 
 			// Single cache invalidation pass across all deleted paths at the end.
