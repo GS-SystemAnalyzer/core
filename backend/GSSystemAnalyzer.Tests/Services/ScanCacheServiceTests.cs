@@ -396,7 +396,7 @@ public class ScanCacheServiceTests
 			ScanRoot = @"C:\",
 			Extensions = new Dictionary<string, FileTypeEntry>
 			{
-				[".txt"] = new FileTypeEntry { Count = 2, Bytes = 2048, LargestFileBytes = 1024, LargestFilePath = @"C:\Alpha\a.txt" }
+				[".txt"] = new FileTypeEntry { Count = 2, Bytes = 2048, LargestFileBytes = 1024, LargestFileName = "a.txt" }
 			}
 		};
 		scanner.DirectorySizeCache[@"C:\Beta"] = new CacheEntry
@@ -426,7 +426,8 @@ public class ScanCacheServiceTests
 		Assert.NotNull(reloaded);
 		Assert.Equal(2, reloaded!.Count);
 		Assert.Equal(4096, reloaded[@"C:\Alpha"].Size);
-		Assert.Equal(@"C:\Alpha\a.txt", reloaded[@"C:\Alpha"].Extensions![".txt"].LargestFilePath);
+		Assert.Equal("a.txt", reloaded[@"C:\Alpha"].Extensions![".txt"].LargestFileName);
+			Assert.Equal(string.Empty, reloaded[@"C:\Alpha"].Extensions![".txt"].LargestFilePath);
 		Assert.Null(reloaded[@"C:\Beta"].Extensions);
 	}
 
