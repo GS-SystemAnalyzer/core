@@ -118,6 +118,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 
 				if (savedMemory != null)
 				{
+					InternLoadedCache(savedMemory);
 					DirectorySizeCache = new ConcurrentDictionary<string, CacheEntry>(savedMemory);
 					_logger.LogInformation("Cache restored: {Count} folders loaded from disk", DirectorySizeCache.Count);
 
@@ -135,6 +136,33 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 				_logger.LogWarning(ex, "Cache file corrupted, starting fresh");
 				try { File.Delete(_cacheFilePath); } catch { /* best effort */ }
 			}
+		}
+	}
+
+	// Load-time pass: fold duplicate strings to one shared instance and drop empty maps.
+	// Extension keys, ScanRoot and largest-file names repeat across ~200k folders; a local
+	// pool (not String.Intern, which pins for process life) shrinks the retained live set.
+	internal static void InternLoadedCache(Dictionary<string, CacheEntry> savedMemory)
+	{
+		var pool = new Dictionary<string, string>(StringComparer.Ordinal);
+		string Fold(string value) => pool.TryGetValue(value, out var hit) ? hit : (pool[value] = value);
+
+		foreach (var entry in savedMemory.Values)
+		{
+			if (entry.ScanRoot != null) entry.ScanRoot = Fold(entry.ScanRoot);
+
+			var exts = entry.Extensions;
+			if (exts == null) continue;
+			if (exts.Count == 0) { entry.Extensions = null; continue; }
+
+			var rebuilt = new Dictionary<string, FileTypeEntry>(exts.Count);
+			foreach (var kv in exts)
+			{
+				if (!string.IsNullOrEmpty(kv.Value.LargestFileName))
+					kv.Value.LargestFileName = Fold(kv.Value.LargestFileName);
+				rebuilt[Fold(kv.Key)] = kv.Value;
+			}
+			entry.Extensions = rebuilt;
 		}
 	}
 
@@ -409,7 +437,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 
 				if (!extMap.TryGetValue(ext, out var fte))
 				{
-					fte = new FileTypeEntry { Count = 0, Bytes = 0, LargestFileBytes = 0, LargestFilePath = string.Empty };
+					fte = new FileTypeEntry { Count = 0, Bytes = 0, LargestFileBytes = 0, LargestFileName = string.Empty };
 					extMap[ext] = fte;
 				}
 				fte.Count++;
@@ -418,7 +446,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 				if (length > fte.LargestFileBytes)
 				{
 					fte.LargestFileBytes = length;
-					fte.LargestFilePath = f.FullName;
+					fte.LargestFileName = f.Name;
 				}
 
 				// Built inline rather than in a second pass; stays null with no cache service.

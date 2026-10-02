@@ -213,7 +213,8 @@ public class FileTypeScanner : IFileTypeScanner
 							Count = ext.Value.Count,
 							Bytes = ext.Value.Bytes,
 							LargestFileBytes = ext.Value.LargestFileBytes,
-							LargestFilePath = ext.Value.LargestFilePath
+							LargestFileName = ext.Value.LargestFileName,
+							LargestFilePath = string.IsNullOrEmpty(ext.Value.LargestFileName) ? string.Empty : Path.Combine(kvp.Key, ext.Value.LargestFileName)
 						},
 						(_, prev) =>
 						{
@@ -222,7 +223,8 @@ public class FileTypeScanner : IFileTypeScanner
 							if (ext.Value.LargestFileBytes > prev.LargestFileBytes)
 							{
 								prev.LargestFileBytes = ext.Value.LargestFileBytes;
-								prev.LargestFilePath = ext.Value.LargestFilePath;
+								prev.LargestFileName = ext.Value.LargestFileName;
+								prev.LargestFilePath = string.IsNullOrEmpty(ext.Value.LargestFileName) ? string.Empty : Path.Combine(kvp.Key, ext.Value.LargestFileName);
 							}
 							return prev;
 						});
@@ -255,6 +257,7 @@ public class FileTypeScanner : IFileTypeScanner
 								Count = 1,
 								Bytes = file.Length,
 								LargestFileBytes = file.Length,
+								LargestFileName = file.Name,
 								LargestFilePath = filePath
 							},
 							(_, prev) =>
@@ -264,6 +267,7 @@ public class FileTypeScanner : IFileTypeScanner
 								if (file.Length > prev.LargestFileBytes)
 								{
 									prev.LargestFileBytes = file.Length;
+									prev.LargestFileName = file.Name;
 									prev.LargestFilePath = filePath;
 								}
 								return prev;

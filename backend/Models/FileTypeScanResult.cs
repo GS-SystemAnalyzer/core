@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace GSSystemAnalyzer.Models;
 
 public class FileTypeEntry
@@ -5,7 +7,10 @@ public class FileTypeEntry
 	public int Count { get; set; }
 	public long Bytes { get; set; }
 	public long LargestFileBytes { get; set; }
-	public string LargestFilePath { get; set; } = string.Empty;
+	// Persisted: largest file's NAME only. The full path is rebuilt at read time from the
+	// owning folder key (FileTypeScanner.BuildFromMemory); storing it would duplicate the key.
+	public string LargestFileName { get; set; } = string.Empty;
+	[JsonIgnore] public string LargestFilePath { get; set; } = string.Empty;
 }
 public class FileTypeExtensionEntry
 {
