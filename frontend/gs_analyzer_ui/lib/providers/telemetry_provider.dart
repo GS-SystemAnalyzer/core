@@ -65,8 +65,9 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
 
   TelemetryService? get service => _telemetryService;
 
-  TelemetryNotifier(this.ref) : super(const TelemetryState()) {
-    _initRadio();
+  TelemetryNotifier(this.ref, {bool autoConnect = true})
+      : super(const TelemetryState()) {
+    if (autoConnect) _initRadio();
   }
 
   void _initRadio() {

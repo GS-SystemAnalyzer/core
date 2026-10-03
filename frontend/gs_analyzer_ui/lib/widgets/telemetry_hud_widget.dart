@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/telemetry_provider.dart';
+import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
 import '../providers/directory_provider.dart';
 import '../services/api_service.dart';
@@ -43,6 +44,13 @@ class TelemetryHudWidget extends ConsumerWidget {
                     style: HudTheme.headerCyan,
                     overflow: TextOverflow.ellipsis,
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.remove, color: HudTheme.accentCyan),
+                  tooltip: 'Minimize',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () =>
+                      ref.read(scanMinimizedProvider.notifier).state = true,
                 ),
               ],
             ),

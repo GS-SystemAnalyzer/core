@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
 import 'package:gs_analyzer_ui/providers/nuke_provider.dart';
+import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/providers/root_tree_provider.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
@@ -48,13 +49,13 @@ Future<void> executeNukeProtocol(
     return;
   }
 
+  ref.read(isNukeActiveProvider.notifier).state = true;
   showDialog(
     context: context,
     barrierDismissible: false,
-    builder: (context) => NukeProgressDialog(),
+    builder: (context) => const NukeProgressDialog(),
   );
 
-  final masterNavigator = Navigator.of(context, rootNavigator: true);
   try {
     final api = ApiService();
     final result = await api.executeNuke(
@@ -63,7 +64,7 @@ Future<void> executeNukeProtocol(
       useRecycleBin: previewResult.useRecycleBin,
     );
 
-    masterNavigator.pop();
+    ref.read(isNukeActiveProvider.notifier).state = false;
 
     if (onComplete != null) {
       onComplete();
@@ -159,7 +160,7 @@ Future<void> executeNukeProtocol(
       );
     }
   } catch (e) {
-    masterNavigator.pop();
+    ref.read(isNukeActiveProvider.notifier).state = false;
     snackbarKey.currentState?.showSnackBar(
       SnackBar(
         content: Text(
@@ -170,6 +171,8 @@ Future<void> executeNukeProtocol(
       ),
     );
   } finally {
+    ref.read(isNukeActiveProvider.notifier).state = false;
+    ref.read(nukeMinimizedProvider.notifier).state = false;
     ref.invalidate(nukeProgressProvider);
     ref.invalidate(nukeCompletedProvider);
     ref.invalidate(nukeTargetProvider);
