@@ -10,6 +10,7 @@ import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
 import 'package:gs_analyzer_ui/utils/theme/hud_color.dart';
 import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/widgets/operation_pill_layer.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 
@@ -106,10 +107,17 @@ class _GSAnalyzerAppState extends ConsumerState<GSAnalyzerApp>
 
     return MaterialApp(
       scaffoldMessengerKey: snackbarKey,
+      navigatorKey: rootNavigatorKey,
       debugShowCheckedModeBanner: false,
       theme: HudTheme.lightTheme(lightAccent),
       darkTheme: HudTheme.darkTheme(darkAccent),
       themeMode: themeMode,
+      builder: (context, child) => Stack(
+        children: [
+          if (child != null) child,
+          const OperationPillLayer(),
+        ],
+      ),
       home: const MasterLayout(),
     );
   }
