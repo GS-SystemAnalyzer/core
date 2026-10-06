@@ -286,7 +286,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 				// Retrieve the specific session's token
 				var scanToken = _activeSessions.TryGetValue(scanId, out var session) ? session.Cts.Token : CancellationToken.None;
 
-				await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "INITIALIZING", count = 0, currentTarget = "Walking up the Engine...." });
+				await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "INITIALIZING", completed = 0, total = totalNodes, count = 0, currentTarget = "Walking up the Engine...." });
 
 				var options = new ParallelOptions
 				{
@@ -301,6 +301,10 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 						try
 						{
 							var size = await Task.Run(() => GetDirectorySize(dir, ct, scanRoot), ct);
+
+							// #206 Part 1: a cancelled walk returns a partial size; do not cache it or
+							// emit progress for it (techspec v2 §3 — partial results are discarded).
+							if (ct.IsCancellationRequested) return;
 
 							DirectorySizeCache.TryGetValue(dir.FullName, out var existingEntry);
 							DirectorySizeCache[dir.FullName] = new CacheEntry
@@ -323,9 +327,10 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 						_ = _hub.Clients.All.SendAsync("ScanProgress", new
 						{
 							scanId = scanId,
+							status = "SCANNING",
 							completed = completed,
 							total = totalNodes,
-							percentageComplete = percentage,
+							percentComplete = percentage,
 							currentTarget = dir.Name
 						});
 					});
@@ -356,6 +361,12 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 					throw;
 				}
 			}
+			else
+			{
+				// #206 Part 4: a fully-cached rescan has nothing to scan; still emit a terminal
+				// COMPLETED (reset counters) so the UI leaves INITIALIZING and shows completion.
+				await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "COMPLETED", completed = 0, total = 0, currentTarget = "Scan completed" });
+			}
 		}
 		finally
 		{
@@ -366,7 +377,9 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 
 	private long GetDirectorySize(DirectoryInfo dir, CancellationToken token, string scanRoot, int currentDepth = 1)
 	{
-		token.ThrowIfCancellationRequested();
+		// #206 Part 1: return early on cancellation instead of throwing on this hot, deeply
+		// recursive path — the ParallelOptions token raises the single OCE the outer catch handles.
+		if (token.IsCancellationRequested) return 0;
 
 		var config = _settings.Current.Scan;
 
@@ -501,14 +514,18 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 		catch (OperationCanceledException) { throw; }
 		catch (Exception) { /* access denied etc — skip silently */ }
 
-		DirectorySizeCache[dir.FullName] = new CacheEntry
+		// #206 Part 1: skip persisting a partial entry when the walk was cancelled (techspec v2 §3).
+		if (!token.IsCancellationRequested)
 		{
-			Size = size,
-			LastUpdated = dir.LastWriteTimeUtc,
-			CachedAtUtc = DateTime.UtcNow,
-			ScanRoot = scanRoot,
-			Extensions = extMap
-		};
+			DirectorySizeCache[dir.FullName] = new CacheEntry
+			{
+				Size = size,
+				LastUpdated = dir.LastWriteTimeUtc,
+				CachedAtUtc = DateTime.UtcNow,
+				ScanRoot = scanRoot,
+				Extensions = extMap
+			};
+		}
 
 		return size;
 	}
