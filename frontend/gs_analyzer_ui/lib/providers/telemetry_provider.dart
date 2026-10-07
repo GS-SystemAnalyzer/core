@@ -47,6 +47,7 @@ class TelemetryState {
     double? percentComplete,
     String? target,
     String? currentScanId,
+    bool clearScanId = false,
   }) {
     return TelemetryState(
       status: status ?? this.status,
@@ -54,7 +55,8 @@ class TelemetryState {
       total: total ?? this.total,
       percentComplete: percentComplete ?? this.percentComplete,
       target: target ?? this.target,
-      currentScanId: currentScanId ?? this.currentScanId,
+      // #206 2d: a null argument can't express "clear" through `?? this.x`; a flag can.
+      currentScanId: clearScanId ? null : (currentScanId ?? this.currentScanId),
     );
   }
 }
@@ -82,25 +84,7 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
       backendPort: backendPort,
       reconnectDelayMs: reconnectDelayMs,
       maxRetries: maxRetries,
-      onProgressUpdate:
-          (scanId, status, completed, total, percentComplete, target) {
-            if (status == 'INITIALIZING' ||
-                state.currentScanId == null ||
-                state.currentScanId == scanId) {
-              final isDone =
-                  status == 'COMPLETED' ||
-                  status == 'ABORTED' ||
-                  status == 'FAILED';
-              state = state.copyWith(
-                status: status,
-                completed: completed,
-                total: total,
-                percentComplete: percentComplete,
-                target: target,
-                currentScanId: isDone ? null : scanId,
-              );
-            }
-          },
+      onProgressUpdate: applyScanProgress,
     );
 
     _telemetryService?.onRamUpdate = (data) {
@@ -246,6 +230,39 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
     };
 
     _telemetryService?.startListening();
+  }
+
+  // #206: single reducer for ScanProgress, extracted so telemetry_provider_test.dart can
+  // drive it directly without a live SignalR connection.
+  void applyScanProgress(
+    String? scanId,
+    String? status,
+    int? completed,
+    int? total,
+    double? percentComplete,
+    String? target,
+  ) {
+    final isDone = status == 'COMPLETED' ||
+        status == 'CANCELED' ||
+        status == 'ABORTED' ||
+        status == 'FAILED';
+
+    // Accept a new scan's INITIALIZING, or an update for the active scan. Drop everything
+    // else — stragglers after a terminal state (the id is cleared) and scanId-less pulses —
+    // so a late SCANNING can't revert a finished scan (#206 2a/2c/2d + ordering constraint).
+    final accept = status == 'INITIALIZING' ||
+        (scanId != null && scanId == state.currentScanId);
+    if (!accept) return;
+
+    state = state.copyWith(
+      status: status,
+      completed: completed,
+      total: total,
+      percentComplete: percentComplete,
+      target: target,
+      currentScanId: scanId,
+      clearScanId: isDone,
+    );
   }
 
   @override
