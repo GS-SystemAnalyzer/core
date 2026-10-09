@@ -18,8 +18,7 @@ import 'package:gs_analyzer_ui/widgets/temp_clean_progress_dialog.dart';
 import 'package:gs_analyzer_ui/widgets/export_scan_dialog.dart';
 
 /// Mounted in [MaterialApp.builder] above the Navigator so pills survive every
-/// route change (techspec §4089/§4095). Renders a stacked column of pills for
-/// each operation that is simultaneously active AND minimised.
+/// route change. Renders a pill for each operation that is active AND minimised.
 class OperationPillLayer extends ConsumerStatefulWidget {
   const OperationPillLayer({super.key});
 
@@ -57,8 +56,8 @@ class _OperationPillLayerState extends ConsumerState<OperationPillLayer> {
     if (pills.isEmpty) return const SizedBox.shrink();
 
     final media = MediaQuery.of(context);
-    // Clamp the anchor into the visible window (techspec §4098). A negative dy
-    // anchors from the bottom edge.
+    // Clamp the anchor into the visible window. A negative dy anchors from the
+    // bottom edge.
     final size = media.size;
     final left = offset.dx.clamp(0.0, (size.width - 220).clamp(0.0, size.width));
     final bottom = (offset.dy < 0 ? -offset.dy : offset.dy).clamp(
@@ -125,7 +124,7 @@ class _OperationPillLayerState extends ConsumerState<OperationPillLayer> {
     final isFailed = status == 'FAILED';
 
     if (isComplete) {
-      // techspec §4114 — green pill, auto-dismiss after 10s.
+      // Green pill, auto-dismiss after 10s.
       _scanCompleteTimer ??= Timer(const Duration(seconds: 10), () {
         if (mounted) {
           ref.read(scanMinimizedProvider.notifier).state = false;
@@ -147,7 +146,7 @@ class _OperationPillLayerState extends ConsumerState<OperationPillLayer> {
     }
 
     if (isFailed) {
-      // techspec §4115 — red pill, no auto-dismiss.
+      // Red pill, no auto-dismiss.
       _scanCompleteTimer?.cancel();
       _scanCompleteTimer = null;
       pills.add(

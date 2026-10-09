@@ -1,9 +1,5 @@
-/// Dart model mirroring the backend StartupProgramDto
-/// (backend/Models/StartupProgramDto.cs) introduced in PR #143.
-///
-/// Supports both camelCase (System.Text.Json default) and PascalCase
-/// (ASP.NET fallback) property names for resilience, matching the pattern
-/// used by temp_cleaner_model.dart.
+/// Dart model mirroring the backend StartupProgramDto.
+/// fromJson reads both camelCase and PascalCase JSON keys for serializer resilience.
 class StartupProgram {
   final String id;
   final String name;
