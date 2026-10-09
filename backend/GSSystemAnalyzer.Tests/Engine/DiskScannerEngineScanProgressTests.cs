@@ -17,9 +17,8 @@ using Xunit;
 
 namespace GSSystemAnalyzer.Tests.Engine
 {
-	// Regression tests for issue #206 — the backend EMIT side of the ScanProgress contract.
-	// Pins payload field names, per-directory status, status vocabulary, and the terminal
-	// message on a fully-cached rescan. See plans/206-scan-abort-and-rescan-stall.md.
+	// Pins the backend emit side of the ScanProgress contract: payload field names,
+	// per-directory status, status vocabulary, and the terminal message on a fully-cached rescan.
 	public class DiskScannerEngineScanProgressTests : IDisposable
 	{
 		private readonly DiskScannerEngine _engine;
@@ -47,7 +46,7 @@ namespace GSSystemAnalyzer.Tests.Engine
 			_engine.DirectorySizeCache.Clear();
 
 			// Redirect the on-disk cache so SaveMemoryToDisk() during a scan never touches the
-			// real %APPDATA%/GSAnalyzer/scanner_memory.json (P-7). The field is private readonly.
+			// real %APPDATA%/GSAnalyzer/scanner_memory.json. The field is private readonly.
 			_tempCacheFile = Path.Combine(Path.GetTempPath(), "gsa_206_" + Guid.NewGuid().ToString("N") + ".json");
 			typeof(DiskScannerEngine)
 				.GetField("_cacheFilePath", BindingFlags.Instance | BindingFlags.NonPublic)!
@@ -88,7 +87,7 @@ namespace GSSystemAnalyzer.Tests.Engine
 			await _engine.CalculateMissingSizesAsync(SeedTree(), scanId);
 
 			var payloads = ScanProgressPayloads();
-			// 2b: the contract field is `percentComplete` (techspec v2 §2), never `percentageComplete`.
+			// The contract field is `percentComplete`, never `percentageComplete`.
 			Assert.DoesNotContain(payloads, p => Prop(p, "percentageComplete") != null);
 			Assert.Contains(payloads, p => Prop(p, "percentComplete") != null);
 		}
