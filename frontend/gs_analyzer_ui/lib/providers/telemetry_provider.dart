@@ -55,7 +55,7 @@ class TelemetryState {
       total: total ?? this.total,
       percentComplete: percentComplete ?? this.percentComplete,
       target: target ?? this.target,
-      // #206 2d: a null argument can't express "clear" through `?? this.x`; a flag can.
+      // A null argument can't express "clear" through `?? this.x`; a flag can.
       currentScanId: clearScanId ? null : (currentScanId ?? this.currentScanId),
     );
   }
@@ -232,7 +232,7 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
     _telemetryService?.startListening();
   }
 
-  // #206: single reducer for ScanProgress, extracted so telemetry_provider_test.dart can
+  // Single reducer for ScanProgress, extracted so telemetry_provider_test.dart can
   // drive it directly without a live SignalR connection.
   void applyScanProgress(
     String? scanId,
@@ -249,7 +249,7 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
 
     // Accept a new scan's INITIALIZING, or an update for the active scan. Drop everything
     // else — stragglers after a terminal state (the id is cleared) and scanId-less pulses —
-    // so a late SCANNING can't revert a finished scan (#206 2a/2c/2d + ordering constraint).
+    // so a late SCANNING can't revert a finished scan.
     final accept = status == 'INITIALIZING' ||
         (scanId != null && scanId == state.currentScanId);
     if (!accept) return;

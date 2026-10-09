@@ -234,7 +234,7 @@ namespace GSSystemAnalyzer.Tests.Services
 		public void OldFormatCache_WithLargestFilePath_DeserializesWithoutThrowing()
 		{
 			// Old file: LargestFilePath present, LargestFileName absent. Must load, not throw —
-			// otherwise the engine's corrupt-catch would delete the cache file (P-7).
+			// otherwise the engine's corrupt-catch would delete the cache file.
 			var oldJson = "{\"C:\\\\A\":{\"Size\":10,\"LastUpdated\":\"2026-01-01T00:00:00Z\",\"CachedAtUtc\":\"2026-01-01T00:00:00Z\",\"ScanRoot\":\"C:\\\\\",\"Extensions\":{\".txt\":{\"Count\":1,\"Bytes\":10,\"LargestFileBytes\":10,\"LargestFilePath\":\"C:\\\\A\\\\a.txt\"}}}}";
 
 			var reloaded = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, CacheEntry>>(oldJson);

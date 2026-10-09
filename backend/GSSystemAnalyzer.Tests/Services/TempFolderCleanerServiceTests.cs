@@ -288,7 +288,6 @@ public class TempFolderCleanerServiceTests : IDisposable
 	[Fact]
 	public async Task Clean_TempDirectoryItselfNeverDeleted()
 	{
-		// This test verifies the acceptance criteria: temp directories are never deleted.
 		var svc = CreateService(pathsOverride: new[] { _fakeTempDir });
 		var existingPaths = new List<string> { _fakeTempDir };
 

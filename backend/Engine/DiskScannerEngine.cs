@@ -288,9 +288,8 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 
 				await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "INITIALIZING", completed = 0, total = totalNodes, count = 0, currentTarget = "Walking up the Engine...." });
 
-				// #206: do NOT hand the token to Parallel.ForEachAsync — the framework would then
-				// throw OCE/TaskCanceledException from its own code, which the debugger flags
-				// "user-unhandled" on every abort. Cancellation is raised from user code after the loop.
+				// Do not pass the token to Parallel.ForEachAsync: the framework then throws
+				// cancellation from its own code, which the debugger flags "user-unhandled" on every abort.
 				var options = new ParallelOptions
 				{
 					MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2)
@@ -300,15 +299,13 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 				{
 					await Parallel.ForEachAsync(directoriesToScan, options, async (dir, ct) =>
 					{
-						// #206: bail immediately on cancellation so the loop unwinds fast and frees
-						// _scanLock (a queued rescan otherwise waits the whole subtree out).
+						// Bail on cancellation so the loop unwinds fast and frees _scanLock for a queued rescan.
 						if (scanToken.IsCancellationRequested) return;
 						try
 						{
 							var size = await Task.Run(() => GetDirectorySize(dir, scanToken, scanRoot), scanToken);
 
-							// #206 Part 1: a cancelled walk returns a partial size; do not cache it or
-							// emit progress for it (techspec v2 §3 — partial results are discarded).
+							// A cancelled walk returns a partial size; do not cache it or emit progress for it.
 							if (scanToken.IsCancellationRequested) return;
 
 							DirectorySizeCache.TryGetValue(dir.FullName, out var existingEntry);
@@ -340,8 +337,8 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 						});
 					});
 
-					// #206: the single, user-code point where cancellation becomes an exception
-					// (ParallelOptions no longer carries the token). Routed to the outer catch -> CANCELED + 499.
+					// The single user-code point where cancellation becomes an exception, since
+					// ParallelOptions carries no token; the outer catch turns it into CANCELED + 499.
 					if (scanToken.IsCancellationRequested)
 						throw new OperationCanceledException(scanToken);
 
@@ -373,8 +370,8 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 			}
 			else
 			{
-				// #206 Part 4: a fully-cached rescan has nothing to scan; still emit a terminal
-				// COMPLETED (reset counters) so the UI leaves INITIALIZING and shows completion.
+				// A fully-cached rescan has nothing to scan; still emit a terminal COMPLETED
+				// so the UI leaves INITIALIZING and shows completion.
 				await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "COMPLETED", completed = 0, total = 0, currentTarget = "Scan completed" });
 			}
 		}
@@ -387,8 +384,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 
 	private long GetDirectorySize(DirectoryInfo dir, CancellationToken token, string scanRoot, int currentDepth = 1)
 	{
-		// #206 Part 1: return early on cancellation instead of throwing on this hot, deeply
-		// recursive path — the ParallelOptions token raises the single OCE the outer catch handles.
+		// Return early on cancellation instead of throwing on this hot, deeply recursive path.
 		if (token.IsCancellationRequested) return 0;
 
 		var config = _settings.Current.Scan;
@@ -500,14 +496,14 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 			var childPaths = new List<string>();
 			foreach (var subDir in subDirs)
 			{
-				if (token.IsCancellationRequested) break; // #206: abort unwinds promptly instead of walking the rest of a large tree, so _scanLock frees fast
+				if (token.IsCancellationRequested) break; // Abort unwinds promptly instead of walking the rest of a large tree, so _scanLock frees fast
 				childPaths.Add(subDir.FullName);
 				// Pass depth + 1 so each recursive level is tracked
 				size += GetDirectorySize(subDir, token, scanRoot, currentDepth + 1);
 			}
 
 			// Only build the ScanCacheService payload when a cache service will consume it.
-			// With none (tests, benchmark) this allocated a node + entry per file and dropped it. See D-11.
+			// Without one (tests, benchmark) this would allocate a node + entry per file and drop it.
 			if (_cacheService != null && fileEntries != null)
 			{
 				var dirNode = new CachedDirNode(
@@ -522,11 +518,11 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 				_cacheService.SetNode(dirNode, scanRoot);
 			}
 		}
-		// #206: no per-level OCE rethrow — the walk returns early on cancel (above), and
-		// Parallel.ForEachAsync's token is the single place cancellation becomes an exception.
+		// No per-level cancellation rethrow: the walk returns early on cancel above, and the
+		// Parallel.ForEachAsync loop is the single place cancellation becomes an exception.
 		catch (Exception) { /* access denied, or a stray cancellation mid-walk — skip silently */ }
 
-		// #206 Part 1: skip persisting a partial entry when the walk was cancelled (techspec v2 §3).
+		// Skip persisting a partial entry when the walk was cancelled.
 		if (!token.IsCancellationRequested)
 		{
 			DirectorySizeCache[dir.FullName] = new CacheEntry

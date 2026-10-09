@@ -15,7 +15,7 @@ using Xunit;
 namespace GSSystemAnalyzer.Tests.Services;
 
 // Isolated because ClearCache() forces a collection, which corrupts the process-wide heap
-// reading in Soak/LeakTests.cs when the two run in parallel. See P-9 for its separate thread flake.
+// reading in Soak/LeakTests.cs when the two run in parallel.
 [CollectionDefinition("ForcedGarbageCollection", DisableParallelization = true)]
 public class ForcedGarbageCollectionCollection { }
 
@@ -337,8 +337,8 @@ public class ScanCacheServiceTests
 		Assert.Empty(scanner.DirectorySizeCache);
 	}
 
-	// --- Issue #141: ClearCache must also evict the analyzer snapshots, and the streamed
-	// --- SaveMemoryToDisk must keep scanner_memory.json in its existing format.
+	// ClearCache must also evict the analyzer snapshots, and the streamed
+	// SaveMemoryToDisk must keep scanner_memory.json in its existing format.
 
 	[Fact]
 	public void ClearCache_EvictsAnalyzerSnapshots_ViaSnapshotResetToken()
@@ -408,7 +408,7 @@ public class ScanCacheServiceTests
 			Extensions = null
 		};
 
-		// What the pre-#141 code produced: one contiguous string from a full Dictionary copy.
+		// Baseline: the full-dictionary serialization the streamed writer must reproduce exactly.
 		var expected = System.Text.Json.JsonSerializer.Serialize(
 			new Dictionary<string, CacheEntry>(scanner.DirectorySizeCache));
 

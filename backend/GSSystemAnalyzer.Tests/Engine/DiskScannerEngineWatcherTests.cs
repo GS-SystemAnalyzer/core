@@ -10,7 +10,7 @@ using Moq;
 
 namespace GSSystemAnalyzer.Tests.Engine;
 
-/// <summary>Regression cover for issue #170 - nested changes and burst coalescing.</summary>
+/// <summary>Regression cover for nested changes and burst coalescing.</summary>
 public sealed class DiskScannerEngineWatcherTests : IDisposable
 {
 	// The engine debounces for 1000ms and caps a burst at 1000ms, so a broadcast lands
@@ -400,7 +400,7 @@ public sealed class DiskScannerEngineWatcherTests : IDisposable
 
 	private static FileSystemWatcher? GetWatcherOrNull(DiskScannerEngine engine)
 	{
-		// Accepts either spelling: issue #152 renames _liveRader to _liveRadar.
+		// Accepts either spelling: _liveRader was renamed to _liveRadar.
 		var field =
 			typeof(DiskScannerEngine).GetField("_liveRader", BindingFlags.Instance | BindingFlags.NonPublic) ??
 			typeof(DiskScannerEngine).GetField("_liveRadar", BindingFlags.Instance | BindingFlags.NonPublic);
