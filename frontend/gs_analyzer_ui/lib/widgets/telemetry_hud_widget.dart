@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/telemetry_provider.dart';
 import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import '../providers/directory_provider.dart';
 import '../services/api_service.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 
 class TelemetryHudWidget extends ConsumerWidget {
   const TelemetryHudWidget({super.key});
@@ -17,36 +18,37 @@ class TelemetryHudWidget extends ConsumerWidget {
         ? telemetry.completed / telemetry.total
         : 0.0;
     final double displayPercentage = calculateProgress * 100;
+    final hud = context.hudTheme;
 
     return Center(
       child: Container(
         width: 500, // Fixed width
         padding: const EdgeInsets.all(24),
-        decoration: HudTheme.hudPanelDecoration,
+        decoration: hud.hudPanelDecoration,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const SizedBox(
+                SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.cyan,
+                    color: hud.accentCyan,
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
                     '${telemetry.status}...',
-                    style: HudTheme.headerCyan,
+                    style: hud.header,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.remove, color: HudTheme.accentCyan),
+                  icon: Icon(Icons.remove, color: hud.accentCyan),
                   tooltip: 'Minimize',
                   visualDensity: VisualDensity.compact,
                   onPressed: () =>
@@ -59,8 +61,8 @@ class TelemetryHudWidget extends ConsumerWidget {
             if (telemetry.total > 0) ...[
               LinearProgressIndicator(
                 value: calculateProgress,
-                color: HudTheme.accentGreen,
-                backgroundColor: Colors.white10,
+                color: hud.accentGreen,
+                backgroundColor: hud.textMain.withValues(alpha: 0.1),
                 minHeight: 6,
               ),
               const SizedBox(height: 8),
@@ -69,21 +71,21 @@ class TelemetryHudWidget extends ConsumerWidget {
                 children: [
                   Text(
                     'SECTORS SCANNED: ${telemetry.completed} / ${telemetry.total}',
-                    style: HudTheme.statGreen,
+                    style: hud.statGreen,
                   ),
                   Text(
                     '${displayPercentage.toStringAsFixed(1)}%',
-                    style: HudTheme.statGreen,
+                    style: hud.statGreen,
                   ),
                 ],
               ),
             ] else ...[
-              const Text('CALCULATING SECTORS...', style: HudTheme.statGreen),
+              Text('CALCULATING SECTORS...', style: hud.statGreen),
             ],
             const SizedBox(height: 16),
             Text(
               'TARGET: ${telemetry.target}',
-              style: HudTheme.labelMuted,
+              style: hud.label,
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
@@ -95,7 +97,7 @@ class TelemetryHudWidget extends ConsumerWidget {
                   await ApiService().abortScan();
                   ref.read(directoryProvider.notifier).purgeStaleCache();
                   snackbarKey.currentState?.showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       content: Text(
                         'Scan Aborted',
                         style: TextStyle(
@@ -103,11 +105,11 @@ class TelemetryHudWidget extends ConsumerWidget {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      backgroundColor: HudTheme.accentAmber,
+                      backgroundColor: hud.accentAmber,
                     ),
                   );
                 },
-                child: const Text('ABORT SCAN', style: HudTheme.actionRed),
+                child: Text('ABORT SCAN', style: hud.actionRed),
               ),
             ),
           ],

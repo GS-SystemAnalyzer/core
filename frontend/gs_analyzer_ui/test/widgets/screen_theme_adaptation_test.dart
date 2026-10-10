@@ -5,7 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gs_analyzer_ui/models/automation_rule.dart';
 import 'package:gs_analyzer_ui/providers/automation_provider.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
+import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
 import 'package:gs_analyzer_ui/providers/network_provider.dart';
+import 'package:gs_analyzer_ui/screen/analyzer_dashboard.dart';
 import 'package:gs_analyzer_ui/screen/automation_screen.dart';
 import 'package:gs_analyzer_ui/screen/network_module_screen.dart';
 import 'package:gs_analyzer_ui/screen/telemetry_history_screen.dart';
@@ -14,6 +16,13 @@ import 'package:gs_analyzer_ui/utils/theme/hud_color.dart';
 import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
 import 'package:gs_analyzer_ui/widgets/side_bar_widget.dart';
 import 'package:mocktail/mocktail.dart';
+
+class MockDirectoryNotifier extends StateNotifier<DirectoryState> implements DirectoryNotifier {
+  MockDirectoryNotifier([DirectoryState state = const DirectoryState()]) : super(state);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 class MockEmptyRulesNotifier extends AutomationRulesNotifier {
   @override
@@ -250,6 +259,74 @@ void main() {
 
       final darkHeader = tester.widget<Text>(find.text('TELEMETRY HISTORY'));
       expect(darkHeader.style?.color, equals(HudColor.darkAccentCyan));
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('AnalyzerDashboard adapts scaffold base, panel decorations, and standby UI between themes', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // 1. Light Mode
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            directoryProvider.overrideWith((ref) => MockDirectoryNotifier(
+              const DirectoryState(isLoading: false, currentPath: 'C:/'),
+            )),
+            currentDriveProvider.overrideWithValue(null),
+          ],
+          child: MaterialApp(
+            theme: HudTheme.lightTheme(HudColor.lightAccentCyan),
+            home: const AnalyzerDashboard(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final lightScaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+      expect(lightScaffold.backgroundColor, equals(HudColor.lightBgBase));
+
+      final lightAppBar = tester.widget<AppBar>(find.byType(AppBar));
+      expect(lightAppBar.backgroundColor, equals(HudColor.lightBgPanel));
+
+      final lightStandbyHeader = tester.widget<Text>(find.text('SYSTEM STANDBY'));
+      expect(lightStandbyHeader.style?.color, equals(HudColor.lightAccentCyan));
+
+      final lightStandbySub = tester.widget<Text>(find.text('Awaiting target matrix assignment for Directory Indexing.'));
+      expect(lightStandbySub.style?.color, equals(HudColor.lightTextDim));
+
+      // 2. Dark Mode
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            directoryProvider.overrideWith((ref) => MockDirectoryNotifier(
+              const DirectoryState(isLoading: false, currentPath: 'C:/'),
+            )),
+            currentDriveProvider.overrideWithValue(null),
+          ],
+          child: MaterialApp(
+            theme: HudTheme.darkTheme(HudColor.darkAccentCyan),
+            home: const AnalyzerDashboard(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final darkScaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+      expect(darkScaffold.backgroundColor, equals(HudColor.darkBgBase));
+
+      final darkAppBar = tester.widget<AppBar>(find.byType(AppBar));
+      expect(darkAppBar.backgroundColor, equals(HudColor.darkBgPanel));
+
+      final darkStandbyHeader = tester.widget<Text>(find.text('SYSTEM STANDBY'));
+      expect(darkStandbyHeader.style?.color, equals(HudColor.darkAccentCyan));
+
+      final darkStandbySub = tester.widget<Text>(find.text('Awaiting target matrix assignment for Directory Indexing.'));
+      expect(darkStandbySub.style?.color, equals(HudColor.darkTextDim));
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();

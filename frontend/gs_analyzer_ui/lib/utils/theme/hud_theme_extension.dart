@@ -141,4 +141,23 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
       )!,
     );
   }
+
+  Color fileTypeColor(String category) {
+  switch (category.toLowerCase()) {
+    case 'media':
+      return accentCyan;
+    case 'documents':
+      return accentGreen;
+    case 'executables':
+      return accentRed;
+    case 'archives':
+      return accentAmber;
+    case 'code':
+      return accentPurple;
+    case 'system':
+      return textDim;
+    default:
+      return textDim.withValues(alpha: 0.2);
+  }
+}
 }

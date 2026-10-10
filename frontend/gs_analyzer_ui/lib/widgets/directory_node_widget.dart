@@ -4,8 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/models/storage_node.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'dart:math';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/age_heatmap_overlay.dart';
 import '../providers/age_heatmap_provider.dart';
 import '../providers/directory_provider.dart';
@@ -114,6 +115,7 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
 
     final double leftPadding = widget.depth * 20.0;
     final isDir = widget.node.isDirectory;
+    final hud = context.hudTheme;
 
     if (widget.isTreeView) {
       return Column(
@@ -124,7 +126,7 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
             onDoubleTap: isDir
                 ? () => widget.onNavigate(widget.node.path)
                 : null,
-            hoverColor: HudTheme.accentCyan.withValues(alpha: 0.1),
+            hoverColor: hud.accentCyan.withValues(alpha: 0.1),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               child: Row(
@@ -136,9 +138,9 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                         ? AnimatedRotation(
                             turns: _isExpanded ? 0.25 : 0.0,
                             duration: const Duration(milliseconds: 200),
-                            child: const Icon(
+                            child: Icon(
                               Icons.keyboard_arrow_right_outlined,
-                              color: HudTheme.accentCyan,
+                              color: hud.accentCyan,
                               size: 16,
                             ),
                           )
@@ -148,14 +150,14 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                     isDir
                         ? Icons.folder_outlined
                         : Icons.insert_drive_file_outlined,
-                    color: isDir ? HudTheme.accentAmber : HudTheme.accentGreen,
+                    color: isDir ? hud.accentAmber : hud.accentGreen,
                     size: 16,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       widget.node.name,
-                      style: HudTheme.bodyText,
+                      style: hud.body,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -171,12 +173,12 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                   top: 4,
                   bottom: 4,
                 ),
-                child: const SizedBox(
+                child: SizedBox(
                   width: 12,
                   height: 12,
                   child: CircularProgressIndicator(
                     strokeWidth: 1,
-                    color: HudTheme.primaryBorder,
+                    color: hud.border,
                   ),
                 ),
               )
@@ -227,10 +229,10 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
       children: [
         InkWell(
           onTap: isDir ? () => widget.onNavigate(widget.node.path) : null,
-          hoverColor: HudTheme.accentCyan.withValues(alpha: 0.05),
+          hoverColor: hud.accentCyan.withValues(alpha: 0.05),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            decoration: HudTheme.listItemDecoration,
+            decoration: hud.listItemDecoration,
             child: Row(
               children: [
                 // Left color bar (heatmap overlay)
@@ -262,8 +264,8 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                           .read(directoryProvider.notifier)
                           .toggleSelection(widget.node.path);
                     },
-                    activeColor: HudTheme.accentCyan,
-                    side: BorderSide(color: HudTheme.textDim),
+                    activeColor: hud.accentCyan,
+                    side: BorderSide(color: hud.textDim),
                   ),
                 // NAME Column
                 Expanded(
@@ -274,16 +276,16 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                       Icon(
                         isDir ? Icons.folder : Icons.insert_drive_file_outlined,
                         color: isDir
-                            ? HudTheme.accentAmber
-                            : HudTheme.accentGreen,
+                            ? hud.accentAmber
+                            : hud.accentGreen,
                         size: 20,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           widget.node.name,
-                          style: HudTheme.bodyText.copyWith(
-                            color: HudTheme.textMain,
+                          style: hud.body.copyWith(
+                            color: hud.textMain,
                             fontWeight: FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -298,19 +300,19 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: HudTheme.accentAmber.withValues(alpha: 0.15),
+                            color: hud.accentAmber.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
-                              color: HudTheme.accentAmber.withValues(
+                              color: hud.accentAmber.withValues(
                                 alpha: 0.4,
                               ),
                             ),
                           ),
-                          child: const Text(
+                          child: Text(
                             '⚠ REVIEW',
                             style: TextStyle(
                               fontFamily: HudTheme.fontCore,
-                              color: HudTheme.accentAmber,
+                              color: hud.accentAmber,
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1,
@@ -325,7 +327,7 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                   flex: 3,
                   child: Text(
                     widget.node.lastModified.toString().split('.')[0],
-                    style: HudTheme.bodyText,
+                    style: hud.body,
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -339,8 +341,8 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                   flex: 2,
                   child: Text(
                     formatBytes(widget.node.sizeBytes),
-                    style: HudTheme.statGreen.copyWith(
-                      color: heatmapColor ?? HudTheme.accentCyan,
+                    style: hud.statGreen.copyWith(
+                      color: heatmapColor ?? hud.accentCyan,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -354,7 +356,7 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                         isDir
                             ? Icons.folder_delete_outlined
                             : Icons.delete_forever_outlined,
-                        color: HudTheme.accentRed,
+                        color: hud.accentRed,
                         size: 20,
                       ),
                       onPressed: () =>
@@ -374,12 +376,12 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                 top: 8,
                 bottom: 8,
               ),
-              child: const SizedBox(
+              child: SizedBox(
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: HudTheme.primaryBorder,
+                  color: hud.border,
                 ),
               ),
             )

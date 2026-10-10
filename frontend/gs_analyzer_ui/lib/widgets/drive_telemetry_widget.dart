@@ -5,7 +5,8 @@ import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
 import 'dart:math';
 
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
+
 
 String formatBytes(int bytes) {
   if (bytes < 0) return "--";
@@ -25,12 +26,13 @@ class DriveTelemetryWidget extends ConsumerWidget {
 
     final alertSettings = ref.watch(settingsProvider).currentSettings?.alerts;
     final redThreshold = alertSettings?.diskThresholdPercent ?? 90;
+    final hud = context.hudTheme;
 
     if (stats == null) {
-      return const SizedBox(
+      return SizedBox(
         height: 60,
         child: Center(
-          child: LinearProgressIndicator(color: HudTheme.accentCyan),
+          child: LinearProgressIndicator(color: hud.accentCyan),
         ),
       );
     }
@@ -41,10 +43,10 @@ class DriveTelemetryWidget extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: HudTheme.bgBase,
+        color: hud.base,
         border: Border(
           top: BorderSide(
-            color: isCritical ? HudTheme.accentRed : Colors.white10,
+            color: isCritical ? hud.accentRed : hud.textMain.withValues(alpha: 0.1),
             width: 1,
           ),
         ),
@@ -57,18 +59,18 @@ class DriveTelemetryWidget extends ConsumerWidget {
             children: [
               HudLabel('CAPACITY (${stats.name})'),
               if (isCritical)
-                const Text('LOW SPACE ALERT', style: HudTheme.actionRed),
+                Text('LOW SPACE ALERT', style: hud.actionRed),
               Text(
                 '${stats.percentageFree.toStringAsFixed(1)}% FREE',
-                style: isCritical ? HudTheme.actionRed : HudTheme.statGreen,
+                style: isCritical ? hud.actionRed : hud.statGreen,
               ),
             ],
           ),
           const SizedBox(height: 8),
           LinearProgressIndicator(
             value: usageFraction,
-            backgroundColor: Colors.white10,
-            color: isCritical ? HudTheme.accentRed : HudTheme.accentGreen,
+            backgroundColor: hud.textMain.withValues(alpha: 0.1),
+            color: isCritical ? hud.accentRed : hud.accentGreen,
             minHeight: 6,
           ),
           const SizedBox(height: 8),
