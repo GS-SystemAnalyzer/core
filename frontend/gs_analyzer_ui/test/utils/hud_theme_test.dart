@@ -97,6 +97,33 @@ void main() {
 
       expect(ext1.lerp(null, 0.5), equals(ext1));
     });
+
+    test('fileTypeColor maps category names to theme accent colors case-insensitively', () {
+      final darkExt = HudTheme.darkTheme(Colors.cyan).extension<HudThemeExtension>()!;
+      expect(darkExt.fileTypeColor('media'), darkExt.accentCyan);
+      expect(darkExt.fileTypeColor('MEDIA'), darkExt.accentCyan);
+      expect(darkExt.fileTypeColor('documents'), darkExt.accentGreen);
+      expect(darkExt.fileTypeColor('Documents'), darkExt.accentGreen);
+      expect(darkExt.fileTypeColor('executables'), darkExt.accentRed);
+      expect(darkExt.fileTypeColor('EXECUTABLES'), darkExt.accentRed);
+      expect(darkExt.fileTypeColor('archives'), darkExt.accentAmber);
+      expect(darkExt.fileTypeColor('ARCHIVES'), darkExt.accentAmber);
+      expect(darkExt.fileTypeColor('code'), darkExt.accentPurple);
+      expect(darkExt.fileTypeColor('Code'), darkExt.accentPurple);
+      expect(darkExt.fileTypeColor('system'), darkExt.textDim);
+      expect(darkExt.fileTypeColor('SYSTEM'), darkExt.textDim);
+      expect(darkExt.fileTypeColor('other'), darkExt.textDim.withValues(alpha: 0.2));
+      expect(darkExt.fileTypeColor('unknown'), darkExt.textDim.withValues(alpha: 0.2));
+
+      final lightExt = HudTheme.lightTheme(Colors.blue).extension<HudThemeExtension>()!;
+      expect(lightExt.fileTypeColor('media'), lightExt.accentCyan);
+      expect(lightExt.fileTypeColor('documents'), lightExt.accentGreen);
+      expect(lightExt.fileTypeColor('executables'), lightExt.accentRed);
+      expect(lightExt.fileTypeColor('archives'), lightExt.accentAmber);
+      expect(lightExt.fileTypeColor('code'), lightExt.accentPurple);
+      expect(lightExt.fileTypeColor('system'), lightExt.textDim);
+      expect(lightExt.fileTypeColor('unknown'), lightExt.textDim.withValues(alpha: 0.2));
+    });
   });
 
   group('HudThemeContext extension methods', () {

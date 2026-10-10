@@ -4,8 +4,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:gs_analyzer_ui/models/file_type_model.dart';
 import 'package:gs_analyzer_ui/providers/file_type_provider.dart';
 import 'package:gs_analyzer_ui/providers/extension_breakdown_provider.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/extension_breakdown_screen.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 
 class FileTypeAnalyzerPanel extends ConsumerWidget {
   final String driveName;
@@ -15,25 +15,26 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scanRoot = ref.watch(scanRootProvider(driveName));
     final asyncResult = ref.watch(fileTypesProvider(scanRoot));
+    final hud = context.hudTheme;
 
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
         initiallyExpanded: false,
-        collapsedBackgroundColor: const Color(0xFF1A1D23),
-        backgroundColor: const Color(0xFF1A1D23),
+        collapsedBackgroundColor: hud.base,
+        backgroundColor: hud.base,
         title: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.grid_view_rounded,
-              color: Color(0xFF00FFFF),
+              color: hud.accentCyan,
               size: 16,
             ),
             const SizedBox(width: 8),
             Text(
               'FILE TYPE MATRIX',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: hud.textMain,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.4,
@@ -47,23 +48,23 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color: const Color(0xFF00FFFF).withValues(alpha: 0.35),
+                    color: hud.accentCyan.withValues(alpha: 0.35),
                   ),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.folder_open_rounded,
-                      color: Color(0xFF00FFFF),
+                      color: hud.accentCyan,
                       size: 13,
                     ),
                     const SizedBox(width: 5),
                     Text(
                       _shortenPath(scanRoot),
-                      style: const TextStyle(
-                        color: Color(0xFF00FFFF),
+                      style: TextStyle(
+                        color: hud.accentCyan,
                         fontSize: 11,
                         fontFamily: 'monospace',
                       ),
@@ -101,24 +102,24 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: const Color(0xFF00FFFF).withValues(alpha: 0.35),
+                      color: hud.accentCyan.withValues(alpha: 0.35),
                     ),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: asyncResult.isLoading
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 14,
                           height: 14,
                           child: CircularProgressIndicator(
                             strokeWidth: 1.5,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              Color(0xFF00FFFF),
+                              hud.accentCyan,
                             ),
                           ),
                         )
-                      : const Icon(
+                      : Icon(
                           Icons.refresh_rounded,
-                          color: Color(0xFF00FFFF),
+                          color: hud.accentCyan,
                           size: 14,
                         ),
                 ),
@@ -133,7 +134,7 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
               'TOTAL: ${result.totalScannedFormatted}  ·  '
               '${result.categories.length} CATEGORIES',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.45),
+                color: hud.textMain.withValues(alpha: 0.45),
                 fontSize: 11,
               ),
             ),
@@ -158,21 +159,22 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
 
   void _showPathPicker(BuildContext context, WidgetRef ref, String current) {
     final ctrl = TextEditingController(text: current);
+    final hud = context.hudTheme;
 
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1D23),
+        backgroundColor: hud.base,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
           side: BorderSide(
-            color: const Color(0xFF00FFFF).withValues(alpha: 0.3),
+            color: hud.accentCyan.withValues(alpha: 0.3),
           ),
         ),
-        title: const Text(
+        title: Text(
           'SELECT SCAN ROOT',
           style: TextStyle(
-            color: Color(0xFF00FFFF),
+            color: hud.accentCyan,
             fontSize: 13,
             fontWeight: FontWeight.w700,
             letterSpacing: 1.4,
@@ -185,7 +187,7 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
             Text(
               'Enter the folder path you want to analyze:',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.55),
+                color: hud.textMain.withValues(alpha: 0.55),
                 fontSize: 12,
               ),
             ),
@@ -193,39 +195,39 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
             TextField(
               controller: ctrl,
               autofocus: true,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: hud.textMain,
                 fontFamily: 'monospace',
                 fontSize: 13,
               ),
               decoration: InputDecoration(
                 hintText: r'C:\Users\YourName\Projects',
                 hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.25),
+                  color: hud.textMain.withValues(alpha: 0.25),
                   fontSize: 12,
                 ),
                 filled: true,
-                fillColor: const Color(0xFF0D0F14),
-                prefixIcon: const Icon(
+                fillColor: hud.base,
+                prefixIcon: Icon(
                   Icons.folder_open_rounded,
-                  color: Color(0xFF00FFFF),
+                  color: hud.accentCyan,
                   size: 16,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
                   borderSide: BorderSide(
-                    color: const Color(0xFF00FFFF).withValues(alpha: 0.3),
+                    color: hud.accentCyan.withValues(alpha: 0.3),
                   ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
                   borderSide: BorderSide(
-                    color: const Color(0xFF00FFFF).withValues(alpha: 0.2),
+                    color: hud.accentCyan.withValues(alpha: 0.2),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
-                  borderSide: const BorderSide(color: Color(0xFF00FFFF)),
+                  borderSide: BorderSide(color: hud.accentCyan),
                 ),
               ),
             ),
@@ -233,7 +235,7 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
             Text(
               'A Directory Scan must have been run on this path first.',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.35),
+                color: hud.textMain.withValues(alpha: 0.35),
                 fontSize: 10,
               ),
             ),
@@ -245,15 +247,15 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
             child: Text(
               'CANCEL',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.4),
+                color: hud.textMain.withValues(alpha: 0.4),
                 fontSize: 12,
               ),
             ),
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF00FFFF),
-              foregroundColor: Colors.black,
+              backgroundColor: hud.accentCyan,
+              foregroundColor: hud.textPaint,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(4),
               ),
@@ -290,12 +292,12 @@ class FileTypeAnalyzerPanel extends ConsumerWidget {
 class _LoadingState extends StatelessWidget {
   const _LoadingState();
   @override
-  Widget build(BuildContext context) => const Padding(
+  Widget build(BuildContext context) => Padding(
     padding: EdgeInsets.symmetric(vertical: 40),
     child: Center(
       child: CircularProgressIndicator(
         strokeWidth: 2,
-        color: Color(0xFF00FFFF),
+        color: context.hudTheme.accentCyan,
       ),
     ),
   );
@@ -313,14 +315,14 @@ class _NoScanState extends StatelessWidget {
       children: [
         Icon(
           Icons.radar_rounded,
-          color: Colors.white.withValues(alpha: 0.25),
+          color: context.hudTheme.textMain.withValues(alpha: 0.25),
           size: 40,
         ),
         const SizedBox(height: 12),
         Text(
           'No scan found for "$root"',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.55),
+            color: context.hudTheme.textMain.withValues(alpha: 0.55),
             fontSize: 13,
           ),
         ),
@@ -328,7 +330,7 @@ class _NoScanState extends StatelessWidget {
         Text(
           'Run a Directory Scan on this path first, then return here.',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.3),
+            color: context.hudTheme.textMain.withValues(alpha: 0.3),
             fontSize: 11,
           ),
           textAlign: TextAlign.center,
@@ -346,7 +348,7 @@ class _ErrorState extends StatelessWidget {
     padding: const EdgeInsets.all(24),
     child: Text(
       error,
-      style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+      style: TextStyle(color: context.hudTheme.accentRed, fontSize: 12),
     ),
   );
 }
@@ -399,11 +401,12 @@ class _DonutChart extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final hud = context.hudTheme;
     final sections = result.categories.map((cat) {
       final isSelected = selected == null || selected == cat.name;
       return PieChartSectionData(
         value: cat.percentOfDisk,
-        color: HudTheme.fileTypeColor(
+        color: hud.fileTypeColor(
           cat.name,
         ).withValues(alpha: isSelected ? 1.0 : 0.25),
         radius: selected == cat.name ? 38 : 32,
@@ -440,8 +443,8 @@ class _DonutChart extends ConsumerWidget {
           children: [
             Text(
               result.totalScannedFormatted,
-              style: const TextStyle(
-                color: Color(0xFF00FFFF),
+              style: TextStyle(
+                color: hud.accentCyan,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -450,7 +453,7 @@ class _DonutChart extends ConsumerWidget {
             Text(
               'SCANNED',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.4),
+                color: hud.textMain.withValues(alpha: 0.4),
                 fontSize: 10,
                 letterSpacing: 1.2,
               ),
@@ -476,6 +479,7 @@ class _CategoryList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hud = context.hudTheme;
     return Column(
       children: result.categories.map((cat) {
         final isSelected = selected == cat.name;
@@ -485,8 +489,8 @@ class _CategoryList extends StatelessWidget {
             border: Border(
               left: BorderSide(
                 color: isSelected
-                    ? HudTheme.fileTypeColor(cat.name)
-                    : HudTheme.fileTypeColor(cat.name).withValues(alpha: 0.3),
+                    ? hud.fileTypeColor(cat.name)
+                    : hud.fileTypeColor(cat.name).withValues(alpha: 0.3),
                 width: 3,
               ),
             ),
@@ -494,8 +498,8 @@ class _CategoryList extends StatelessWidget {
           child: ExpansionTile(
             dense: true,
             tilePadding: const EdgeInsets.symmetric(horizontal: 10),
-            collapsedBackgroundColor: const Color(0xFF0D0F14),
-            backgroundColor: const Color(0xFF0D0F14),
+            collapsedBackgroundColor: hud.base,
+            backgroundColor: hud.base,
             onExpansionChanged: (_) {
               // Now we don't need ref.read here for category selection since it pushes a screen
               // Wait, ExpansionTile still needs it if it expands? It's fine to leave it or remove it.
@@ -507,15 +511,15 @@ class _CategoryList extends StatelessWidget {
                   width: 10,
                   height: 10,
                   decoration: BoxDecoration(
-                    color: HudTheme.fileTypeColor(cat.name),
+                    color: hud.fileTypeColor(cat.name),
                     shape: BoxShape.circle,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   cat.name.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: hud.textMain,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.8,
@@ -529,7 +533,7 @@ class _CategoryList extends StatelessWidget {
                 Text(
                   cat.sizeFormatted,
                   style: TextStyle(
-                    color: HudTheme.fileTypeColor(cat.name),
+                    color: hud.fileTypeColor(cat.name),
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -538,7 +542,7 @@ class _CategoryList extends StatelessWidget {
                 Text(
                   '${cat.percentOfDisk}%',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: hud.textMain.withValues(alpha: 0.5),
                     fontSize: 11,
                   ),
                 ),
@@ -546,7 +550,7 @@ class _CategoryList extends StatelessWidget {
                 Text(
                   '${cat.fileCount} f',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.35),
+                    color: hud.textMain.withValues(alpha: 0.35),
                     fontSize: 10,
                   ),
                 ),
@@ -554,9 +558,9 @@ class _CategoryList extends StatelessWidget {
                 Consumer(
                   builder: (context, ref, child) {
                     return IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.open_in_new,
-                        color: HudTheme.accentCyan,
+                        color: hud.accentCyan,
                         size: 16,
                       ),
                       tooltip: 'View Extensions Breakdown',
@@ -576,9 +580,9 @@ class _CategoryList extends StatelessWidget {
                     );
                   },
                 ),
-                const Icon(
+                Icon(
                   Icons.expand_more_rounded,
-                  color: Colors.white38,
+                  color: hud.textMain.withValues(alpha: 0.38),
                   size: 16,
                 ),
               ],
@@ -587,7 +591,7 @@ class _CategoryList extends StatelessWidget {
                 .map(
                   (ext) => _ExtRow(
                     ext: ext,
-                    catColor: HudTheme.fileTypeColor(cat.name),
+                    catColor: hud.fileTypeColor(cat.name),
                     scanRoot: scanRoot,
                     driveName: driveName,
                     category: cat.name,
@@ -616,7 +620,8 @@ class _ExtRow extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => InkWell(
+  Widget build(BuildContext context, WidgetRef ref) => 
+  InkWell(
     onTap: () {
       ref.read(ebSelectedCategoriesProvider.notifier).state = {category};
       ref.read(ebSearchQueryProvider.notifier).state = ext.ext;
@@ -653,13 +658,13 @@ class _ExtRow extends ConsumerWidget {
           const Spacer(),
           Text(
             ext.sizeFormatted,
-            style: const TextStyle(color: Colors.white70, fontSize: 11),
+            style: TextStyle(color: context.hudTheme.textMain.withValues(alpha: 0.7), fontSize: 11),
           ),
           const SizedBox(width: 12),
           Text(
             '${ext.percentOfDisk}%',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.4),
+              color: context.hudTheme.textMain.withValues(alpha: 0.4),
               fontSize: 10,
             ),
           ),
@@ -667,7 +672,7 @@ class _ExtRow extends ConsumerWidget {
           Text(
             '${ext.fileCount} files',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.3),
+              color: context.hudTheme.textMain.withValues(alpha: 0.3),
               fontSize: 10,
             ),
           ),
