@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gs_analyzer_ui/utils/hud_label.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 class DirectoryTableHeader extends StatelessWidget {
   const DirectoryTableHeader({super.key});
@@ -9,9 +9,9 @@ class DirectoryTableHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      decoration: const BoxDecoration(
-        color: HudTheme.bgPanel,
-        border: Border(bottom: BorderSide(color: Colors.white10)),
+      decoration: BoxDecoration(
+        color: context.hudTheme.panel,
+        border: Border(bottom: BorderSide(color: context.hudTheme.textMain.withValues(alpha: 0.10))),
       ),
       child: const Row(
         children: [

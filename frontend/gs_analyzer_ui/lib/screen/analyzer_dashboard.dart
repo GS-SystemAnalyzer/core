@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/_directory_search_widget.dart';
 import 'package:gs_analyzer_ui/widgets/age_heatmap_overlay.dart';
 import 'package:gs_analyzer_ui/widgets/directory_node_widget.dart';
@@ -35,14 +35,15 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
     final dirNotifier = ref.read(directoryProvider.notifier);
     final activeDrive = ref.watch(currentDriveProvider);
     final currentMode = ref.watch(storageModeProvider);
+    final hud = context.hudTheme;
 
     return Scaffold(
-      backgroundColor: HudTheme.bgBase,
+      backgroundColor: hud.base,
       appBar: AppBar(
         title: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.arrow_back, color: HudTheme.accentCyan),
+              icon: Icon(Icons.arrow_back, color: hud.accentCyan),
               tooltip: 'Back to Drives',
               onPressed: () => ref.read(storageViewProvider.notifier).state =
                   StorageView.drivePicker,
@@ -52,7 +53,7 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                 ref.watch(treeExpandedProvider)
                     ? Icons.menu_open_outlined
                     : Icons.menu_outlined,
-                color: HudTheme.accentCyan,
+                color: hud.accentCyan,
               ),
               tooltip: 'Toggle Data Tree',
               onPressed: () {
@@ -64,8 +65,8 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
             Expanded(
               child: Text(
                 dirState.currentPath,
-                style: HudTheme.bodyText.copyWith(
-                  color: HudTheme.textMain,
+                style: hud.body.copyWith(
+                  color: hud.textMain,
                   fontWeight: FontWeight.bold,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -73,16 +74,16 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
             ),
           ],
         ),
-        backgroundColor: HudTheme.bgPanel,
+        backgroundColor: hud.panel,
         elevation: 0,
         actions: [
           PopupMenuButton<StorageMode>(
-            icon: const Icon(
+            icon: Icon(
               Icons.build_circle_outlined,
-              color: HudTheme.accentAmber,
+              color: hud.accentAmber,
             ),
             tooltip: 'Storage Tools',
-            color: HudTheme.bgPanel,
+            color: hud.panel,
             offset: const Offset(0, 50),
             onSelected: (mode) {
               ref.read(storageModeProvider.notifier).state = mode;
@@ -92,8 +93,8 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                 value: StorageMode.duplicateScanner,
                 child: Text(
                   'DUPLICATE HUNTER',
-                  style: HudTheme.bodyText.copyWith(
-                    color: HudTheme.accentAmber,
+                  style: hud.body.copyWith(
+                    color: hud.accentAmber,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -102,8 +103,8 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                 value: StorageMode.largeFileScanner,
                 child: Text(
                   'LARGE FILE SCANNER',
-                  style: HudTheme.bodyText.copyWith(
-                    color: HudTheme.accentAmber,
+                  style: hud.body.copyWith(
+                    color: hud.accentAmber,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -112,8 +113,8 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                 value: StorageMode.tempFileCleaner,
                 child: Text(
                   'TEMP FILE CLEANER',
-                  style: HudTheme.bodyText.copyWith(
-                    color: HudTheme.accentAmber,
+                  style: hud.body.copyWith(
+                    color: hud.accentAmber,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -122,8 +123,8 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                 value: StorageMode.permissionAudit,
                 child: Text(
                   'PERMISSION AUDIT',
-                  style: HudTheme.bodyText.copyWith(
-                    color: HudTheme.accentAmber,
+                  style: hud.body.copyWith(
+                    color: hud.accentAmber,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -139,16 +140,16 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                   icon: Icon(
                     isHeatmapOn ? Icons.thermostat : Icons.thermostat_outlined,
                     color: isHeatmapOn
-                        ? HudTheme.accentAmber
-                        : HudTheme.textDim,
+                        ? hud.accentAmber
+                        : hud.textDim,
                     size: 18,
                   ),
                   label: Text(
                     'AGE MAP',
-                    style: HudTheme.bodyText.copyWith(
+                    style: hud.body.copyWith(
                       color: isHeatmapOn
-                          ? HudTheme.accentAmber
-                          : HudTheme.textDim,
+                          ? hud.accentAmber
+                          : hud.textDim,
                       fontWeight: FontWeight.bold,
                       fontSize: 11,
                       letterSpacing: 1,
@@ -164,7 +165,7 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
             PopupMenuButton<dynamic>(
               icon: const Icon(Icons.sort_outlined),
               tooltip: 'Sort Option',
-              color: HudTheme.bgPanel,
+              color: hud.panel,
               onSelected: (value) {
                 if (value is SortMethod) {
                   ref.read(directoryProvider.notifier).setSortMethod(value);
@@ -176,28 +177,28 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                 CheckedPopupMenuItem(
                   value: SortMethod.name,
                   checked: dirState.sortMethod == SortMethod.name,
-                  child: Text('Name', style: HudTheme.bodyText),
+                  child: Text('Name', style: hud.body),
                 ),
                 CheckedPopupMenuItem(
                   value: SortMethod.size,
                   checked: dirState.sortMethod == SortMethod.size,
-                  child: Text('Total Size', style: HudTheme.bodyText),
+                  child: Text('Total Size', style: hud.body),
                 ),
                 CheckedPopupMenuItem(
                   value: SortMethod.date,
                   checked: dirState.sortMethod == SortMethod.date,
-                  child: Text('DateModified', style: HudTheme.bodyText),
+                  child: Text('DateModified', style: hud.body),
                 ),
                 const PopupMenuDivider(),
                 CheckedPopupMenuItem(
                   value: true,
                   checked: dirState.isAscending == true,
-                  child: Text('Ascending', style: HudTheme.bodyText),
+                  child: Text('Ascending', style: hud.body),
                 ),
                 CheckedPopupMenuItem(
                   value: false,
                   checked: dirState.isAscending == false,
-                  child: Text('Descending', style: HudTheme.bodyText),
+                  child: Text('Descending', style: hud.body),
                 ),
               ],
             ),
@@ -209,25 +210,25 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                 dirState.isSelectionMode
                     ? 'CANCEL SELECTION'
                     : 'SELECT MULTIPLE',
-                style: HudTheme.bodyText.copyWith(
-                  color: HudTheme.accentCyan,
+                style: hud.body.copyWith(
+                  color: hud.accentCyan,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
             if (dirState.isSelectionMode && dirState.selectedPath.isNotEmpty)
               IconButton(
-                icon: const Icon(
+                icon: Icon(
                   Icons.delete_forever_outlined,
-                  color: HudTheme.accentRed,
+                  color: hud.accentRed,
                 ),
                 tooltip: 'Nuke Selected (${dirState.selectedPath.length})',
                 onPressed: () => executeNukeProtocol(context, ref),
               ),
             IconButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.refresh_outlined,
-                color: HudTheme.accentCyan,
+                color: hud.accentCyan,
               ),
               tooltip: 'Refresh',
               onPressed: () => dirNotifier.scanDirectory(
@@ -307,11 +308,12 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
     if (dirState.isLoading) {
       return const TelemetryHudWidget();
     }
+    final hud = context.hudTheme;
     if (dirState.errorMessage != null) {
       return Center(
         child: Text(
           'BRIDGE FAILURE: ${dirState.errorMessage}',
-          style: HudTheme.actionRed,
+          style: hud.actionRed,
         ),
       );
     }
@@ -327,10 +329,10 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
         Expanded(
           child:
               dirState.displayNodes.isEmpty && dirState.searchQuery.isNotEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
                     'NO DATA FOUND IN SECTOR',
-                    style: HudTheme.labelMuted,
+                    style: hud.label,
                   ),
                 )
               : ListView.builder(
@@ -356,30 +358,31 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
   }
 
   Widget _buildAwaitingSelectionUI(WidgetRef ref) {
+    final hud = context.hudTheme;
     return Center(
       child: Container(
         padding: const EdgeInsets.all(40),
-        decoration: HudTheme.hudPanelDecoration,
+        decoration: hud.hudPanelDecoration,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.storage, size: 64, color: Colors.white24),
+            Icon(Icons.storage, size: 64, color: hud.textMain.withValues(alpha: 0.24)),
             const SizedBox(height: 24),
             Text(
               'SYSTEM STANDBY',
-              style: HudTheme.headerCyan.copyWith(
-                color: HudTheme.accentCyan,
+              style: hud.header.copyWith(
+                color: hud.accentCyan,
                 fontSize: 24,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               'Awaiting target matrix assignment for Directory Indexing.',
-              style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+              style: hud.body.copyWith(color: hud.textDim),
             ),
             const SizedBox(height: 32),
             OutlinedButton.icon(
-              icon: const Icon(Icons.touch_app, color: HudTheme.accentCyan),
+              icon: Icon(Icons.touch_app, color: hud.accentCyan),
               label: const Text(
                 'ASSIGN TARGET DRIVE',
                 style: TextStyle(letterSpacing: 2),
@@ -389,8 +392,8 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                   horizontal: 24,
                   vertical: 16,
                 ),
-                side: BorderSide(color: HudTheme.accentCyan),
-                foregroundColor: HudTheme.accentCyan,
+                side: BorderSide(color: hud.accentCyan),
+                foregroundColor: hud.accentCyan,
               ),
               onPressed: () {
                 // Flips the sidebar to the Storage Screen (Index 1)
