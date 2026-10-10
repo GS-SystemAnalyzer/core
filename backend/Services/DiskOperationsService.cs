@@ -54,6 +54,13 @@ namespace GSSystemAnalyzer.Services
 		{
 			try
 			{
+				// A hidden/system folder opened directly as the scan target is skipped per its toggle; drive roots are never gated.
+				if (!IsDriveRoot(path) && _scanner.IsPathSkippedByFilter(path))
+				{
+					_logger.LogDebug("Scan target {Path} excluded by hidden/system filter", path);
+					return new List<StorageNode>();
+				}
+
 				var items = _scanner.LoadDirectoryItems(path);
 				PurgeDeadMemory(path, items);
 				_scanner.CalculateMissingSizesAsync(items, scanId).GetAwaiter().GetResult();

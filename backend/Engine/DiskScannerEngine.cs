@@ -245,10 +245,10 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 
 		try
 		{
-			// FIX: hidden/System filter is logically wrong(Should be two separate Check)
+			var config = _settings.Current.Scan;
 			var dirInfo = new DirectoryInfo(path);
-			items.AddRange(dirInfo.GetDirectories().Where(d => !d.Attributes.HasFlag(FileAttributes.Hidden | FileAttributes.System)));
-			items.AddRange(dirInfo.GetFiles().Where(f => !f.Attributes.HasFlag(FileAttributes.Hidden | FileAttributes.System)));
+			items.AddRange(dirInfo.GetDirectories().Where(d => !IsSkippedByFilter(d.Attributes, config.SkipHiddenFiles, config.SkipSystemFiles)));
+			items.AddRange(dirInfo.GetFiles().Where(f => !IsSkippedByFilter(f.Attributes, config.SkipHiddenFiles, config.SkipSystemFiles)));
 		}
 		catch (UnauthorizedAccessException ex)
 		{
@@ -256,6 +256,25 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 		}
 
 		return items;
+	}
+
+	// Skip an entry when either flag is set and its matching toggle is on; Hidden and System are independent.
+	private static bool IsSkippedByFilter(FileAttributes attributes, bool skipHidden, bool skipSystem) =>
+		(skipHidden && attributes.HasFlag(FileAttributes.Hidden)) ||
+		(skipSystem && attributes.HasFlag(FileAttributes.System));
+
+	// True when the directory at this path is itself excluded by the skip toggles; an invalid path is not skipped.
+	public bool IsPathSkippedByFilter(string path)
+	{
+		try
+		{
+			var config = _settings.Current.Scan;
+			return IsSkippedByFilter(File.GetAttributes(path), config.SkipHiddenFiles, config.SkipSystemFiles);
+		}
+		catch
+		{
+			return false;
+		}
 	}
 
 	public async Task CalculateMissingSizesAsync(List<FileSystemInfo> items, Guid scanId)
