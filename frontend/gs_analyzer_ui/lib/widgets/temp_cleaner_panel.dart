@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';
 import 'package:gs_analyzer_ui/providers/temp_cleaner_provider.dart';
+import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
 import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
@@ -448,18 +449,18 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
     ref.read(tempCleanTargetProvider.notifier).state = 'INITIALIZING...';
 
     // Show Cyber-HUD progress dialog modal
+    ref.read(tempCleanMinimizedProvider.notifier).state = false;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => const TempCleanProgressDialog(),
     );
 
-    final masterNavigator = Navigator.of(context, rootNavigator: true);
-
     try {
       await tempNotifier.cleanSelected();
     } finally {
-      masterNavigator.pop();
+      // Dialog self-closes on isCleaning->false; clear any leftover pill.
+      ref.read(tempCleanMinimizedProvider.notifier).state = false;
     }
 
     final resultState = ref.read(tempCleanerProvider);

@@ -25,7 +25,7 @@ public class AutomationService : IAutomationService
 	private readonly SemaphoreSlim _executionLock = new(1, 1);
 	private readonly object _rulesLock = new();
 
-	// Default safety caps per techspec-v2.md:4273
+	// Default safety caps
 	public int MaxFilesPerRun { get; set; } = 5000;
 	public long MaxBytesPerRun { get; set; } = 10L * 1024 * 1024 * 1024; // 10 GB
 

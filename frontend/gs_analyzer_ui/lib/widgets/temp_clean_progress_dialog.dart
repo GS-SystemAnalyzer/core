@@ -1,13 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/temp_cleaner_provider.dart';
+import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 
-class TempCleanProgressDialog extends ConsumerWidget {
+class TempCleanProgressDialog extends ConsumerStatefulWidget {
   const TempCleanProgressDialog({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TempCleanProgressDialog> createState() =>
+      _TempCleanProgressDialogState();
+}
+
+class _TempCleanProgressDialogState
+    extends ConsumerState<TempCleanProgressDialog> {
+  @override
+  Widget build(BuildContext context) {
+    // Self-close when cleaning finishes — unless minimised (then the dialog is
+    // already gone and the pill carries it to completion).
+    ref.listen<bool>(
+      tempCleanerProvider.select((s) => s.isCleaning),
+      (prev, next) {
+        if (!next && mounted && !ref.read(tempCleanMinimizedProvider)) {
+          if (Navigator.of(context).canPop()) Navigator.of(context).pop();
+        }
+      },
+    );
+
     final progress = ref.watch(tempCleanProgressProvider);
     final target = ref.watch(tempCleanTargetProvider);
     final completed = ref.watch(tempCleanCompletedProvider);
@@ -25,22 +44,33 @@ class TempCleanProgressDialog extends ConsumerWidget {
           side: const BorderSide(color: HudTheme.accentGreen, width: 2),
           borderRadius: BorderRadius.circular(8),
         ),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(
+            const Icon(
               Icons.cleaning_services_outlined,
               color: HudTheme.accentGreen,
               size: 24,
             ),
-            SizedBox(width: 12),
-            Text(
-              'PURGING TEMP SECTORS...',
-              style: TextStyle(
-                color: HudTheme.accentGreen,
-                fontFamily: HudTheme.fontCore,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'PURGING TEMP SECTORS...',
+                style: TextStyle(
+                  color: HudTheme.accentGreen,
+                  fontFamily: HudTheme.fontCore,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.remove, color: HudTheme.accentGreen),
+              tooltip: 'Minimize',
+              visualDensity: VisualDensity.compact,
+              onPressed: () {
+                ref.read(tempCleanMinimizedProvider.notifier).state = true;
+                Navigator.of(context).pop();
+              },
             ),
           ],
         ),

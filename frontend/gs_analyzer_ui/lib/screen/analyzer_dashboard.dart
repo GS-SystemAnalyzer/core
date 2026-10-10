@@ -10,6 +10,7 @@ import 'package:gs_analyzer_ui/widgets/telemetry_hud_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/age_heatmap_provider.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
+import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
 import '../providers/drive_stats_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../utils/nuke_protocol.dart';
@@ -305,7 +306,7 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
       return const PermissionAuditPanel();
     }
     // Default: disk analyzer table.
-    if (dirState.isLoading) {
+    if (dirState.isLoading && !ref.watch(scanMinimizedProvider)) {
       return const TelemetryHudWidget();
     }
     final hud = context.hudTheme;

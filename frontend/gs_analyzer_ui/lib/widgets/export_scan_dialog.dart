@@ -5,10 +5,12 @@ import 'package:file_saver/file_saver.dart';
 import 'package:intl/intl.dart';
 import 'package:gs_analyzer_ui/models/scan_export_options.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
+import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/utils/formatters.dart';
+import 'package:gs_analyzer_ui/utils/globals.dart';
 import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 
 class ExportScanDialog extends ConsumerStatefulWidget {
@@ -48,6 +50,15 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
   }
 
   Future<void> _triggerExport() async {
+    // Capture provider controllers up front: the export future outlives this
+    // dialog if the user minimises it, so we must not touch `ref`/`context`
+    // after disposal. StateControllers are owned by the container and stay valid.
+    final activeCtl = ref.read(exportActiveProvider.notifier);
+    final minCtl = ref.read(exportMinimizedProvider.notifier);
+    ref.read(exportDriveProvider.notifier).state = widget.driveName;
+    final nodeCount = _getNodeCount();
+
+    activeCtl.state = true;
     setState(() {
       _isExporting = true;
       _errorMessage = null;
@@ -62,7 +73,6 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
         redactPaths: _redactPaths,
       );
 
-      final nodeCount = _getNodeCount();
       final cleanDrive = widget.driveName.replaceAll(RegExp(r'[:\\/]+'), '');
       final timestamp = DateFormat('yyyy-MM-ddTHHmmss').format(DateTime.now());
       final filename = 'gs-scan-$cleanDrive-$timestamp';
@@ -93,40 +103,44 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
         savedFilePath = file.path;
       }
 
-      if (mounted) {
-        Navigator.of(context).pop();
+      // Close the dialog if it is still open (i.e. not minimised).
+      if (mounted) Navigator.of(context).pop();
 
-        final formattedNodes = nodeCount > 0
-            ? NumberFormat.decimalPattern().format(nodeCount)
-            : 'CACHED';
-        final formattedSize = formatBytes(bytes.length);
+      final formattedNodes = nodeCount > 0
+          ? NumberFormat.decimalPattern().format(nodeCount)
+          : 'CACHED';
+      final formattedSize = formatBytes(bytes.length);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: HudTheme.bgPanel,
-            content: Text(
-              'EXPORTED $formattedNodes NODES — $formattedSize',
-              style: HudTheme.bodyText.copyWith(color: HudTheme.accentCyan),
-            ),
-            duration: const Duration(seconds: 8),
-            action: SnackBarAction(
-              label: 'OPEN FOLDER',
-              textColor: HudTheme.accentGreen,
-              onPressed: () {
-                if (savedFilePath.isNotEmpty && Platform.isWindows) {
-                  Process.run('explorer.exe', ['/select,', savedFilePath]);
-                }
-              },
-            ),
+      // Global messenger so the result shows even when minimised.
+      snackbarKey.currentState?.showSnackBar(
+        SnackBar(
+          backgroundColor: HudTheme.bgPanel,
+          content: Text(
+            'EXPORTED $formattedNodes NODES — $formattedSize',
+            style: HudTheme.bodyText.copyWith(color: HudTheme.accentCyan),
           ),
-        );
-      }
+          duration: const Duration(seconds: 8),
+          action: SnackBarAction(
+            label: 'OPEN FOLDER',
+            textColor: HudTheme.accentGreen,
+            onPressed: () {
+              if (savedFilePath.isNotEmpty && Platform.isWindows) {
+                Process.run('explorer.exe', ['/select,', savedFilePath]);
+              }
+            },
+          ),
+        ),
+      );
     } on DiffNoScanException {
       if (mounted) {
         setState(() {
           _isExporting = false;
           _noScanCached = true;
         });
+      } else {
+        snackbarKey.currentState?.showSnackBar(
+          const SnackBar(content: Text('NO SCAN DATA — RUN A SCAN FIRST')),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -134,7 +148,20 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
           _isExporting = false;
           _errorMessage = e.toString();
         });
+      } else {
+        snackbarKey.currentState?.showSnackBar(
+          SnackBar(
+            backgroundColor: HudTheme.bgPanel,
+            content: Text(
+              'EXPORT FAILED: $e',
+              style: HudTheme.bodyText.copyWith(color: HudTheme.accentRed),
+            ),
+          ),
+        );
       }
+    } finally {
+      activeCtl.state = false;
+      minCtl.state = false;
     }
   }
 
@@ -147,6 +174,19 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
 
   @override
   Widget build(BuildContext context) {
+    // A re-shown dialog (restored from the pill) observes the in-flight export
+    // via the provider and self-closes when it finishes.
+    ref.listen<bool>(exportActiveProvider, (prev, next) {
+      if (!next &&
+          mounted &&
+          !_isExporting &&
+          !ref.read(exportMinimizedProvider) &&
+          Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    });
+
+    final busy = _isExporting || ref.watch(exportActiveProvider);
     final nodeCount = _getNodeCount();
     final estimatedSize = formatBytes(_getEstimatedBytes(nodeCount));
     final isLargeExport = nodeCount > 50000;
@@ -175,6 +215,16 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                   widget.driveName,
                   style: HudTheme.labelMuted.copyWith(color: HudTheme.accentCyan),
                 ),
+                if (busy)
+                  IconButton(
+                    icon: const Icon(Icons.remove, color: HudTheme.accentCyan),
+                    tooltip: 'Minimize',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      ref.read(exportMinimizedProvider.notifier).state = true;
+                      Navigator.of(context).pop();
+                    },
+                  ),
               ],
             ),
             const SizedBox(height: 16),
@@ -214,7 +264,7 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(6),
-                    onTap: _isExporting
+                    onTap: busy
                         ? null
                         : () => setState(() => _selectedFormat = format),
                     child: Container(
@@ -270,7 +320,7 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
               // Redact Paths Checkbox
               InkWell(
                 borderRadius: BorderRadius.circular(4),
-                onTap: _isExporting
+                onTap: busy
                     ? null
                     : () => setState(() => _redactPaths = !_redactPaths),
                 child: Row(
@@ -278,7 +328,7 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                     Checkbox(
                       value: _redactPaths,
                       activeColor: HudTheme.accentCyan,
-                      onChanged: _isExporting
+                      onChanged: busy
                           ? null
                           : (val) => setState(() => _redactPaths = val ?? false),
                     ),
@@ -332,7 +382,7 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                 ),
               ),
 
-              if (isLargeExport && _isExporting) ...[
+              if (isLargeExport && busy) ...[
                 const SizedBox(height: 16),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -351,7 +401,7 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                     ),
                   ],
                 ),
-              ] else if (_isExporting) ...[
+              ] else if (busy) ...[
                 const SizedBox(height: 16),
                 const LinearProgressIndicator(
                   color: HudTheme.accentCyan,
@@ -373,7 +423,7 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: _isExporting ? null : () => Navigator.of(context).pop(),
+                  onPressed: busy ? null : () => Navigator.of(context).pop(),
                   child: Text('CANCEL', style: TextStyle(color: HudTheme.textDim)),
                 ),
                 if (!_noScanCached) ...[
@@ -384,8 +434,8 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                       side: const BorderSide(color: HudTheme.accentCyan),
                       backgroundColor: HudTheme.accentCyan.withValues(alpha: 0.1),
                     ),
-                    onPressed: _isExporting ? null : _triggerExport,
-                    icon: _isExporting
+                    onPressed: busy ? null : _triggerExport,
+                    icon: busy
                         ? const SizedBox(
                             width: 14,
                             height: 14,
@@ -395,7 +445,7 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                             ),
                           )
                         : const Icon(Icons.download, size: 16),
-                    label: Text(_isExporting ? 'EXPORTING...' : 'EXPORT'),
+                    label: Text(busy ? 'EXPORTING...' : 'EXPORT'),
                   ),
                 ],
               ],
