@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/models/nuke_result.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
 import 'package:gs_analyzer_ui/providers/root_tree_provider.dart';
 import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:intl/intl.dart';
 
 final undoHistoryProvider = FutureProvider.autoDispose<List<NukeOperation>>((
@@ -31,10 +32,11 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
   @override
   Widget build(BuildContext context) {
     final historyAsync = ref.watch(undoHistoryProvider);
+    final hud = context.hudTheme;
 
     return Container(
       margin: const EdgeInsets.all(16.0),
-      decoration: HudTheme.hudPanelDecoration,
+      decoration: hud.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -48,12 +50,12 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.history, color: HudTheme.accentCyan),
+                      Icon(Icons.history, color: hud.accentCyan),
                       const SizedBox(width: 12),
                       Text(
                         'UNDO HISTORY',
-                        style: HudTheme.headerCyan.copyWith(
-                          color: HudTheme.accentCyan,
+                        style: hud.header.copyWith(
+                          color: hud.accentCyan,
                         ),
                       ),
                     ],
@@ -63,7 +65,7 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
                       IconButton(
                         icon: Icon(
                           Icons.refresh,
-                          color: HudTheme.accentCyan,
+                          color: hud.accentCyan,
                           size: 20,
                         ),
                         onPressed: () {
@@ -74,9 +76,9 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
                       ),
                       const SizedBox(width: 8),
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.delete_forever,
-                          color: HudTheme.accentRed,
+                          color: hud.accentRed,
                           size: 20,
                         ),
                         tooltip: 'Empty Recycle Bin',
@@ -92,7 +94,7 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
                       const SizedBox(width: 16),
                       Icon(
                         _isExpanded ? Icons.expand_less : Icons.expand_more,
-                        color: HudTheme.accentCyan,
+                        color: hud.accentCyan,
                       ),
                     ],
                   ),
@@ -108,8 +110,8 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
                     padding: const EdgeInsets.all(16.0),
                     child: Text(
                       'NO OPERATIONS RECORDED',
-                      style: HudTheme.bodyText.copyWith(
-                        color: HudTheme.textDim,
+                      style: hud.body.copyWith(
+                        color: hud.textDim,
                       ),
                     ),
                   );
@@ -119,7 +121,7 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
                   shrinkWrap: true,
                   itemCount: history.length,
                   separatorBuilder: (context, index) =>
-                      const Divider(color: Colors.white10, height: 1),
+                      Divider(color: hud.textMain.withValues(alpha: 0.1), height: 1),
                   itemBuilder: (context, index) {
                     final op = history[index];
                     final timeFormatted = DateFormat(
@@ -130,33 +132,33 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
                     return ListTile(
                       title: Text(
                         '$targets ITEMS',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: HudTheme.fontCore,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color:hud.textMain,
                         ),
                       ),
                       subtitle: Text(
                         timeFormatted,
                         style: TextStyle(
-                          color: HudTheme.textDim,
+                          color: hud.textDim,
                           fontFamily: HudTheme.fontCore,
                         ),
                       ),
                       trailing: op.usedRecycleBin
                           ? ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: HudTheme.accentAmber
+                                backgroundColor: hud.accentAmber
                                     .withValues(alpha: 0.2),
-                                side: const BorderSide(
-                                  color: HudTheme.accentAmber,
+                                side: BorderSide(
+                                  color: hud.accentAmber,
                                 ),
                               ),
                               onPressed: () => _handleUndo(op.operationId),
-                              child: const Text(
+                              child: Text(
                                 'UNDO',
                                 style: TextStyle(
-                                  color: HudTheme.accentAmber,
+                                  color: hud.accentAmber,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -167,13 +169,13 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.black45,
+                                color: hud.textPaint.withValues(alpha: 0.45),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Text(
+                              child: Text(
                                 '🔒 PERMANENT',
                                 style: TextStyle(
-                                  color: Colors.white54,
+                                  color: hud.textDim,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
                                 ),
@@ -191,7 +193,7 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
                   'ERROR: $err',
-                  style: const TextStyle(color: HudTheme.accentRed),
+                  style: TextStyle(color: hud.accentRed),
                 ),
               ),
             ),
@@ -202,6 +204,7 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
 
   Future<void> _handleUndo(String operationId) async {
     final api = widget.apiService;
+    final hud = context.hudTheme;
     try {
       final undoResult = await api.undoNuke(operationId);
       snackbarKey.currentState?.showSnackBar(
@@ -213,7 +216,7 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          backgroundColor: HudTheme.accentGreen,
+          backgroundColor: hud.accentGreen,
         ),
       );
 
@@ -231,7 +234,7 @@ class _UndoHistoryPanelState extends ConsumerState<UndoHistoryPanel> {
             'UNDO FAILED: $e',
             style: const TextStyle(fontFamily: HudTheme.fontCore),
           ),
-          backgroundColor: HudTheme.accentRed,
+          backgroundColor: hud.accentRed,
         ),
       );
     }
