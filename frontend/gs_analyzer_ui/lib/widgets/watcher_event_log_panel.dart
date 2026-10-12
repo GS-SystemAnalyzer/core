@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/models/watcher_event.dart';
 import 'package:gs_analyzer_ui/providers/watcher_log_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:intl/intl.dart';
 import 'dart:ui' as ui;
 import 'package:gs_analyzer_ui/utils/csv_exporter.dart';
@@ -56,6 +57,7 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
     final logState = ref.watch(watcherLogProvider);
     final notifier = ref.read(watcherLogProvider.notifier);
     final events = notifier.filteredEvents;
+    final hud = context.hudTheme;
 
     // Auto-scroll logic: If we're expanded and not user scrolling, force jump to top (newest)
     // Wait, ListView with reverse: true implicitly inserts at top.
@@ -64,7 +66,7 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      decoration: HudTheme.hudPanelDecoration,
+      decoration: hud.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -80,13 +82,13 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
                     children: [
                       Icon(
                         Icons.monitor_heart_outlined,
-                        color: HudTheme.accentCyan,
+                        color: hud.accentCyan,
                       ),
                       const SizedBox(width: 12),
                       Text(
                         'WATCHER EVENT LOG',
-                        style: HudTheme.headerCyan.copyWith(
-                          color: HudTheme.accentCyan,
+                        style: hud.header.copyWith(
+                          color: hud.accentCyan,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -96,13 +98,13 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white10,
+                          color: hud.textMain.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           '${events.length} / 500',
                           style: TextStyle(
-                            color: HudTheme.textDim,
+                            color: hud.textDim,
                             fontSize: 12,
                           ),
                         ),
@@ -111,16 +113,16 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
                   ),
                   Icon(
                     _isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: HudTheme.accentCyan,
+                    color: hud.accentCyan,
                   ),
                 ],
               ),
             ),
           ),
           if (_isExpanded) ...[
-            const Divider(color: Colors.white10, height: 1),
+            Divider(color: hud.textMain.withValues(alpha: 0.1), height: 1),
             _buildToolbar(logState, notifier, events),
-            const Divider(color: Colors.white10, height: 1),
+            Divider(color: hud.textMain.withValues(alpha: 0.1), height: 1),
             _buildEventList(events),
           ],
         ],
@@ -133,6 +135,7 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
     WatcherLogNotifier notifier,
     List<WatcherEvent> currentEvents,
   ) {
+    final hud = context.hudTheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
@@ -177,11 +180,11 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
                 label: Text(logState.isPaused ? 'RESUME' : 'PAUSE'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: logState.isPaused
-                      ? HudTheme.accentAmber.withValues(alpha: 0.2)
-                      : Colors.white10,
+                      ? hud.accentAmber.withValues(alpha: 0.2)
+                      : hud.textMain.withValues(alpha: 0.1),
                   foregroundColor: logState.isPaused
-                      ? HudTheme.accentAmber
-                      : Colors.white,
+                      ? hud.accentAmber
+                      : hud.textMain,
                   elevation: 0,
                 ),
                 onPressed: () => notifier.togglePause(),
@@ -191,16 +194,16 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
                 icon: const Icon(Icons.download, size: 16),
                 label: const Text('CSV'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: HudTheme.accentCyan,
-                  side: const BorderSide(color: HudTheme.accentCyan),
+                  foregroundColor: hud.accentCyan,
+                  side: BorderSide(color: hud.accentCyan),
                 ),
                 onPressed: () => _exportCsv(currentEvents),
               ),
               const SizedBox(width: 8),
               IconButton(
-                icon: const Icon(
+                icon: Icon(
                   Icons.delete_forever,
-                  color: HudTheme.accentRed,
+                  color: hud.accentRed,
                   size: 20,
                 ),
                 tooltip: 'Clear Log',
@@ -221,6 +224,7 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
     WatcherChangeKind? currentFilter,
     WatcherLogNotifier notifier,
   ) {
+    final hud = context.hudTheme;
     final isSelected = kind == currentFilter;
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
@@ -241,13 +245,13 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
             notifier.setFilter(null);
           }
         },
-        selectedColor: HudTheme.accentCyan.withValues(alpha: 0.2),
+        selectedColor: hud.accentCyan.withValues(alpha: 0.2),
         backgroundColor: Colors.transparent,
         side: BorderSide(
-          color: isSelected ? HudTheme.accentCyan : Colors.white10,
+          color: isSelected ? hud.accentCyan : hud.textMain.withValues(alpha: 0.1),
         ),
         labelStyle: TextStyle(
-          color: isSelected ? HudTheme.accentCyan : HudTheme.textDim,
+          color: isSelected ? hud.accentCyan : hud.textDim,
         ),
       ),
     );
@@ -260,7 +264,7 @@ class _WatcherEventLogPanelState extends ConsumerState<WatcherEventLogPanel> {
         child: Center(
           child: Text(
             'NO EVENTS IN BUFFER',
-            style: HudTheme.bodyText.copyWith(color: HudTheme.textDim),
+            style: context.hudTheme.body.copyWith(color: context.hudTheme.textDim),
           ),
         ),
       );
@@ -303,23 +307,24 @@ class _WatcherEventRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hud = context.hudTheme;
     if (event.kind == WatcherChangeKind.overflow) {
       return Container(
-        color: HudTheme.accentAmber.withValues(alpha: 0.1),
+        color: hud.accentAmber.withValues(alpha: 0.1),
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         alignment: Alignment.centerLeft,
         child: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.warning_amber,
-              color: HudTheme.accentAmber,
+              color: hud.accentAmber,
               size: 16,
             ),
             const SizedBox(width: 8),
             Text(
               '⚠ EVENT BUFFER OVERFLOW — SOME CHANGES NOT RECORDED',
               style: TextStyle(
-                color: HudTheme.accentAmber,
+                color: hud.accentAmber,
                 fontWeight: FontWeight.bold,
                 fontSize: 12,
                 fontFamily: HudTheme.fontCore,
@@ -338,23 +343,23 @@ class _WatcherEventRow extends StatelessWidget {
     switch (event.kind) {
       case WatcherChangeKind.created:
         icon = Icons.add_circle_outline;
-        color = HudTheme.accentGreen;
+        color = hud.accentGreen;
         break;
       case WatcherChangeKind.modified:
         icon = Icons.edit_outlined;
-        color = HudTheme.accentCyan;
+        color = hud.accentCyan;
         break;
       case WatcherChangeKind.deleted:
         icon = Icons.delete_outline;
-        color = HudTheme.accentRed;
+        color = hud.accentRed;
         break;
       case WatcherChangeKind.renamed:
         icon = Icons.drive_file_rename_outline;
-        color = HudTheme.accentAmber;
+        color = hud.accentAmber;
         break;
       default:
         icon = Icons.help_outline;
-        color = Colors.white;
+        color = hud.textMain;
     }
 
     String pathText = event.path;
@@ -371,7 +376,7 @@ class _WatcherEventRow extends StatelessWidget {
             child: Text(
               timeStr,
               style: TextStyle(
-                color: HudTheme.textDim,
+                color: hud.textDim,
                 fontSize: 12,
                 fontFamily: HudTheme.fontCore,
               ),
@@ -392,7 +397,7 @@ class _WatcherEventRow extends StatelessWidget {
                 return _MiddleEllipsisText(
                   text: pathText,
                   style: TextStyle(
-                    color: Colors.white70,
+                    color: hud.textMuted,
                     fontSize: 12,
                     fontFamily: HudTheme.fontCore,
                   ),
@@ -405,13 +410,13 @@ class _WatcherEventRow extends StatelessWidget {
               margin: const EdgeInsets.only(left: 8),
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.white10,
+                color: hud.textMain.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
                 '×${event.occurrences}',
                 style: TextStyle(
-                  color: HudTheme.textDim,
+                  color: hud.textDim,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   fontFamily: HudTheme.fontCore,
@@ -440,26 +445,30 @@ class _MiddleEllipsisText extends StatelessWidget {
           textDirection: ui.TextDirection.ltr,
         )..layout(maxWidth: double.infinity);
 
-        if (textPainter.width <= constraints.maxWidth) {
-          return Text(text, style: style);
+        try {
+          if (textPainter.width <= constraints.maxWidth) {
+            return Text(text, style: style);
+          }
+
+          int start = text.length ~/ 2;
+          int end = start;
+
+          // Fast approximation
+          String truncated = text;
+          while (textPainter.width > constraints.maxWidth &&
+              start > 0 &&
+              end < text.length) {
+            start--;
+            end++;
+            truncated = '${text.substring(0, start)}...${text.substring(end)}';
+            textPainter.text = TextSpan(text: truncated, style: style);
+            textPainter.layout(maxWidth: double.infinity);
+          }
+
+          return Text(truncated, style: style);
+        } finally {
+          textPainter.dispose();
         }
-
-        int start = text.length ~/ 2;
-        int end = start;
-
-        // Fast approximation
-        String truncated = text;
-        while (textPainter.width > constraints.maxWidth &&
-            start > 0 &&
-            end < text.length) {
-          start--;
-          end++;
-          truncated = '${text.substring(0, start)}...${text.substring(end)}';
-          textPainter.text = TextSpan(text: truncated, style: style);
-          textPainter.layout(maxWidth: double.infinity);
-        }
-
-        return Text(truncated, style: style);
       },
     );
   }

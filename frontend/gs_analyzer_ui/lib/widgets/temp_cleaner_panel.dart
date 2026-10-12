@@ -5,7 +5,8 @@ import 'package:gs_analyzer_ui/providers/temp_cleaner_provider.dart';
 import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
 import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/temp_clean_progress_dialog.dart';
 
 class TempCleanerPanel extends ConsumerStatefulWidget {
@@ -20,30 +21,31 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
   Widget build(BuildContext context) {
     final tempState = ref.watch(tempCleanerProvider);
     final tempNotifier = ref.read(tempCleanerProvider.notifier);
+    final hud = context.hudTheme;
 
     return Container(
-      color: HudTheme.bgBase,
+      color: hud.base,
       child: Column(
         children: [
           // ── Header ──
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            decoration: const BoxDecoration(
-              color: HudTheme.bgPanel,
-              border: Border(bottom: BorderSide(color: Colors.white10)),
+            decoration: BoxDecoration(
+              color: hud.panel,
+              border: Border(bottom: BorderSide(color: hud.textMain.withValues(alpha: 0.10))),
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.cleaning_services_outlined,
-                  color: HudTheme.accentGreen,
+                  color: hud.accentGreen,
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'TEMP CLEANER PROTOCOL',
                     style: TextStyle(
-                      color: HudTheme.accentGreen,
+                      color: hud.accentGreen,
                       fontFamily: HudTheme.fontCore,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -56,8 +58,9 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                     ref.read(storageModeProvider.notifier).state =
                         StorageMode.diskAnalyzer;
                   },
-                  icon: const Icon(Icons.close, color: HudTheme.textDim),
-                  label: const Text('CLOSE TOOL', style: HudTheme.bodyText),
+                  icon: 
+                  Icon(Icons.close, color: hud.textDim),
+                  label: Text('CLOSE TOOL', style: hud.body),
                 ),
               ],
             ),
@@ -66,8 +69,8 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
           // ── Controls Bar ──
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.white10)),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: hud.textMain.withValues(alpha: 0.10))),
             ),
             child: Wrap(
               spacing: 16,
@@ -76,8 +79,8 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
               children: [
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: HudTheme.accentGreen,
-                    foregroundColor: Colors.black,
+                    backgroundColor: hud.accentGreen,
+                    foregroundColor: hud.textPaint,
                   ),
                   icon: const Icon(Icons.preview_outlined, size: 18),
                   label: const Text(
@@ -95,25 +98,25 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                 if (tempState.preview != null) ...[
                   Text(
                     'TOTAL: ${tempState.preview!.totalFormatted}',
-                    style: HudTheme.statGreen.copyWith(
+                    style: hud.statGreen.copyWith(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
                     '${tempState.selectedPaths.length} OF ${tempState.preview!.locations.length} SELECTED',
-                    style: HudTheme.bodyText.copyWith(
-                      color: HudTheme.textDim,
+                    style: hud.body.copyWith(
+                      color: hud.textDim,
                       fontSize: 12,
                     ),
                   ),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: HudTheme.accentRed.withValues(
+                      backgroundColor: hud.accentRed.withValues(
                         alpha: 0.2,
                       ),
-                      foregroundColor: HudTheme.accentRed,
-                      side: const BorderSide(color: HudTheme.accentRed),
+                      foregroundColor: hud.accentRed,
+                      side: BorderSide(color: hud.accentRed),
                     ),
                     icon: const Icon(Icons.delete_sweep_outlined, size: 18),
                     label: Text(
@@ -141,18 +144,18 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
           // ── Body ──
           Expanded(
             child: (tempState.isLoading && !tempState.isCleaning)
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         CircularProgressIndicator(
-                          color: HudTheme.accentGreen,
+                          color: hud.accentGreen,
                         ),
                         SizedBox(height: 24),
                         Text(
                           'SCANNING TEMP SECTORS...',
                           style: TextStyle(
-                            color: HudTheme.accentGreen,
+                            color: hud.accentGreen,
                             fontFamily: HudTheme.fontCore,
                             fontWeight: FontWeight.bold,
                           ),
@@ -164,15 +167,15 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                 ? Center(
                     child: Text(
                       'ERROR: ${tempState.errorMessage}',
-                      style: HudTheme.actionRed,
+                      style: hud.actionRed,
                     ),
                   )
                 : tempState.preview == null
                 ? Center(
                     child: Text(
                       'AWAITING TEMP SCAN COMMAND...',
-                      style: HudTheme.bodyText.copyWith(
-                        color: HudTheme.textDim,
+                      style: hud.body.copyWith(
+                        color: hud.textDim,
                       ),
                     ),
                   )
@@ -180,8 +183,8 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                 ? Center(
                     child: Text(
                       'NO TEMP LOCATIONS DETECTED ON THIS PLATFORM',
-                      style: HudTheme.bodyText.copyWith(
-                        color: HudTheme.textDim,
+                      style: hud.body.copyWith(
+                        color: hud.textDim,
                       ),
                     ),
                   )
@@ -194,15 +197,15 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                       );
                       final isCacheCat = loc.category.toLowerCase() == 'cache';
                       final badgeColor = isCacheCat
-                          ? HudTheme.accentAmber
-                          : HudTheme.accentCyan;
+                          ? hud.accentAmber
+                          : hud.accentCyan;
                       final badgeLabel = isCacheCat ? 'CACHE' : 'TEMP';
 
                       return Container(
-                        decoration: HudTheme.listItemDecoration,
+                        decoration: hud.listItemDecoration,
                         child: CheckboxListTile(
-                          activeColor: HudTheme.accentGreen,
-                          checkColor: Colors.black,
+                          activeColor: hud.accentGreen,
+                          checkColor: hud.textPaint,
                           value: isSelected,
                           onChanged: (_) => tempNotifier.togglePath(loc.path),
                           title: Row(
@@ -234,8 +237,8 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                               Expanded(
                                 child: Text(
                                   loc.label.isNotEmpty ? loc.label : loc.path,
-                                  style: HudTheme.bodyText.copyWith(
-                                    color: Colors.white,
+                                  style: hud.body.copyWith(
+                                    color: hud.textMain,
                                     fontWeight: FontWeight.w500,
                                   ),
                                   overflow: TextOverflow.ellipsis,
@@ -247,8 +250,8 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(
                               '${loc.path}  •  ${loc.fileCount} files',
-                              style: HudTheme.bodyText.copyWith(
-                                color: HudTheme.textDim,
+                              style: hud.body.copyWith(
+                                color: hud.textDim,
                                 fontSize: 11,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -260,20 +263,20 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: HudTheme.accentGreen.withValues(
+                              color: hud.accentGreen.withValues(
                                 alpha: 0.1,
                               ),
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(
-                                color: HudTheme.accentGreen.withValues(
+                                color: hud.accentGreen.withValues(
                                   alpha: 0.5,
                                 ),
                               ),
                             ),
                             child: Text(
                               loc.sizeFormatted,
-                              style: HudTheme.statGreen.copyWith(
-                                color: HudTheme.accentGreen,
+                              style: hud.statGreen.copyWith(
+                                color: hud.accentGreen,
                               ),
                             ),
                           ),
@@ -294,6 +297,7 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
     TempCleanerState tempState,
     TempCleanerNotifier tempNotifier,
   ) {
+    final hud = context.hudTheme;
     final selectedLocations = tempState.preview!.locations
         .where((loc) => tempState.selectedPaths.contains(loc.path))
         .toList();
@@ -322,20 +326,20 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: HudTheme.bgPanel,
+        backgroundColor: hud.panel,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(color: HudTheme.accentRed, width: 2),
+          side: BorderSide(color: hud.accentRed, width: 2),
           borderRadius: BorderRadius.circular(8),
         ),
-        title: const Row(
+        title: Row(
           children: [
             Icon(
               Icons.warning_amber_outlined,
-              color: HudTheme.accentRed,
+              color: hud.accentRed,
               size: 28,
             ),
             SizedBox(width: 12),
-            Text('CONFIRM TEMP PURGE', style: HudTheme.actionRed),
+            Text('CONFIRM TEMP PURGE', style: hud.actionRed),
           ],
         ),
         content: SizedBox(
@@ -348,7 +352,7 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.black45,
+                  color: hud.textPaint.withValues(alpha: 0.45),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
@@ -360,9 +364,9 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'AFFECTED SECTORS:',
-                style: TextStyle(color: Colors.white54, fontSize: 12),
+                style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 12),
               ),
               const SizedBox(height: 8),
               ConstrainedBox(
@@ -379,8 +383,8 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                       padding: const EdgeInsetsGeometry.only(bottom: 8.0),
                       child: Text(
                         '> $displayName (${loc.fileCount} files — ${loc.sizeFormatted})',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: hud.textMain,
                           fontSize: 13,
                           fontFamily: HudTheme.fontCore,
                         ),
@@ -395,14 +399,14 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: HudTheme.accentRed.withValues(alpha: 0.1),
-                  border: Border.all(color: HudTheme.accentRed),
+                  color: hud.accentRed.withValues(alpha: 0.1),
+                  border: Border.all(color: hud.accentRed),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text(
+                child: Text(
                   '⚠ TEMP FILES WILL BE PERMANENTLY DELETED — LOCKED FILES WILL BE SKIPPED',
                   style: TextStyle(
-                    color: HudTheme.accentRed,
+                    color: hud.accentRed,
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                     fontFamily: HudTheme.fontCore,
@@ -415,21 +419,21 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('ABORT', style: TextStyle(color: Colors.white70)),
+            child: Text('ABORT', style: TextStyle(color: hud.textMain.withValues(alpha: 0.70))),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: HudTheme.accentRed.withValues(alpha: 0.2),
-              side: const BorderSide(color: HudTheme.accentRed),
+              backgroundColor: hud.accentRed.withValues(alpha: 0.2),
+              side: BorderSide(color: hud.accentRed),
             ),
             onPressed: () {
               Navigator.of(ctx).pop();
               _executeClean(tempNotifier);
             },
-            child: const Text(
+            child: Text(
               'EXECUTE PURGE',
               style: TextStyle(
-                color: HudTheme.accentRed,
+                color: hud.accentRed,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -441,6 +445,7 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
 
   Future<void> _executeClean(TempCleanerNotifier tempNotifier) async {
     final selectedCount = ref.read(tempCleanerProvider).selectedPaths.length;
+    final hud = context.hudTheme;
 
     // Reset progress state cleanly: 0.0%, 0 completed, total targets, no residual memory of former runs!
     ref.read(tempCleanProgressProvider.notifier).state = 0.0;
@@ -477,7 +482,7 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          backgroundColor: HudTheme.accentGreen,
+          backgroundColor: hud.accentGreen,
         ),
       );
 
@@ -490,25 +495,26 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
             'TEMP CLEAN FAILED: ${resultState.errorMessage}',
             style: const TextStyle(fontFamily: HudTheme.fontCore),
           ),
-          backgroundColor: HudTheme.accentRed,
+          backgroundColor: hud.accentRed,
         ),
       );
     }
   }
 
   Widget _buildStat(String label, String value) {
+    final hud = context.hudTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(color: Colors.white54, fontSize: 11),
+          style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 11),
         ),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            color: HudTheme.accentRed,
+          style: TextStyle(
+            color: hud.accentRed,
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
