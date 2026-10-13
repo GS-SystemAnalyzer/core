@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_saver/file_saver.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:intl/intl.dart';
 import 'package:gs_analyzer_ui/models/scan_export_options.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
@@ -11,12 +12,16 @@ import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/utils/formatters.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 
 class ExportScanDialog extends ConsumerStatefulWidget {
   final String driveName;
+  final ApiService? apiService;
 
-  const ExportScanDialog({super.key, required this.driveName});
+  const ExportScanDialog({
+    super.key,
+    required this.driveName,
+    this.apiService,
+  });
 
   @override
   ConsumerState<ExportScanDialog> createState() => _ExportScanDialogState();
@@ -50,9 +55,10 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
   }
 
   Future<void> _triggerExport() async {
-    // Capture provider controllers up front: the export future outlives this
+    // Capture provider controllers and theme up front: the export future outlives this
     // dialog if the user minimises it, so we must not touch `ref`/`context`
     // after disposal. StateControllers are owned by the container and stay valid.
+    final hud = context.hudTheme;
     final activeCtl = ref.read(exportActiveProvider.notifier);
     final minCtl = ref.read(exportMinimizedProvider.notifier);
     ref.read(exportDriveProvider.notifier).state = widget.driveName;
@@ -66,7 +72,7 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
     });
 
     try {
-      final api = ApiService();
+      final api = widget.apiService ?? ApiService();
       final bytes = await api.exportScan(
         root: widget.driveName,
         format: _selectedFormat,
@@ -114,15 +120,15 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
       // Global messenger so the result shows even when minimised.
       snackbarKey.currentState?.showSnackBar(
         SnackBar(
-          backgroundColor: HudTheme.bgPanel,
+          backgroundColor: hud.panel,
           content: Text(
             'EXPORTED $formattedNodes NODES — $formattedSize',
-            style: HudTheme.bodyText.copyWith(color: HudTheme.accentCyan),
+            style: hud.body.copyWith(color: hud.accentCyan),
           ),
           duration: const Duration(seconds: 8),
           action: SnackBarAction(
             label: 'OPEN FOLDER',
-            textColor: HudTheme.accentGreen,
+            textColor: hud.accentGreen,
             onPressed: () {
               if (savedFilePath.isNotEmpty && Platform.isWindows) {
                 Process.run('explorer.exe', ['/select,', savedFilePath]);
@@ -147,14 +153,14 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
         setState(() {
           _isExporting = false;
           _errorMessage = e.toString();
-        });
+        });  
       } else {
-        snackbarKey.currentState?.showSnackBar(
+        snackbarKey.currentState?.showSnackBar( 
           SnackBar(
-            backgroundColor: HudTheme.bgPanel,
+            backgroundColor: hud.panel,
             content: Text(
               'EXPORT FAILED: $e',
-              style: HudTheme.bodyText.copyWith(color: HudTheme.accentRed),
+              style: hud.body.copyWith(color: hud.accentRed),
             ),
           ),
         );
@@ -174,6 +180,7 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final hud = context.hudTheme;
     // A re-shown dialog (restored from the pill) observes the in-flight export
     // via the provider and self-closes when it finishes.
     ref.listen<bool>(exportActiveProvider, (prev, next) {
@@ -192,10 +199,10 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
     final isLargeExport = nodeCount > 50000;
 
     return Dialog(
-      backgroundColor: HudTheme.bgPanel,
+      backgroundColor: hud.panel,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: Colors.white10),
+        side: BorderSide(color: hud.textMain.withValues(alpha: 0.10)),
       ),
       child: Container(
         width: 480,
@@ -207,17 +214,23 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
             children: [
             Row(
               children: [
-                const Icon(Icons.download_rounded, color: HudTheme.accentCyan, size: 20),
+                Icon(Icons.download_rounded, color: hud.accentCyan, size: 20),
                 const SizedBox(width: 8),
-                Text('EXPORT SCAN REPORT', style: HudTheme.headerCyan),
-                const Spacer(),
+                Expanded(
+                  child: Text(
+                    'EXPORT SCAN REPORT',
+                    style: hud.header,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Text(
                   widget.driveName,
-                  style: HudTheme.labelMuted.copyWith(color: HudTheme.accentCyan),
+                  style: hud.label.copyWith(color: hud.accentCyan),
                 ),
                 if (busy)
                   IconButton(
-                    icon: const Icon(Icons.remove, color: HudTheme.accentCyan),
+                    icon: Icon(Icons.remove, color: hud.accentCyan),
                     tooltip: 'Minimize',
                     visualDensity: VisualDensity.compact,
                     onPressed: () {
@@ -228,7 +241,7 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
               ],
             ),
             const SizedBox(height: 16),
-            const Divider(color: Colors.white10, height: 1),
+            Divider(color: hud.textMain.withValues(alpha: 0.10), height: 1),
             const SizedBox(height: 16),
 
             if (_noScanCached) ...[
@@ -239,13 +252,13 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                     children: [
                       Text(
                         'NO SCAN DATA — RUN A SCAN FIRST',
-                        style: HudTheme.labelMuted,
+                        style: hud.label,
                       ),
                       const SizedBox(height: 16),
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: HudTheme.accentCyan,
-                          side: const BorderSide(color: HudTheme.accentCyan),
+                          foregroundColor: hud.accentCyan,
+                          side: BorderSide(color: hud.accentCyan),
                         ),
                         onPressed: _triggerScanNow,
                         icon: const Icon(Icons.play_arrow, size: 16),
@@ -256,7 +269,7 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                 ),
               ),
             ] else ...[
-              Text('SELECT FORMAT', style: HudTheme.labelMuted),
+              Text('SELECT FORMAT', style: hud.label),
               const SizedBox(height: 8),
               ...ScanExportFormat.values.map((format) {
                 final isSelected = _selectedFormat == format;
@@ -271,10 +284,10 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? HudTheme.accentCyan.withValues(alpha: 0.08)
-                            : HudTheme.bgBase,
+                            ? hud.accentCyan.withValues(alpha: 0.08)
+                            : hud.base,
                         border: Border.all(
-                          color: isSelected ? HudTheme.accentCyan : Colors.white10,
+                          color: isSelected ? hud.accentCyan : hud.textMain.withValues(alpha: 0.10),
                         ),
                         borderRadius: BorderRadius.circular(6),
                       ),
@@ -284,7 +297,7 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                             isSelected
                                 ? Icons.radio_button_checked
                                 : Icons.radio_button_off,
-                            color: isSelected ? HudTheme.accentCyan : HudTheme.textDim,
+                            color: isSelected ? hud.accentCyan : hud.textDim,
                             size: 16,
                           ),
                           const SizedBox(width: 12),
@@ -294,17 +307,17 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                               children: [
                                 Text(
                                   format.label,
-                                  style: HudTheme.bodyText.copyWith(
+                                  style: hud.body.copyWith(
                                     color: isSelected
-                                        ? HudTheme.accentCyan
-                                        : Colors.white,
+                                        ? hud.accentCyan
+                                        : hud.textMain,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   format.description,
-                                  style: HudTheme.labelMuted.copyWith(fontSize: 11),
+                                  style: hud.label.copyWith(fontSize: 11),
                                 ),
                               ],
                             ),
@@ -327,7 +340,7 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                   children: [
                     Checkbox(
                       value: _redactPaths,
-                      activeColor: HudTheme.accentCyan,
+                      activeColor: hud.accentCyan,
                       onChanged: busy
                           ? null
                           : (val) => setState(() => _redactPaths = val ?? false),
@@ -338,14 +351,14 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                         children: [
                           Text(
                             'REDACT USER PATHS',
-                            style: HudTheme.bodyText.copyWith(
+                            style: hud.body.copyWith(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
                             'Replaces user profile path with ~ throughout export',
-                            style: HudTheme.labelMuted.copyWith(fontSize: 11),
+                            style: hud.label.copyWith(fontSize: 11),
                           ),
                         ],
                       ),
@@ -359,21 +372,21 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: HudTheme.bgBase,
+                  color: hud.base,
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: Colors.white10),
+                  border: Border.all(color: hud.textMain.withValues(alpha: 0.10)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       nodeCount > 0 ? 'CACHED NODES: $nodeCount' : 'CACHED SCAN',
-                      style: HudTheme.labelMuted.copyWith(fontSize: 11),
+                      style: hud.label.copyWith(fontSize: 11),
                     ),
                     Text(
                       'EST. SIZE: ~$estimatedSize',
-                      style: HudTheme.labelMuted.copyWith(
-                        color: HudTheme.accentCyan,
+                      style: hud.label.copyWith(
+                        color: hud.accentCyan,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
@@ -390,22 +403,22 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('STREAMING EXPORT...', style: HudTheme.labelMuted),
-                        Text('>50,000 NODES', style: HudTheme.labelMuted),
+                        Text('STREAMING EXPORT...', style: hud.label),
+                        Text('>50,000 NODES', style: hud.label),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    const LinearProgressIndicator(
-                      color: HudTheme.accentCyan,
-                      backgroundColor: Colors.white10,
+                    LinearProgressIndicator(
+                      color: hud.accentCyan,
+                      backgroundColor: hud.textMain.withValues(alpha: 0.10),
                     ),
                   ],
                 ),
               ] else if (busy) ...[
                 const SizedBox(height: 16),
-                const LinearProgressIndicator(
-                  color: HudTheme.accentCyan,
-                  backgroundColor: Colors.white10,
+                LinearProgressIndicator(
+                  color: hud.accentCyan,
+                  backgroundColor: hud.textMain.withValues(alpha: 0.10),
                 ),
               ],
 
@@ -413,7 +426,7 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
                 const SizedBox(height: 12),
                 Text(
                   _errorMessage!,
-                  style: HudTheme.bodyText.copyWith(color: HudTheme.accentRed, fontSize: 12),
+                  style: hud.body.copyWith(color: hud.accentRed, fontSize: 12),
                 ),
               ],
             ],
@@ -424,24 +437,24 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
               children: [
                 TextButton(
                   onPressed: busy ? null : () => Navigator.of(context).pop(),
-                  child: Text('CANCEL', style: TextStyle(color: HudTheme.textDim)),
+                  child: Text('CANCEL', style: TextStyle(color: hud.textDim)),
                 ),
                 if (!_noScanCached) ...[
                   const SizedBox(width: 12),
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: HudTheme.accentCyan,
-                      side: const BorderSide(color: HudTheme.accentCyan),
-                      backgroundColor: HudTheme.accentCyan.withValues(alpha: 0.1),
+                      foregroundColor: hud.accentCyan,
+                      side: BorderSide(color: hud.accentCyan),
+                      backgroundColor: hud.accentCyan.withValues(alpha: 0.1),
                     ),
                     onPressed: busy ? null : _triggerExport,
                     icon: busy
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 14,
                             height: 14,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: HudTheme.accentCyan,
+                              color: hud.accentCyan,
                             ),
                           )
                         : const Icon(Icons.download, size: 16),
