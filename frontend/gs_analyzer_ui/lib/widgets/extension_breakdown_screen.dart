@@ -502,7 +502,7 @@ class _ExtensionBreakdownScreenState
               if (item.largestFilePath.isEmpty)
                 Text(
                   'No file path recorded.',
-                  style: TextStyle(color: hud.textMain.withValues(alpha: 0.54)),
+                  style: TextStyle(color: hud.textDim),
                 )
               else
                 Column(

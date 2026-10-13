@@ -1,0 +1,2739 @@
+﻿diff --git a/frontend/gs_analyzer_ui/lib/features/dashboard/widgets/cpu_bar_chart.dart b/frontend/gs_analyzer_ui/lib/features/dashboard/widgets/cpu_bar_chart.dart
+index 0bef9a9..5422955 100644
+--- a/frontend/gs_analyzer_ui/lib/features/dashboard/widgets/cpu_bar_chart.dart
++++ b/frontend/gs_analyzer_ui/lib/features/dashboard/widgets/cpu_bar_chart.dart
+@@ -1,6 +1,6 @@
+ import 'package:fl_chart/fl_chart.dart';
+ import 'package:flutter/material.dart';
+-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
+ 
+ class CpuBarChart extends StatelessWidget {
+   final Map<String, List<double>> coreGroups;
+@@ -11,6 +11,7 @@ class CpuBarChart extends StatelessWidget {
+   Widget build(BuildContext context) {
+     final labels = coreGroups.keys.toList();
+     final barGroups = <BarChartGroupData>[];
++    final hud = context.hudTheme;
+ 
+     int x = 0;
+     for (final entry in coreGroups.entries) {
+@@ -21,7 +22,7 @@ class CpuBarChart extends StatelessWidget {
+           barRods: entry.value.map((load) {
+             return BarChartRodData(
+               toY: load,
+-              color: load > 80 ? HudTheme.accentAmber : HudTheme.accentCyan,
++              color: load > 80 ? hud.accentAmber : hud.accentCyan,
+               width: 14,
+               borderRadius: BorderRadius.circular(3),
+             );
+@@ -40,8 +41,8 @@ class CpuBarChart extends StatelessWidget {
+           show: true,
+           drawVerticalLine: false,
+           getDrawingHorizontalLine: (value) {
+-            return const FlLine(
+-              color: Colors.white12,
++            return FlLine(
++              color: hud.textMain.withValues(alpha: 0.12),
+               strokeWidth: 1,
+               dashArray: [4, 4],
+             );
+@@ -66,7 +67,7 @@ class CpuBarChart extends StatelessWidget {
+                 }
+                 return SideTitleWidget(
+                   meta: meta,
+-                  child: Text(labels[index], style: HudTheme.labelMuted),
++                  child: Text(labels[index], style: hud.label),
+                 );
+               },
+             ),
+diff --git a/frontend/gs_analyzer_ui/lib/features/dashboard/widgets/custom_progress_indicator.dart b/frontend/gs_analyzer_ui/lib/features/dashboard/widgets/custom_progress_indicator.dart
+index c1af93a..86ae4b6 100644
+--- a/frontend/gs_analyzer_ui/lib/features/dashboard/widgets/custom_progress_indicator.dart
++++ b/frontend/gs_analyzer_ui/lib/features/dashboard/widgets/custom_progress_indicator.dart
+@@ -1,5 +1,5 @@
+ import 'package:flutter/material.dart';
+-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
+ 
+ class CustomProgressIndicator extends StatelessWidget {
+   final String label;
+@@ -29,7 +29,7 @@ class CustomProgressIndicator extends StatelessWidget {
+             ),
+             Text(
+               tag.toUpperCase(),
+-              style: HudTheme.statGreen,
++              style: context.hudTheme.statGreen,
+             ),
+           ],
+         ),
+@@ -39,7 +39,7 @@ class CustomProgressIndicator extends StatelessWidget {
+           borderRadius: BorderRadius.circular(10),
+           minHeight: height,
+           valueColor: color,
+-          backgroundColor: Colors.grey[800],
++          backgroundColor: context.hudTheme.textMuted,
+         )
+       ],
+     );      
+diff --git a/frontend/gs_analyzer_ui/lib/providers/telemetry_provider.dart b/frontend/gs_analyzer_ui/lib/providers/telemetry_provider.dart
+index 2454d94..13e39e1 100644
+--- a/frontend/gs_analyzer_ui/lib/providers/telemetry_provider.dart
++++ b/frontend/gs_analyzer_ui/lib/providers/telemetry_provider.dart
+@@ -7,7 +7,6 @@ import 'package:gs_analyzer_ui/providers/schedule_provider.dart';
+ import 'package:gs_analyzer_ui/services/telemetry_service.dart';
+ import 'package:gs_analyzer_ui/utils/globals.dart';
+ import 'package:flutter/material.dart';
+-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+ import 'package:gs_analyzer_ui/providers/network_provider.dart';
+ import 'package:gs_analyzer_ui/providers/disk_io_provider.dart';
+ import 'package:gs_analyzer_ui/providers/directory_provider.dart';
+@@ -18,6 +17,7 @@ import 'package:gs_analyzer_ui/providers/disk_alert_provider.dart';
+ import 'package:gs_analyzer_ui/models/ram_alert.dart';
+ import 'package:gs_analyzer_ui/providers/ram_alert_provider.dart';
+ import 'package:gs_analyzer_ui/services/notification_service.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
+ 
+ import 'cpu_provider.dart';
+ import 'nuke_provider.dart';
+@@ -183,13 +183,20 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
+ 
+       ref.read(directoryProvider.notifier).scanDirectory(root);
+ 
++      final hud = snackbarKey.currentContext?.hudTheme;
++
+       snackbarKey.currentState?.showSnackBar(
+         SnackBar(
+           content: Text(
+             'AUTO-SCAN COMPLETE',
+-            style: HudTheme.headerCyan.copyWith(color: Colors.white),
++            style: hud?.header.copyWith(color: hud.textMain) ??
++                TextStyle(
++                  fontFamily: 'Courier',
++                  fontWeight: FontWeight.bold,
++                  color: hud?.textMain,
++                ),
+           ),
+-          backgroundColor: HudTheme.bgPanel,
++          backgroundColor: hud?.panel,
+           duration: const Duration(seconds: 3),
+           behavior: SnackBarBehavior.floating,
+         ),
+diff --git a/frontend/gs_analyzer_ui/lib/screen/scan_diff_screen.dart b/frontend/gs_analyzer_ui/lib/screen/scan_diff_screen.dart
+index c16ee9c..5df16a8 100644
+--- a/frontend/gs_analyzer_ui/lib/screen/scan_diff_screen.dart
++++ b/frontend/gs_analyzer_ui/lib/screen/scan_diff_screen.dart
+@@ -8,7 +8,7 @@ import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
+ import 'package:gs_analyzer_ui/providers/scan_diff_provider.dart';
+ import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
+ import 'package:gs_analyzer_ui/services/api_service.dart';
+-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
+ 
+ /// Signed byte formatter: "+4.8 GB", "-512 MB", "0 B".
+ String _formatSignedBytes(int bytes) {
+@@ -34,27 +34,28 @@ class ScanDiffScreen extends ConsumerWidget {
+   @override
+   Widget build(BuildContext context, WidgetRef ref) {
+     final drive = ref.watch(currentDriveProvider);
++    final hud = context.hudTheme;
+ 
+     return Scaffold(
+-      backgroundColor: HudTheme.bgPanel,
++      backgroundColor: hud.panel,
+       appBar: AppBar(
+         backgroundColor: Colors.transparent,
+         elevation: 0,
+-        title: Text('WHAT_CHANGED', style: HudTheme.headerCyan),
+-        iconTheme: const IconThemeData(color: HudTheme.accentCyan),
++        title: Text('WHAT_CHANGED', style: hud.header),
++        iconTheme: IconThemeData(color: hud.accentCyan),
+         actions: [
+           if (drive != null)
+             IconButton(
+               tooltip: 'CLEAR BASELINE',
+-              icon: const Icon(Icons.restart_alt, color: HudTheme.textDim),
++              icon: Icon(Icons.restart_alt, color: hud.textDim),
+               onPressed: () => _confirmClearBaseline(context, ref, drive.name),
+             ),
+         ],
+       ),
+       body: drive == null
+-          ? const _CenteredMessage(
++          ? _CenteredMessage(
+               text: 'NO DRIVE SELECTED',
+-              color: HudTheme.textDim,
++              color: hud.textDim,
+             )
+           : ref
+                 .watch(scanDiffProvider(drive.name))
+@@ -74,21 +75,21 @@ class ScanDiffScreen extends ConsumerWidget {
+     final confirmed = await showDialog<bool>(
+       context: context,
+       builder: (ctx) => AlertDialog(
+-        backgroundColor: HudTheme.bgPanel,
+-        title: Text('CLEAR BASELINE', style: HudTheme.headerCyan),
++        backgroundColor: context.hudTheme.panel,
++        title: Text('CLEAR BASELINE', style: context.hudTheme.header),
+         content: Text(
+           'Forget the stored baseline for $root? The next scan will report '
+           'a fresh baseline with no changes.',
+-          style: HudTheme.bodyText,
++          style: context.hudTheme.body,
+         ),
+         actions: [
+           TextButton(
+             onPressed: () => Navigator.pop(ctx, false),
+-            child: const Text('CANCEL', style: TextStyle(color: HudTheme.textDim)),
++            child: Text('CANCEL', style: TextStyle(color: context.hudTheme.textDim)),
+           ),
+           TextButton(
+             onPressed: () => Navigator.pop(ctx, true),
+-            child: const Text('CLEAR', style: HudTheme.actionRed),
++            child: Text('CLEAR', style: context.hudTheme.actionRed),
+           ),
+         ],
+       ),
+@@ -112,45 +113,46 @@ class _DiffBody extends StatelessWidget {
+ 
+   @override
+   Widget build(BuildContext context) {
++    final hud = context.hudTheme;
+     if (!diff.hasBaseline) {
+-      return const _CenteredMessage(
++      return _CenteredMessage(
+         text: 'FIRST SCAN — BASELINE SAVED.\nNEXT SCAN WILL SHOW CHANGES.',
+-        color: HudTheme.textDim,
++        color: hud.textDim,
+       );
+     }
+ 
+     if (diff.isEmpty) {
+-      return const _CenteredMessage(
++      return _CenteredMessage(
+         text: 'NO CHANGES SINCE LAST SCAN',
+-        color: HudTheme.accentGreen,
++        color: hud.accentGreen,
+       );
+     }
+ 
+     return Column(
+       children: [
+         _SummaryStrip(diff: diff),
+-        const Divider(color: Colors.white10, height: 1),
++        Divider(color: hud.textMain.withValues(alpha: 0.1), height: 1),
+         Expanded(
+           child: ListView(
+             children: [
+               _DiffSection(
+                 title: 'ADDED',
+-                color: HudTheme.accentGreen,
++                color: hud.accentGreen,
+                 entries: diff.added,
+               ),
+               _DiffSection(
+                 title: 'REMOVED',
+-                color: HudTheme.accentRed,
++                color: hud.accentRed,
+                 entries: diff.removed,
+               ),
+               _DiffSection(
+                 title: 'GROWN',
+-                color: HudTheme.accentAmber,
++                color: hud.accentAmber,
+                 entries: diff.grown,
+               ),
+               _DiffSection(
+                 title: 'SHRUNK',
+-                color: HudTheme.accentCyan,
++                color: hud.accentCyan,
+                 entries: diff.shrunk,
+               ),
+             ],
+@@ -169,23 +171,24 @@ class _SummaryStrip extends StatelessWidget {
+   @override
+   Widget build(BuildContext context) {
+     final s = diff.summary;
++    final hud = context.hudTheme;
+     // NET: red when the drive consumed more space (>0), green when freed (<0).
+     final netColor = s.netDeltaBytes > 0
+-        ? HudTheme.accentRed
+-        : (s.netDeltaBytes < 0 ? HudTheme.accentGreen : HudTheme.textDim);
++        ? hud.accentRed
++        : (s.netDeltaBytes < 0 ? hud.accentGreen : hud.textDim);
+ 
+     return Container(
+       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+-      color: HudTheme.bgBase,
++      color: hud.base,
+       child: Wrap(
+         spacing: 12,
+         runSpacing: 8,
+         crossAxisAlignment: WrapCrossAlignment.center,
+         children: [
+-          _chip('+${s.addedCount} ADDED', HudTheme.accentGreen),
+-          _chip('-${s.removedCount} REMOVED', HudTheme.accentRed),
+-          _chip('▲${s.grownCount} GROWN', HudTheme.accentAmber),
+-          _chip('▼${s.shrunkCount} SHRUNK', HudTheme.accentCyan),
++          _chip('+${s.addedCount} ADDED', hud.accentGreen, context),
++          _chip('-${s.removedCount} REMOVED', hud.accentRed, context),
++          _chip('▲${s.grownCount} GROWN', hud.accentAmber, context),
++          _chip('▼${s.shrunkCount} SHRUNK', hud.accentCyan, context),
+           Container(
+             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+             decoration: BoxDecoration(
+@@ -195,7 +198,7 @@ class _SummaryStrip extends StatelessWidget {
+             ),
+             child: Text(
+               'NET: ${_formatSignedBytes(s.netDeltaBytes)}',
+-              style: HudTheme.bodyText.copyWith(
++              style: hud.body.copyWith(
+                 color: netColor,
+                 fontWeight: FontWeight.bold,
+               ),
+@@ -206,7 +209,7 @@ class _SummaryStrip extends StatelessWidget {
+     );
+   }
+ 
+-  Widget _chip(String label, Color color) {
++  Widget _chip(String label, Color color, BuildContext context) {
+     return Container(
+       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+       decoration: BoxDecoration(
+@@ -215,7 +218,7 @@ class _SummaryStrip extends StatelessWidget {
+       ),
+       child: Text(
+         label,
+-        style: HudTheme.bodyText.copyWith(
++        style: context.hudTheme.body.copyWith(
+           color: color,
+           fontWeight: FontWeight.bold,
+         ),
+@@ -245,7 +248,7 @@ class _DiffSection extends StatelessWidget {
+         initiallyExpanded: true,
+         title: Text(
+           '$title (${entries.length})',
+-          style: HudTheme.bodyText.copyWith(
++          style: context.hudTheme.body.copyWith(
+             color: color,
+             fontWeight: FontWeight.bold,
+           ),
+@@ -274,11 +277,12 @@ class _DiffRow extends ConsumerWidget {
+ 
+   @override
+   Widget build(BuildContext context, WidgetRef ref) {
++    final hud = context.hudTheme;
+     // Folder icon → amber, file icon → green, per the project icon convention.
+     final icon = entry.isDirectory ? Icons.folder : Icons.insert_drive_file;
+     final iconColor = entry.isDirectory
+-        ? HudTheme.accentAmber
+-        : HudTheme.accentGreen;
++        ? hud.accentAmber
++        : hud.accentGreen;
+ 
+     return InkWell(
+       onTap: () => _jumpToExplorer(context, ref),
+@@ -298,7 +302,7 @@ class _DiffRow extends ConsumerWidget {
+                     entry.displayName,
+                     maxLines: 1,
+                     overflow: TextOverflow.ellipsis,
+-                    style: HudTheme.bodyText,
++                    style: hud.body,
+                   ),
+                   Text(
+                     entry.childCount != null
+@@ -306,8 +310,8 @@ class _DiffRow extends ConsumerWidget {
+                         : entry.parentPath,
+                     maxLines: 1,
+                     overflow: TextOverflow.ellipsis,
+-                    style: HudTheme.bodyText.copyWith(
+-                      color: HudTheme.textDim,
++                    style: hud.body.copyWith(
++                      color: hud.textDim,
+                       fontSize: 11,
+                     ),
+                   ),
+@@ -317,7 +321,7 @@ class _DiffRow extends ConsumerWidget {
+             const SizedBox(width: 10),
+             Text(
+               _formatSignedBytes(entry.deltaBytes),
+-              style: HudTheme.bodyText.copyWith(
++              style: hud.body.copyWith(
+                 color: color,
+                 fontWeight: FontWeight.bold,
+               ),
+@@ -345,9 +349,9 @@ class _LoadingState extends StatelessWidget {
+     return Column(
+       mainAxisAlignment: MainAxisAlignment.center,
+       children: [
+-        const CircularProgressIndicator(color: HudTheme.accentCyan),
++        CircularProgressIndicator(color: context.hudTheme.accentCyan),
+         const SizedBox(height: 16),
+-        Text('ANALYZING CHANGES...', style: HudTheme.labelMuted),
++        Text('ANALYZING CHANGES...', style: context.hudTheme.label),
+       ],
+     );
+   }
+@@ -360,17 +364,18 @@ class _ErrorState extends ConsumerWidget {
+ 
+   @override
+   Widget build(BuildContext context, WidgetRef ref) {
++    final hud = context.hudTheme;
+     // 409 (no scan cached) surfaces as DiffNoScanException → prompt to scan.
+     if (error is DiffNoScanException) {
+       return Column(
+         mainAxisAlignment: MainAxisAlignment.center,
+         children: [
+-          Text('NO SCAN DATA — RUN A SCAN FIRST', style: HudTheme.labelMuted),
++          Text('NO SCAN DATA — RUN A SCAN FIRST', style: hud.label),
+           const SizedBox(height: 16),
+           OutlinedButton(
+             style: OutlinedButton.styleFrom(
+-              foregroundColor: HudTheme.accentCyan,
+-              side: const BorderSide(color: HudTheme.accentCyan),
++              foregroundColor: hud.accentCyan,
++              side: BorderSide(color: hud.accentCyan),
+             ),
+             onPressed: () {
+               // Return to Storage so the user can launch a scan.
+@@ -386,7 +391,7 @@ class _ErrorState extends ConsumerWidget {
+ 
+     return _CenteredMessage(
+       text: 'DIFF UNAVAILABLE\n$error',
+-      color: HudTheme.accentRed,
++      color: hud.accentRed,
+     );
+   }
+ }
+@@ -405,7 +410,7 @@ class _CenteredMessage extends StatelessWidget {
+         child: Text(
+           text,
+           textAlign: TextAlign.center,
+-          style: HudTheme.bodyText.copyWith(color: color),
++          style: context.hudTheme.body.copyWith(color: color),
+         ),
+       ),
+     );
+diff --git a/frontend/gs_analyzer_ui/lib/screen/settings_screen.dart b/frontend/gs_analyzer_ui/lib/screen/settings_screen.dart
+index 62c4918..ac45c42 100644
+--- a/frontend/gs_analyzer_ui/lib/screen/settings_screen.dart
++++ b/frontend/gs_analyzer_ui/lib/screen/settings_screen.dart
+@@ -174,7 +174,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+                   deleteIcon: Icon(
+                     Icons.close,
+                     size: 16,
+-                    color: hud.textMain.withValues(alpha: 0.70),
++                    color: hud.textMuted,
+                   ),
+                   onDeleted: () {
+                     scan.excludedPaths.remove(path);
+diff --git a/frontend/gs_analyzer_ui/lib/utils/csv_exporter.dart b/frontend/gs_analyzer_ui/lib/utils/csv_exporter.dart
+index c539d68..67e8b79 100644
+--- a/frontend/gs_analyzer_ui/lib/utils/csv_exporter.dart
++++ b/frontend/gs_analyzer_ui/lib/utils/csv_exporter.dart
+@@ -2,7 +2,7 @@ import 'dart:io';
+ import 'package:flutter/material.dart';
+ import 'package:gs_analyzer_ui/models/extension_breakdown_model.dart';
+ import 'package:gs_analyzer_ui/models/watcher_event.dart';
+-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
+ 
+ class CsvExporter {
+   static Future<void> exportExtensionBreakdown(
+@@ -10,6 +10,7 @@ class CsvExporter {
+     List<ExtensionBreakdownItem> items,
+   ) async {
+     try {
++      final hud = context.hudTheme;
+       final userProfile = Platform.environment['USERPROFILE'];
+       if (userProfile == null) {
+         throw Exception('Could not locate user profile directory.');
+@@ -59,21 +60,22 @@ class CsvExporter {
+       if (context.mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(
+-            content: Text('Exported to ${file.path}', style: HudTheme.bodyText),
+-            backgroundColor: HudTheme.bgPanel,
++            content: Text('Exported to ${file.path}', style: hud.body),
++            backgroundColor: hud.panel,
+             duration: const Duration(seconds: 4),
+           ),
+         );
+       }
+     } catch (e) {
+       if (context.mounted) {
++        final hud = context.hudTheme;
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(
+             content: Text(
+               'Failed to export CSV: $e',
+-              style: HudTheme.actionRed,
++              style: hud.actionRed,
+             ),
+-            backgroundColor: HudTheme.bgPanel,
++            backgroundColor: hud.panel,
+             duration: const Duration(seconds: 4),
+           ),
+         );
+@@ -128,8 +130,8 @@ class CsvExporter {
+       if (context.mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(
+-            content: Text('Exported to ${file.path}', style: HudTheme.bodyText),
+-            backgroundColor: HudTheme.bgPanel,
++            content: Text('Exported to ${file.path}', style: context.hudTheme.body),
++            backgroundColor: context.hudTheme.panel,
+             duration: const Duration(seconds: 4),
+           ),
+         );
+@@ -140,9 +142,9 @@ class CsvExporter {
+           SnackBar(
+             content: Text(
+               'Failed to export CSV: $e',
+-              style: HudTheme.actionRed,
++              style: context.hudTheme.actionRed,
+             ),
+-            backgroundColor: HudTheme.bgPanel,
++            backgroundColor: context.hudTheme.panel,
+             duration: const Duration(seconds: 4),
+           ),
+         );
+diff --git a/frontend/gs_analyzer_ui/lib/utils/hud_theme.dart b/frontend/gs_analyzer_ui/lib/utils/hud_theme.dart
+index bd777f5..b818d36 100644
+--- a/frontend/gs_analyzer_ui/lib/utils/hud_theme.dart
++++ b/frontend/gs_analyzer_ui/lib/utils/hud_theme.dart
+@@ -1,154 +1,154 @@
+-import 'package:flutter/material.dart';
+-
+-class HudTheme {
+-  // Core Color Palette
+-  static const Color bgBase = Color(0xFF161616);
+-  static const Color bgPanel = Color(0xFF1E1E1E);
+-  static const Color primaryBorder = Colors.cyan;
+-
+-  // Accents
+-  static const Color accentCyan = Colors.cyanAccent;
+-  static const Color accentGreen = Colors.greenAccent;
+-  static const Color accentRed = Colors.redAccent;
+-  static const Color accentAmber = Colors.amber;
+-
+-  // Text Colors
+-  static const Color textMain = Colors.white;
+-  static const Color textMuted = Colors.white70;
+-  static const textDim = Colors.white54;
+-
+-  // Typography
+-  static const String fontCore = 'Courier';
+-
+-  // For major section titles
+-  static const TextStyle headerCyan = TextStyle(
+-    fontFamily: fontCore,
+-    color: primaryBorder,
+-    fontSize: 18,
+-    fontWeight: FontWeight.bold,
+-    letterSpacing: 2,
+-  );
+-
+-  // for small description text
+-  static const TextStyle labelMuted = TextStyle(
+-    fontFamily: fontCore,
+-    color: textDim,
+-    fontSize: 12,
+-    letterSpacing: 1,
+-  );
+-
+-  // For live changing numbers like '8.5 GB', '13 / 17'
+-  static const TextStyle statGreen = TextStyle(
+-    fontFamily: fontCore,
+-    color: accentGreen,
+-    fontSize: 14,
+-    fontWeight: FontWeight.bold,
+-  );
+-
+-  // For numeric data values like sizes, percentages, counts
+-  static const TextStyle statCyan = TextStyle(
+-    fontFamily: fontCore,
+-    color: accentCyan,
+-    fontSize: 13,
+-  );
+-
+-  // for destructive action like 'ABORT SCAN'
+-  static const TextStyle actionRed = TextStyle(
+-    fontFamily: fontCore,
+-    color: accentRed,
+-    fontSize: 14,
+-    fontWeight: FontWeight.bold,
+-    letterSpacing: 1.5,
+-  );
+-
+-  // Standard table/tree text
+-  static const TextStyle bodyText = TextStyle(
+-    fontFamily: fontCore,
+-    color: textMuted,
+-    fontSize: 13,
+-  );
+-
+-  // The standard glowing border bos=x used for HUD widgets
+-  static BoxDecoration hudPanelDecoration = BoxDecoration(
+-    color: bgPanel,
+-    borderRadius: BorderRadius.circular(12),
+-    border: Border.all(color: primaryBorder.withValues(alpha: 0.3)),
+-  );
+-
+-  // A subtle bottom border for list items
+-  static BoxDecoration listItemDecoration = const BoxDecoration(
+-    border: Border(bottom: BorderSide(color: Colors.white10)),
+-  );
+-
+-  static Color resolveAccent(String? accentKey) {
+-    switch (accentKey?.toLowerCase()) {
+-      case 'cyan':
+-        return Colors.cyanAccent;
+-      case 'green':
+-        return Colors.greenAccent;
+-      case 'amber':
+-        return Colors.amber;
+-      case 'red':
+-        return Colors.redAccent;
+-      case 'purple':
+-        return Colors.purpleAccent;
+-      case 'blue':
+-        return Colors.blueAccent;
+-      default:
+-        return Colors.cyanAccent;
+-    }
+-  }
+-
+-  static Color resolveBgBase(String? theme) {
+-    switch (theme?.toLowerCase()) {
+-      case 'cyber_light':
+-        return const Color(0xFFF0F0F0);
+-      case 'cyber_dark':
+-      default:
+-        return const Color(0xFF161616);
+-    }
+-  }
+-
+-  // Helper for Panel backgrounds in Light Mode
+-  static Color resolveBgPanel(String? theme) {
+-    switch (theme?.toLowerCase()) {
+-      case 'cyber_light':
+-        return const Color(0xFFFFFFFF); // Pure white panel
+-      case 'cyber_dark':
+-        return const Color(0xFF1E1E1E); // Original dark panel
+-      default:
+-        return const Color(0xFF1E1E1E);
+-    }
+-  }
+-
+-  // Helper for borders in Light Mode
+-  static Color resolveBorderColor(String? theme) {
+-    switch (theme?.toLowerCase()) {
+-      case 'cyber_light':
+-        return Colors.grey.shade700;
+-      case 'cyber_dark':
+-        return Colors.cyanAccent;
+-      default:
+-        return Colors.cyanAccent;
+-    }
+-  }
+-
+-  static Color fileTypeColor(String category) {
+-    switch (category.toLowerCase()) {
+-      case 'media':
+-        return const Color(0xFF00FFFF);
+-      case 'documents':
+-        return const Color(0xFF4CAF50);
+-      case 'executables':
+-        return const Color(0xFFFF5252);
+-      case 'archives':
+-        return const Color(0xFFFFB300);
+-      case 'code':
+-        return const Color(0xFF9C27B0);
+-      case 'system':
+-        return Colors.white38;
+-      default:
+-        return Colors.white12;
+-    }
+-  }
+-}
++// import 'package:flutter/material.dart';
++
++// class HudTheme {
++//   // Core Color Palette
++//   static const Color bgBase = Color(0xFF161616);
++//   static const Color bgPanel = Color(0xFF1E1E1E);
++//   static const Color primaryBorder = Colors.cyan;
++
++//   // Accents
++//   static const Color accentCyan = Colors.cyanAccent;
++//   static const Color accentGreen = Colors.greenAccent;
++//   static const Color accentRed = Colors.redAccent;
++//   static const Color accentAmber = Colors.amber;
++
++//   // Text Colors
++//   static const Color textMain = Colors.white;
++//   static const Color textMuted = Colors.white70;
++//   static const textDim = Colors.white54;
++
++//   // Typography
++//   static const String fontCore = 'Courier';
++
++//   // For major section titles
++//   static const TextStyle headerCyan = TextStyle(
++//     fontFamily: fontCore,
++//     color: primaryBorder,
++//     fontSize: 18,
++//     fontWeight: FontWeight.bold,
++//     letterSpacing: 2,
++//   );
++
++//   // for small description text
++//   static const TextStyle labelMuted = TextStyle(
++//     fontFamily: fontCore,
++//     color: textDim,
++//     fontSize: 12,
++//     letterSpacing: 1,
++//   );
++
++//   // For live changing numbers like '8.5 GB', '13 / 17'
++//   static const TextStyle statGreen = TextStyle(
++//     fontFamily: fontCore,
++//     color: accentGreen,
++//     fontSize: 14,
++//     fontWeight: FontWeight.bold,
++//   );
++
++//   // For numeric data values like sizes, percentages, counts
++//   static const TextStyle statCyan = TextStyle(
++//     fontFamily: fontCore,
++//     color: accentCyan,
++//     fontSize: 13,
++//   );
++
++//   // for destructive action like 'ABORT SCAN'
++//   static const TextStyle actionRed = TextStyle(
++//     fontFamily: fontCore,
++//     color: accentRed,
++//     fontSize: 14,
++//     fontWeight: FontWeight.bold,
++//     letterSpacing: 1.5,
++//   );
++
++//   // Standard table/tree text
++//   static const TextStyle bodyText = TextStyle(
++//     fontFamily: fontCore,
++//     color: textMuted,
++//     fontSize: 13,
++//   );
++
++//   // The standard glowing border bos=x used for HUD widgets
++//   static BoxDecoration hudPanelDecoration = BoxDecoration(
++//     color: bgPanel,
++//     borderRadius: BorderRadius.circular(12),
++//     border: Border.all(color: primaryBorder.withValues(alpha: 0.3)),
++//   );
++
++//   // A subtle bottom border for list items
++//   static BoxDecoration listItemDecoration = const BoxDecoration(
++//     border: Border(bottom: BorderSide(color: Colors.white10)),
++//   );
++
++//   static Color resolveAccent(String? accentKey) {
++//     switch (accentKey?.toLowerCase()) {
++//       case 'cyan':
++//         return Colors.cyanAccent;
++//       case 'green':
++//         return Colors.greenAccent;
++//       case 'amber':
++//         return Colors.amber;
++//       case 'red':
++//         return Colors.redAccent;
++//       case 'purple':
++//         return Colors.purpleAccent;
++//       case 'blue':
++//         return Colors.blueAccent;
++//       default:
++//         return Colors.cyanAccent;
++//     }
++//   }
++
++//   static Color resolveBgBase(String? theme) {
++//     switch (theme?.toLowerCase()) {
++//       case 'cyber_light':
++//         return const Color(0xFFF0F0F0);
++//       case 'cyber_dark':
++//       default:
++//         return const Color(0xFF161616);
++//     }
++//   }
++
++//   // Helper for Panel backgrounds in Light Mode
++//   static Color resolveBgPanel(String? theme) {
++//     switch (theme?.toLowerCase()) {
++//       case 'cyber_light':
++//         return const Color(0xFFFFFFFF); // Pure white panel
++//       case 'cyber_dark':
++//         return const Color(0xFF1E1E1E); // Original dark panel
++//       default:
++//         return const Color(0xFF1E1E1E);
++//     }
++//   }
++
++//   // Helper for borders in Light Mode
++//   static Color resolveBorderColor(String? theme) {
++//     switch (theme?.toLowerCase()) {
++//       case 'cyber_light':
++//         return Colors.grey.shade700;
++//       case 'cyber_dark':
++//         return Colors.cyanAccent;
++//       default:
++//         return Colors.cyanAccent;
++//     }
++//   }
++
++//   static Color fileTypeColor(String category) {
++//     switch (category.toLowerCase()) {
++//       case 'media':
++//         return const Color(0xFF00FFFF);
++//       case 'documents':
++//         return const Color(0xFF4CAF50);
++//       case 'executables':
++//         return const Color(0xFFFF5252);
++//       case 'archives':
++//         return const Color(0xFFFFB300);
++//       case 'code':
++//         return const Color(0xFF9C27B0);
++//       case 'system':
++//         return Colors.white38;
++//       default:
++//         return Colors.white12;
++//     }
++//   }
++// }
+diff --git a/frontend/gs_analyzer_ui/lib/utils/nuke_protocol.dart b/frontend/gs_analyzer_ui/lib/utils/nuke_protocol.dart
+index 69eb671..357b286 100644
+--- a/frontend/gs_analyzer_ui/lib/utils/nuke_protocol.dart
++++ b/frontend/gs_analyzer_ui/lib/utils/nuke_protocol.dart
+@@ -9,7 +9,8 @@ import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
+ import 'package:gs_analyzer_ui/services/api_service.dart';
+ import 'package:gs_analyzer_ui/providers/root_tree_provider.dart';
+ import 'package:gs_analyzer_ui/utils/globals.dart';
+-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
+ import '../widgets/nuke_preview_dialog.dart';
+ import '../widgets/nuke_progress_dialog.dart';
+ import '../widgets/undo_history_panel.dart';
+@@ -22,6 +23,7 @@ Future<void> executeNukeProtocol(
+   List<String>? customPath,
+   VoidCallback? onComplete,
+ }) async {
++  final hud = context.hudTheme;
+   final dirState = ref.read(directoryProvider);
+   final dirNotifier = ref.read(directoryProvider.notifier);
+   final List<String> targetsToNuke =
+@@ -90,7 +92,7 @@ Future<void> executeNukeProtocol(
+             children: [
+               Text(
+                 '${result.stagedFormatted} MOVED TO RECYCLE BIN',
+-                style: const TextStyle(
++                style: TextStyle(
+                   fontFamily: HudTheme.fontCore,
+                   fontWeight: FontWeight.bold,
+                 ),
+@@ -109,7 +111,7 @@ Future<void> executeNukeProtocol(
+                             fontWeight: FontWeight.bold,
+                           ),
+                         ),
+-                        backgroundColor: HudTheme.accentGreen,
++                        backgroundColor: hud.accentGreen,
+                       ),
+                     );
+                     // Refresh directory view
+@@ -124,24 +126,24 @@ Future<void> executeNukeProtocol(
+                       SnackBar(
+                         content: Text(
+                           'UNDO FAILED: $e',
+-                          style: const TextStyle(fontFamily: HudTheme.fontCore),
++                          style: TextStyle(fontFamily: HudTheme.fontCore),
+                         ),
+-                        backgroundColor: HudTheme.accentRed,
++                        backgroundColor: hud.accentRed,
+                       ),
+                     );
+                   }
+                 },
+-                child: const Text(
++                child: Text(
+                   '[UNDO]',
+                   style: TextStyle(
+-                    color: Colors.white,
++                    color: hud.textMain,
+                     fontWeight: FontWeight.bold,
+                   ),
+                 ),
+               ),
+             ],
+           ),
+-          backgroundColor: HudTheme.accentAmber,
++          backgroundColor: hud.accentAmber,
+         ),
+       );
+     } else {
+@@ -155,7 +157,7 @@ Future<void> executeNukeProtocol(
+               fontWeight: FontWeight.bold,
+             ),
+           ),
+-          backgroundColor: HudTheme.accentGreen,
++          backgroundColor: hud.accentGreen,
+         ),
+       );
+     }
+@@ -167,7 +169,7 @@ Future<void> executeNukeProtocol(
+           'ERROR: $e',
+           style: TextStyle(fontFamily: HudTheme.fontCore),
+         ),
+-        backgroundColor: HudTheme.accentRed,
++        backgroundColor: hud.accentRed,
+       ),
+     );
+   } finally {
+diff --git a/frontend/gs_analyzer_ui/lib/widgets/age_heatmap_overlay.dart b/frontend/gs_analyzer_ui/lib/widgets/age_heatmap_overlay.dart
+index b9ee7e9..92425d9 100644
+--- a/frontend/gs_analyzer_ui/lib/widgets/age_heatmap_overlay.dart
++++ b/frontend/gs_analyzer_ui/lib/widgets/age_heatmap_overlay.dart
+@@ -3,22 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:gs_analyzer_ui/models/age_heatmap_model.dart';
+ import 'package:gs_analyzer_ui/providers/age_heatmap_provider.dart';
+ import 'package:gs_analyzer_ui/providers/directory_provider.dart';
+-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
+ import 'package:gs_analyzer_ui/widgets/directory_node_widget.dart';
+ 
+ /// Resolves the HudTheme accent color for a given age bucket string.
+-Color bucketColor(String bucket) {
++Color bucketColor(String bucket, BuildContext context) {
++  final hud = context.hudTheme;
+   switch (bucket) {
+     case 'fresh':
+-      return HudTheme.accentCyan;
++      return hud.accentCyan;
+     case 'recent':
+-      return HudTheme.accentGreen;
++      return hud.accentGreen;
+     case 'aging':
+-      return HudTheme.accentAmber;
++      return hud.accentAmber;
+     case 'stale':
+-      return HudTheme.accentRed;
++      return hud.accentRed;
+     default:
+-      return HudTheme.textDim;
++      return hud.textDim;
+   }
+ }
+ 
+@@ -33,32 +35,33 @@ class AgeHeatmapOverlay extends ConsumerWidget {
+     final heatmapAsync = ref.watch(ageHeatmapProvider(currentPath));
+ 
+     return heatmapAsync.when(
+-      loading: () => _buildLoadingState(),
++      loading: () => _buildLoadingState(context),
+       error: (err, _) {
+         if (err is AgeHeatmapNoScanException) {
+-          return _buildNoScanPrompt();
++          return _buildNoScanPrompt(context);
+         }
+-        return _buildErrorState(err.toString());
++        return _buildErrorState(err.toString(), context);
+       },
+-      data: (result) => _buildOverlay(result),
++      data: (result) => _buildOverlay(result, context),
+     );
+   }
+ 
+-  Widget _buildLoadingState() {
++  Widget _buildLoadingState(BuildContext context) {
++    final hud = context.hudTheme;
+     return Container(
+       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+-      decoration: const BoxDecoration(
+-        color: HudTheme.bgPanel,
+-        border: Border(bottom: BorderSide(color: Colors.white10)),
++      decoration: BoxDecoration(
++        color: hud.panel,
++        border: Border(bottom: BorderSide(color: hud.textMain.withValues(alpha: 0.1))),
+       ),
+-      child: const Row(
++      child: Row(
+         children: [
+           SizedBox(
+             width: 14,
+             height: 14,
+             child: CircularProgressIndicator(
+               strokeWidth: 1.5,
+-              color: HudTheme.accentCyan,
++              color: hud.accentCyan,
+             ),
+           ),
+           SizedBox(width: 12),
+@@ -66,7 +69,7 @@ class AgeHeatmapOverlay extends ConsumerWidget {
+             'LOADING AGE HEATMAP...',
+             style: TextStyle(
+               fontFamily: HudTheme.fontCore,
+-              color: HudTheme.textDim,
++              color: hud.textDim,
+               fontSize: 12,
+               letterSpacing: 1,
+             ),
+@@ -76,96 +79,100 @@ class AgeHeatmapOverlay extends ConsumerWidget {
+     );
+   }
+ 
+-  Widget _buildNoScanPrompt() {
++  Widget _buildNoScanPrompt(BuildContext context) {
++    final hud = context.hudTheme;
+     return Container(
+       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+       decoration: BoxDecoration(
+-        color: HudTheme.bgPanel,
+-        border: Border.all(color: HudTheme.accentRed.withValues(alpha: 0.3)),
++        color: hud.panel,
++        border: Border.all(color: hud.accentRed.withValues(alpha: 0.3)),
+         borderRadius: BorderRadius.circular(8),
+       ),
+       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+       child: Row(
+         children: [
+-          const Icon(
++          Icon(
+             Icons.warning_amber_outlined,
+-            color: HudTheme.accentAmber,
++            color: hud.accentAmber,
+             size: 20,
+           ),
+           const SizedBox(width: 12),
+           Text(
+             'RUN A SCAN FIRST',
+-            style: HudTheme.actionRed.copyWith(letterSpacing: 2),
++            style: hud.actionRed.copyWith(letterSpacing: 2),
+           ),
+           const SizedBox(width: 8),
+           Text(
+             '— scan a directory to generate age heatmap data',
+-            style: HudTheme.labelMuted.copyWith(color: HudTheme.textDim),
++            style: hud.label.copyWith(color: hud.textDim),
+           ),
+         ],
+       ),
+     );
+   }
+ 
+-  Widget _buildErrorState(String error) {
++  Widget _buildErrorState(String error, BuildContext context) {
++    final hud = context.hudTheme;
+     return Container(
+       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+-      decoration: const BoxDecoration(
+-        color: HudTheme.bgPanel,
+-        border: Border(bottom: BorderSide(color: Colors.white10)),
++      decoration: BoxDecoration(
++        color: hud.panel,
++        border: Border(bottom: BorderSide(color: hud.textMain.withValues(alpha: 0.1))),
+       ),
+       child: Text(
+         'HEATMAP ERROR: $error',
+-        style: HudTheme.actionRed.copyWith(fontSize: 12),
++        style: hud.actionRed.copyWith(fontSize: 12),
+       ),
+     );
+   }
+ 
+-  Widget _buildOverlay(AgeHeatmapResult result) {
++  Widget _buildOverlay(AgeHeatmapResult result, BuildContext context) {
++    final hud = context.hudTheme;
+     return Container(
+       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+-      decoration: const BoxDecoration(
+-        color: HudTheme.bgPanel,
+-        border: Border(bottom: BorderSide(color: Colors.white10)),
++      decoration: BoxDecoration(
++        color: hud.panel,
++        border: Border(bottom: BorderSide(color: hud.textMain.withValues(alpha: 0.1))),
+       ),
+       child: Column(
+         crossAxisAlignment: CrossAxisAlignment.start,
+         children: [
+           // Legend bar
+-          _buildLegendBar(),
++          _buildLegendBar(context),
+           const SizedBox(height: 10),
+           // Summary grid
+-          _buildSummaryGrid(result.summary),
++          _buildSummaryGrid(result.summary, context),
+         ],
+       ),
+     );
+   }
+ 
+-  Widget _buildLegendBar() {
++  Widget _buildLegendBar(BuildContext context) {
++    final hud = context.hudTheme;
+     return Row(
+       children: [
+-        const Icon(
++        Icon(
+           Icons.thermostat_outlined,
+-          color: HudTheme.accentCyan,
++          color: hud.accentCyan,
+           size: 16,
+         ),
+         const SizedBox(width: 8),
+         Text(
+           'FILE AGE MAP',
+-          style: HudTheme.labelMuted.copyWith(
+-            color: HudTheme.accentCyan,
++          style: hud.label.copyWith(
++            color: hud.accentCyan,
+             fontWeight: FontWeight.bold,
+             letterSpacing: 2,
+           ),
+         ),
+         const SizedBox(width: 16),
+-        _legendItem('FRESH', HudTheme.accentCyan),
++        _legendItem('FRESH', hud.accentCyan),
+         const SizedBox(width: 12),
+-        _legendItem('RECENT', HudTheme.accentGreen),
++        _legendItem('RECENT', hud.accentGreen),
+         const SizedBox(width: 12),
+-        _legendItem('AGING', HudTheme.accentAmber),
++        _legendItem('AGING', hud.accentAmber),
+         const SizedBox(width: 12),
+-        _legendItem('STALE', HudTheme.accentRed),
++        _legendItem('STALE', hud.accentRed),
+       ],
+     );
+   }
+@@ -200,7 +207,7 @@ class AgeHeatmapOverlay extends ConsumerWidget {
+     );
+   }
+ 
+-  Widget _buildSummaryGrid(Map<String, AgeBucketSummary> summary) {
++  Widget _buildSummaryGrid(Map<String, AgeBucketSummary> summary, BuildContext context) {
+     const buckets = ['fresh', 'recent', 'aging', 'stale'];
+     const labels = ['< 7 DAYS', '7D – 1M', '1M – 1Y', '> 1 YEAR'];
+ 
+@@ -209,7 +216,7 @@ class AgeHeatmapOverlay extends ConsumerWidget {
+         final bucket = buckets[i];
+         final data =
+             summary[bucket] ?? const AgeBucketSummary(count: 0, totalBytes: 0);
+-        final color = bucketColor(bucket);
++        final color = bucketColor(bucket, context);
+ 
+         return Expanded(
+           child: Container(
+diff --git a/frontend/gs_analyzer_ui/lib/widgets/coming_soon.dart b/frontend/gs_analyzer_ui/lib/widgets/coming_soon.dart
+index 8691c8d..3b06b08 100644
+--- a/frontend/gs_analyzer_ui/lib/widgets/coming_soon.dart
++++ b/frontend/gs_analyzer_ui/lib/widgets/coming_soon.dart
+@@ -87,6 +87,7 @@ class _DummyDashboardBackground extends StatelessWidget {
+ 
+   @override
+   Widget build(BuildContext context) {
++    final hud = context.hudTheme;
+     return Padding(
+       padding: const EdgeInsets.all(24.0),
+       child: Column(
+@@ -96,7 +97,7 @@ class _DummyDashboardBackground extends StatelessWidget {
+             height: 40,
+             width: 250,
+             decoration: BoxDecoration(
+-              color: Colors.white.withValues(alpha: 0.1),
++              color: hud.textMain.withValues(alpha: 0.1),
+               borderRadius: BorderRadius.circular(8),
+             ),
+           ),
+@@ -108,7 +109,7 @@ class _DummyDashboardBackground extends StatelessWidget {
+                   flex: 2,
+                   child: Container(
+                     decoration: BoxDecoration(
+-                      color: Colors.white.withValues(alpha: 0.05),
++                      color: hud.textMain.withValues(alpha: 0.05),
+                       borderRadius: BorderRadius.circular(12),
+                     ),
+                   ),
+@@ -121,7 +122,7 @@ class _DummyDashboardBackground extends StatelessWidget {
+                       Expanded(
+                         child: Container(
+                           decoration: BoxDecoration(
+-                            color: Colors.white.withValues(alpha: 0.05),
++                            color: hud.textMain.withValues(alpha: 0.05),
+                             borderRadius: BorderRadius.circular(12),
+                           ),
+                         ),
+@@ -130,7 +131,7 @@ class _DummyDashboardBackground extends StatelessWidget {
+                       Expanded(
+                         child: Container(
+                           decoration: BoxDecoration(
+-                            color: Colors.white.withValues(alpha: 0.05),
++                            color: hud.textMain.withValues(alpha: 0.05),
+                             borderRadius: BorderRadius.circular(12),
+                           ),
+                         ),
+diff --git a/frontend/gs_analyzer_ui/lib/widgets/directory_node_widget.dart b/frontend/gs_analyzer_ui/lib/widgets/directory_node_widget.dart
+index 2baac6a..31d0cd7 100644
+--- a/frontend/gs_analyzer_ui/lib/widgets/directory_node_widget.dart
++++ b/frontend/gs_analyzer_ui/lib/widgets/directory_node_widget.dart
+@@ -235,7 +235,7 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
+       });
+     }
+     final Color? heatmapColor = nodeBucket != null
+-        ? bucketColor(nodeBucket!)
++        ? bucketColor(nodeBucket!, context)
+         : null;
+     final bool showReviewBadge =
+         nodeBucket == 'stale' && isDir && widget.node.sizeBytes > 1073741824;
+diff --git a/frontend/gs_analyzer_ui/lib/widgets/disk_io_card.dart b/frontend/gs_analyzer_ui/lib/widgets/disk_io_card.dart
+index f28a4e4..e1d4810 100644
+--- a/frontend/gs_analyzer_ui/lib/widgets/disk_io_card.dart
++++ b/frontend/gs_analyzer_ui/lib/widgets/disk_io_card.dart
+@@ -161,7 +161,7 @@ class DiskIoCard extends ConsumerWidget {
+                       style: TextStyle(
+                         fontFamily: HudTheme.fontCore,
+                         fontSize: 12,
+-                        color: hud.textMain.withValues(alpha: 0.70),
++                        color: hud.textMuted,
+                       ),
+                     ),
+                     Text(
+@@ -262,7 +262,7 @@ class DiskIoCard extends ConsumerWidget {
+                 style: TextStyle(
+                   fontFamily: HudTheme.fontCore,
+                   fontSize: 11,
+-                  color: hud.textMain.withValues(alpha: 0.54),
++                  color: hud.textDim,
+                 ),
+               ),
+               Text(
+@@ -270,7 +270,7 @@ class DiskIoCard extends ConsumerWidget {
+                 style: TextStyle(
+                   fontFamily: HudTheme.fontCore,
+                   fontSize: 11,
+-                  color: hud.textMain.withValues(alpha: 0.54),
++                  color: hud.textDim,
+                 ),
+               ),
+             ],
+diff --git a/frontend/gs_analyzer_ui/lib/widgets/duplicate_scanner_pannel.dart b/frontend/gs_analyzer_ui/lib/widgets/duplicate_scanner_pannel.dart
+index d36b7bd..64d068a 100644
+--- a/frontend/gs_analyzer_ui/lib/widgets/duplicate_scanner_pannel.dart
++++ b/frontend/gs_analyzer_ui/lib/widgets/duplicate_scanner_pannel.dart
+@@ -277,7 +277,7 @@ class _DuplicateScannerPanelState extends ConsumerState<DuplicateScannerPanel> {
+                             title: Text(
+                               file.path,
+                               style: TextStyle(
+-                                color: hud.textMain.withValues(alpha: 0.70),
++                                color: hud.textMuted,
+                                 fontSize: 12,
+                               ),
+                             ),
+diff --git a/frontend/gs_analyzer_ui/lib/widgets/extension_breakdown_screen.dart b/frontend/gs_analyzer_ui/lib/widgets/extension_breakdown_screen.dart
+index 5bf7374..8ef3553 100644
+--- a/frontend/gs_analyzer_ui/lib/widgets/extension_breakdown_screen.dart
++++ b/frontend/gs_analyzer_ui/lib/widgets/extension_breakdown_screen.dart
+@@ -502,7 +502,7 @@ class _ExtensionBreakdownScreenState
+               if (item.largestFilePath.isEmpty)
+                 Text(
+                   'No file path recorded.',
+-                  style: TextStyle(color: hud.textMain.withValues(alpha: 0.54)),
++                  style: TextStyle(color: hud.textDim),
+                 )
+               else
+                 Column(
+diff --git a/frontend/gs_analyzer_ui/lib/widgets/large_file_scanner_panel.dart b/frontend/gs_analyzer_ui/lib/widgets/large_file_scanner_panel.dart
+index 2ddea32..8186435 100644
+--- a/frontend/gs_analyzer_ui/lib/widgets/large_file_scanner_panel.dart
++++ b/frontend/gs_analyzer_ui/lib/widgets/large_file_scanner_panel.dart
+@@ -1,9 +1,10 @@
+ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';
+-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+ import 'package:gs_analyzer_ui/utils/nuke_protocol.dart';
+ import 'package:gs_analyzer_ui/providers/large_file_provider.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
+ 
+ class LargeFileScannerPanel extends ConsumerStatefulWidget {
+   const LargeFileScannerPanel({super.key});
+@@ -34,26 +35,27 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
+   Widget build(BuildContext context) {
+     final largeFileState = ref.watch(largeFileProvider);
+     final largeFileNotifier = ref.read(largeFileProvider.notifier);
++    final hud = context.hudTheme;
+     return Container(
+-      color: HudTheme.bgBase,
++      color: hud.base,
+       child: Column(
+         children: [
+           // Header
+           Container(
+             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+-            decoration: const BoxDecoration(
+-              color: HudTheme.bgPanel,
+-              border: Border(bottom: BorderSide(color: Colors.white10)),
++            decoration: BoxDecoration(
++              color: hud.panel,
++              border: Border(bottom: BorderSide(color: hud.textMain.withValues(alpha: 0.1))),
+             ),
+             child: Row(
+               children: [
+-                const Icon(Icons.radar_outlined, color: HudTheme.accentCyan),
++                Icon(Icons.radar_outlined, color: hud.accentCyan),
+                 const SizedBox(width: 12),
+-                const Expanded(
++                Expanded(
+                   child: Text(
+                     'LARGE FILE HUNTER PROTOCOL',
+                     style: TextStyle(
+-                      color: HudTheme.accentCyan,
++                      color: hud.accentCyan,
+                       fontFamily: HudTheme.fontCore,
+                       fontSize: 16,
+                       fontWeight: FontWeight.bold,
+@@ -64,8 +66,8 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
+                   onPressed: () =>
+                       ref.read(storageModeProvider.notifier).state =
+                           StorageMode.diskAnalyzer,
+-                  icon: const Icon(Icons.close, color: HudTheme.textDim),
+-                  label: const Text('CLOSE TOOL', style: HudTheme.bodyText),
++                  icon: Icon(Icons.close, color: hud.textDim),
++                  label: Text('CLOSE TOOL', style: hud.body),
+                 ),
+               ],
+             ),
+@@ -74,8 +76,8 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
+           // Controls
+           Container(
+             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+-            decoration: const BoxDecoration(
+-              border: Border(bottom: BorderSide(color: Colors.white10)),
++            decoration: BoxDecoration(
++              border: Border(bottom: BorderSide(color: hud.textMain.withValues(alpha: 0.1))),
+             ),
+             child: Wrap(
+               spacing: 16,
+@@ -86,33 +88,33 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
+                   width: 260,
+                   child: TextField(
+                     controller: _pathController,
+-                    style: HudTheme.bodyText.copyWith(
+-                      color: HudTheme.accentCyan,
++                    style: hud.body.copyWith(
++                      color: hud.accentCyan,
+                       fontSize: 13,
+                     ),
+                     decoration: InputDecoration(
+-                      prefixIcon: const Icon(
++                      prefixIcon: Icon(
+                         Icons.folder_outlined,
+-                        color: HudTheme.textDim,
++                        color: hud.textDim,
+                         size: 20,
+                       ),
+                       labelText: 'TARGET SECTOR',
+-                      labelStyle: HudTheme.labelMuted,
++                      labelStyle: hud.label,
+                       isDense: true,
+                       filled: true,
+-                      fillColor: Colors.black26,
++                      fillColor: hud.textPaint.withValues(alpha: 0.26),
+                       border: OutlineInputBorder(
+                         borderRadius: BorderRadius.circular(4),
+-                        borderSide: const BorderSide(color: Colors.white10),
++                        borderSide: BorderSide(color: hud.textMain.withValues(alpha: 0.1)),
+                       ),
+                       enabledBorder: OutlineInputBorder(
+                         borderRadius: BorderRadius.circular(4),
+-                        borderSide: const BorderSide(color: Colors.white10),
++                        borderSide: BorderSide(color: hud.textMain.withValues(alpha: 0.1)),
+                       ),
+                       focusedBorder: OutlineInputBorder(
+                         borderRadius: BorderRadius.circular(4),
+-                        borderSide: const BorderSide(
+-                          color: HudTheme.accentAmber,
++                        borderSide: BorderSide(
++                          color: hud.accentAmber,
+                         ),
+                       ),
+                     ),
+@@ -120,8 +122,8 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
+                 ),
+                 ElevatedButton.icon(
+                   style: ElevatedButton.styleFrom(
+-                    backgroundColor: HudTheme.accentCyan,
+-                    foregroundColor: Colors.black,
++                    backgroundColor: hud.accentCyan,
++                    foregroundColor: hud.textPaint,
+                   ),
+                   icon: const Icon(Icons.saved_search_outlined, size: 18),
+                   label: const Text(
+@@ -140,11 +142,11 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
+                 if (largeFileState.largeFiles.isNotEmpty) ...[
+                   ElevatedButton.icon(
+                     style: ElevatedButton.styleFrom(
+-                      backgroundColor: HudTheme.accentRed.withValues(
++                      backgroundColor: hud.accentRed.withValues(
+                         alpha: 0.2,
+                       ),
+-                      foregroundColor: HudTheme.accentRed,
+-                      side: const BorderSide(color: HudTheme.accentRed),
++                      foregroundColor: hud.accentRed,
++                      side: BorderSide(color: hud.accentRed),
+                     ),
+                     icon: const Icon(Icons.delete_forever_outlined, size: 18),
+                     label: Text(
+@@ -179,27 +181,27 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
+                     child: Column(
+                       mainAxisSize: MainAxisSize.min,
+                       children: [
+-                        const CircularProgressIndicator(
+-                          color: HudTheme.accentCyan,
++                        CircularProgressIndicator(
++                          color: hud.accentCyan,
+                         ),
+                         const SizedBox(height: 24),
+-                        const Text(
++                        Text(
+                           'SCANNING DEEP SECTORS...',
+-                          style: HudTheme.statGreen,
++                          style: hud.statGreen,
+                         ),
+                         const SizedBox(height: 16),
+                         TextButton.icon(
+                           onPressed: () => largeFileNotifier.abortScan(),
+-                          icon: const Icon(
++                          icon: Icon(
+                             Icons.dangerous,
+-                            color: HudTheme.accentRed,
++                            color: hud.accentRed,
+                           ),
+-                          label: const Text(
++                          label: Text(
+                             'ABORT SCAN',
+-                            style: HudTheme.actionRed,
++                            style: hud.actionRed,
+                           ),
+                           style: TextButton.styleFrom(
+-                            backgroundColor: HudTheme.accentRed.withValues(
++                            backgroundColor: hud.accentRed.withValues(
+                               alpha: 0.1,
+                             ),
+                             padding: const EdgeInsets.symmetric(
+@@ -215,15 +217,15 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
+                 ? Center(
+                     child: Text(
+                       'ERROR: ${largeFileState.errorMessage}',
+-                      style: HudTheme.actionRed,
++                      style: hud.actionRed,
+                     ),
+                   )
+                 : largeFileState.largeFiles.isEmpty
+                 ? Center(
+                     child: Text(
+                       'AWAITING LARGE FILE SCAN COMMAND....',
+-                      style: HudTheme.bodyText.copyWith(
+-                        color: HudTheme.textDim,
++                      style: hud.body.copyWith(
++                        color: hud.textDim,
+                       ),
+                     ),
+                   )
+@@ -232,16 +234,16 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
+                     itemBuilder: (context, index) {
+                       final file = largeFileState.largeFiles[index];
+                       return Container(
+-                        decoration: HudTheme.listItemDecoration,
++                        decoration: hud.listItemDecoration,
+                         child: ListTile(
+-                          leading: const Icon(
++                          leading: Icon(
+                             Icons.description_outlined,
+-                            color: HudTheme.textDim,
++                            color: hud.textDim,
+                           ),
+                           title: Text(
+                             file.path,
+-                            style: HudTheme.bodyText.copyWith(
+-                              color: Colors.white,
++                            style: hud.body.copyWith(
++                              color: hud.textMain,
+                               fontWeight: FontWeight.w500,
+                             ),
+                           ),
+@@ -254,28 +256,28 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
+                                   vertical: 4,
+                                 ),
+                                 decoration: BoxDecoration(
+-                                  color: HudTheme.accentCyan.withValues(
++                                  color: hud.accentCyan.withValues(
+                                     alpha: 0.1,
+                                   ),
+                                   borderRadius: BorderRadius.circular(4),
+                                   border: Border.all(
+-                                    color: HudTheme.accentCyan.withValues(
++                                    color: hud.accentCyan.withValues(
+                                       alpha: 0.5,
+                                     ),
+                                   ),
+                                 ),
+                                 child: Text(
+                                   file.sizeFormatted,
+-                                  style: HudTheme.statGreen.copyWith(
+-                                    color: HudTheme.accentCyan,
++                                  style: hud.statGreen.copyWith(
++                                    color: hud.accentCyan,
+                                   ),
+                                 ),
+                               ),
+                               const SizedBox(width: 16),
+                               IconButton(
+-                                icon: const Icon(
++                                icon: Icon(
+                                   Icons.delete_forever_outlined,
+-                                  color: HudTheme.accentRed,
++                                  color: hud.accentRed,
+                                 ),
+                                 onPressed: () => executeNukeProtocol(
+                                   context,
+diff --git a/frontend/gs_analyzer_ui/lib/widgets/nuke_preview_dialog.dart b/frontend/gs_analyzer_ui/lib/widgets/nuke_preview_dialog.dart
+index d44b32b..b7c2c96 100644
+--- a/frontend/gs_analyzer_ui/lib/widgets/nuke_preview_dialog.dart
++++ b/frontend/gs_analyzer_ui/lib/widgets/nuke_preview_dialog.dart
+@@ -1,7 +1,8 @@
+ import 'package:flutter/material.dart';
+ import 'package:gs_analyzer_ui/models/nuke_preview.dart';
+ import 'package:gs_analyzer_ui/services/api_service.dart';
+-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
+ 
+ class NukePreviewResult {
+   final bool confirmed;
+@@ -58,21 +59,22 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
+ 
+   @override
+   Widget build(BuildContext context) {
++    final hud = context.hudTheme;
+     return AlertDialog(
+-      backgroundColor: HudTheme.bgPanel,
++      backgroundColor: hud.panel,
+       shape: RoundedRectangleBorder(
+-        side: const BorderSide(color: HudTheme.accentRed, width: 2),
++        side: BorderSide(color: hud.accentRed, width: 2),
+         borderRadius: BorderRadius.circular(8),
+       ),
+-      title: const Row(
++      title: Row(
+         children: [
+           Icon(
+             Icons.warning_amber_outlined,
+-            color: HudTheme.accentRed,
++            color: hud.accentRed,
+             size: 28,
+           ),
+           SizedBox(width: 12),
+-          Text('CONFIRM OBLITERATION', style: HudTheme.actionRed),
++          Text('CONFIRM OBLITERATION', style: hud.actionRed),
+         ],
+       ),
+       content: SizedBox(width: 500, child: _buildContent()),
+@@ -85,13 +87,13 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
+               planToken: '',
+             ),
+           ),
+-          child: const Text('ABORT', style: TextStyle(color: Colors.white70)),
++          child: Text('ABORT', style: TextStyle(color: hud.textMuted)),
+         ),
+         if (!_isLoading && _error == null)
+           ElevatedButton(
+             style: ElevatedButton.styleFrom(
+-              backgroundColor: HudTheme.accentRed.withValues(alpha: 0.2),
+-              side: const BorderSide(color: HudTheme.accentRed),
++              backgroundColor: hud.accentRed.withValues(alpha: 0.2),
++              side: BorderSide(color: hud.accentRed),
+             ),
+             onPressed: () => Navigator.of(context).pop(
+               NukePreviewResult(
+@@ -102,8 +104,8 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
+             ),
+             child: Text(
+               _useRecycleBin ? 'MOVE TO RECYCLE BIN' : 'EXECUTE NUKE',
+-              style: const TextStyle(
+-                color: HudTheme.accentRed,
++              style: TextStyle(
++                color: hud.accentRed,
+                 fontWeight: FontWeight.bold,
+               ),
+             ),
+@@ -113,15 +115,16 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
+   }
+ 
+   Widget _buildContent() {
++    final hud = context.hudTheme;
+     if (_isLoading) {
+-      return const Column(
++      return Column(
+         mainAxisSize: MainAxisSize.min,
+         children: [
+           CircularProgressIndicator(),
+           SizedBox(height: 16),
+           Text(
+             'CALCULATING BLAST RADIUS...',
+-            style: TextStyle(color: HudTheme.accentRed),
++            style: TextStyle(color: hud.accentRed),
+           ),
+         ],
+       );
+@@ -130,7 +133,7 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
+     if (_error != null) {
+       return Text(
+         'PREVIEW FAILED: $_error',
+-        style: const TextStyle(color: HudTheme.accentRed),
++        style: TextStyle(color: hud.accentRed),
+       );
+     }
+ 
+@@ -143,7 +146,7 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
+         Container(
+           padding: const EdgeInsets.all(16),
+           decoration: BoxDecoration(
+-            color: Colors.black45,
++            color: hud.textPaint.withValues(alpha: 0.45),
+             borderRadius: BorderRadius.circular(4),
+           ),
+           child: Row(
+@@ -156,9 +159,9 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
+         ),
+ 
+         const SizedBox(height: 16),
+-        const Text(
++        Text(
+           'AFFECTED SECTORS:',
+-          style: TextStyle(color: Colors.white54, fontSize: 12),
++          style: TextStyle(color: hud.textDim, fontSize: 12),
+         ),
+         const SizedBox(height: 8),
+         ConstrainedBox(
+@@ -172,8 +175,8 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
+                 padding: const EdgeInsetsGeometry.only(bottom: 8.0),
+                 child: Text(
+                   '> ${item.path} (${item.fileCount} items)',
+-                  style: const TextStyle(
+-                    color: Colors.white,
++                  style: TextStyle(
++                    color: hud.textMain,
+                     fontSize: 13,
+                     fontFamily: HudTheme.fontCore,
+                   ),
+@@ -187,22 +190,22 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
+         Container(
+           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+           decoration: BoxDecoration(
+-            color: Colors.black45,
++            color: hud.textPaint.withValues(alpha: 0.45),
+             borderRadius: BorderRadius.circular(4),
+           ),
+           child: Row(
+             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+             children: [
+-              const Text(
++              Text(
+                 'MOVE TO RECYCLE BIN',
+                 style: TextStyle(
+-                  color: Colors.white,
++                  color: hud.textMain,
+                   fontFamily: HudTheme.fontCore,
+                 ),
+               ),
+               Switch(
+                 value: _useRecycleBin,
+-                activeColor: HudTheme.accentAmber,
++                activeThumbColor: hud.accentAmber,
+                 onChanged: (val) => setState(() => _useRecycleBin = val),
+               ),
+             ],
+@@ -214,10 +217,10 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
+           padding: const EdgeInsets.all(12),
+           decoration: BoxDecoration(
+             color: _useRecycleBin
+-                ? HudTheme.accentAmber.withValues(alpha: 0.1)
+-                : HudTheme.accentRed.withValues(alpha: 0.1),
++                ? hud.accentAmber.withValues(alpha: 0.1)
++                : hud.accentRed.withValues(alpha: 0.1),
+             border: Border.all(
+-              color: _useRecycleBin ? HudTheme.accentAmber : HudTheme.accentRed,
++              color: _useRecycleBin ? hud.accentAmber : hud.accentRed,
+             ),
+             borderRadius: BorderRadius.circular(4),
+           ),
+@@ -226,7 +229,7 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
+                 ? 'FILES WILL BE RECOVERABLE FROM YOUR SYSTEM RECYCLE BIN'
+                 : '⚠ THIS CANNOT BE UNDONE — FILES WILL BE PERMANENTLY DELETED',
+             style: TextStyle(
+-              color: _useRecycleBin ? HudTheme.accentAmber : HudTheme.accentRed,
++              color: _useRecycleBin ? hud.accentAmber : hud.accentRed,
+               fontSize: 12,
+               fontWeight: FontWeight.bold,
+               fontFamily: HudTheme.fontCore,
+@@ -238,18 +241,19 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
+   }
+ 
+   Widget _buildStat(String label, String value) {
++    final hud = context.hudTheme;
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+       children: [
+         Text(
+           label,
+-          style: const TextStyle(color: Colors.white54, fontSize: 11),
++          style: TextStyle(color: hud.textDim, fontSize: 11),
+         ),
+         const SizedBox(height: 4),
+         Text(
+           value,
+-          style: const TextStyle(
+-            color: HudTheme.accentRed,
++          style: TextStyle(
++            color: hud.accentRed,
+             fontSize: 24,
+             fontWeight: FontWeight.bold,
+           ),
+diff --git a/frontend/gs_analyzer_ui/lib/widgets/nuke_progress_dialog.dart b/frontend/gs_analyzer_ui/lib/widgets/nuke_progress_dialog.dart
+index cef071e..3210aea 100644
+--- a/frontend/gs_analyzer_ui/lib/widgets/nuke_progress_dialog.dart
++++ b/frontend/gs_analyzer_ui/lib/widgets/nuke_progress_dialog.dart
+@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:gs_analyzer_ui/providers/nuke_provider.dart';
+ import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
+-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
+ import '../services/api_service.dart';
+ 
+ class NukeProgressDialog extends ConsumerStatefulWidget {
+@@ -27,22 +28,23 @@ class _NukeProgressDialogState extends ConsumerState<NukeProgressDialog> {
+     final target = ref.watch(nukeTargetProvider);
+     final completed = ref.watch(nukeCompletedProvider);
+     final total = ref.watch(nukeTotalProvider);
++    final hud = context.hudTheme;
+ 
+     return PopScope(
+       canPop: false,
+       child: AlertDialog(
+-        backgroundColor: HudTheme.bgPanel,
++        backgroundColor: hud.panel,
+         shape: RoundedRectangleBorder(
+-          side: const BorderSide(color: HudTheme.accentRed, width: 2),
++          side: BorderSide(color: hud.accentRed, width: 2),
+           borderRadius: BorderRadius.circular(8),
+         ),
+         title: Row(
+           children: [
+-            const Expanded(
+-              child: Text('NUKE IN PROGRESS...', style: HudTheme.actionRed),
++            Expanded(
++              child: Text('NUKE IN PROGRESS...', style: hud.actionRed),
+             ),
+             IconButton(
+-              icon: const Icon(Icons.remove, color: HudTheme.accentRed),
++              icon: Icon(Icons.remove, color: hud.accentRed),
+               tooltip: 'Minimize',
+               visualDensity: VisualDensity.compact,
+               onPressed: () {
+@@ -58,22 +60,22 @@ class _NukeProgressDialogState extends ConsumerState<NukeProgressDialog> {
+           children: [
+             Text(
+               'Target: $target',
+-              style: HudTheme.bodyText,
++              style: hud.body,
+               maxLines: 1,
+               overflow: TextOverflow.ellipsis,
+             ),
+             const SizedBox(height: 8),
+             Text(
+               total > 0 ? 'Completed: $completed of $total' : 'Completed: $completed',
+-              style: HudTheme.bodyText,
++              style: hud.body,
+               maxLines: 1,
+               overflow: TextOverflow.ellipsis,
+             ),
+             const SizedBox(height: 16),
+             LinearProgressIndicator(
+               value: progress / 100,
+-              color: HudTheme.accentRed,
+-              backgroundColor: Colors.white10,
++              color: hud.accentRed,
++              backgroundColor: hud.textMain.withValues(alpha: 0.1),
+               minHeight: 8,
+             ),
+             const SizedBox(height: 8),
+@@ -81,7 +83,7 @@ class _NukeProgressDialogState extends ConsumerState<NukeProgressDialog> {
+               alignment: Alignment.centerRight,
+               child: Text(
+                 '${progress.toStringAsFixed(1)}%',
+-                style: HudTheme.actionRed,
++                style: hud.actionRed,
+               ),
+             ),
+           ],
+@@ -89,12 +91,12 @@ class _NukeProgressDialogState extends ConsumerState<NukeProgressDialog> {
+         actions: [
+           ElevatedButton.icon(
+             style: ElevatedButton.styleFrom(
+-              backgroundColor: HudTheme.accentRed.withValues(alpha: 0.2),
+-              foregroundColor: HudTheme.accentRed,
+-              side: const BorderSide(color: HudTheme.accentRed),
++              backgroundColor: hud.accentRed.withValues(alpha: 0.2),
++              foregroundColor: hud.accentRed,
++              side: BorderSide(color: hud.accentRed),
+             ),
+-            icon: const Icon(Icons.cancel_outlined, color: HudTheme.accentRed),
+-            label: const Text(
++            icon: Icon(Icons.cancel_outlined, color: hud.accentRed),
++            label: Text(
+               'ABORT',
+               style: TextStyle(
+                 fontWeight: FontWeight.bold,
+diff --git a/frontend/gs_analyzer_ui/lib/widgets/rule_editor_dialog.dart b/frontend/gs_analyzer_ui/lib/widgets/rule_editor_dialog.dart
+index 10f0818..f44ec57 100644
+--- a/frontend/gs_analyzer_ui/lib/widgets/rule_editor_dialog.dart
++++ b/frontend/gs_analyzer_ui/lib/widgets/rule_editor_dialog.dart
+@@ -5,7 +5,8 @@ import 'package:gs_analyzer_ui/models/automation_rule.dart';
+ import 'package:gs_analyzer_ui/models/nuke_preview.dart';
+ import 'package:gs_analyzer_ui/providers/automation_provider.dart';
+ import 'package:gs_analyzer_ui/utils/formatters.dart';
+-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
+ 
+ class RuleEditorDialog extends ConsumerStatefulWidget {
+   final AutomationRule? existingRule;
+@@ -168,11 +169,12 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+ 
+   @override
+   Widget build(BuildContext context) {
++    final hud = context.hudTheme;
+     return Dialog(
+-      backgroundColor: HudTheme.bgPanel,
++      backgroundColor: hud.panel,
+       shape: RoundedRectangleBorder(
+         borderRadius: BorderRadius.circular(8),
+-        side: BorderSide(color: HudTheme.primaryBorder.withValues(alpha: 0.5)),
++        side: BorderSide(color: hud.border.withValues(alpha: 0.5)),
+       ),
+       child: ConstrainedBox(
+         constraints: const BoxConstraints(maxWidth: 620, maxHeight: 680),
+@@ -190,9 +192,9 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+                 const SizedBox(height: 8),
+                 Text(
+                   _errorMessage!,
+-                  style: const TextStyle(
++                  style: TextStyle(
+                     fontFamily: HudTheme.fontCore,
+-                    color: HudTheme.accentRed,
++                    color: hud.accentRed,
+                     fontSize: 12,
+                   ),
+                 ),
+@@ -207,23 +209,24 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+   }
+ 
+   Widget _buildHeader() {
++    final hud = context.hudTheme;
+     return Row(
+       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+       children: [
+         Row(
+           children: [
+-            const Icon(Icons.security, color: HudTheme.accentCyan, size: 20),
++            Icon(Icons.security, color: hud.accentCyan, size: 20),
+             const SizedBox(width: 8),
+             Text(
+               widget.existingRule != null
+                   ? 'EDIT_AUTOMATION_RULE'
+                   : 'NEW_AUTOMATION_RULE',
+-              style: HudTheme.headerCyan,
++              style: hud.header,
+             ),
+           ],
+         ),
+         IconButton(
+-          icon: const Icon(Icons.close, color: HudTheme.textDim, size: 20),
++          icon: Icon(Icons.close, color: hud.textDim, size: 20),
+           onPressed: () => Navigator.of(context).pop(),
+         ),
+       ],
+@@ -232,6 +235,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+ 
+   Widget _buildStepIndicator() {
+     final steps = ['ROOT', 'CRITERIA', 'SCHEDULE', 'DRY_RUN', 'ARM'];
++    final hud = context.hudTheme;
+     return Row(
+       children: List.generate(steps.length, (index) {
+         final isActive = index == _currentStep;
+@@ -246,12 +250,12 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+                 decoration: BoxDecoration(
+                   shape: BoxShape.circle,
+                   color: isDone
+-                      ? HudTheme.accentGreen
+-                      : (isActive ? HudTheme.accentCyan : Colors.transparent),
++                      ? hud.accentGreen
++                      : (isActive ? hud.accentCyan : Colors.transparent),
+                   border: Border.all(
+                     color: isDone
+-                        ? HudTheme.accentGreen
+-                        : (isActive ? HudTheme.accentCyan : HudTheme.textDim),
++                        ? hud.accentGreen
++                        : (isActive ? hud.accentCyan : hud.textDim),
+                   ),
+                 ),
+                 child: Text(
+@@ -261,8 +265,8 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+                     fontSize: 11,
+                     fontWeight: FontWeight.bold,
+                     color: (isActive || isDone)
+-                        ? HudTheme.bgBase
+-                        : HudTheme.textDim,
++                        ? hud.base
++                        : hud.textDim,
+                   ),
+                 ),
+               ),
+@@ -275,7 +279,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+                     fontFamily: HudTheme.fontCore,
+                     fontSize: 10,
+                     fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+-                    color: isActive ? HudTheme.accentCyan : HudTheme.textDim,
++                    color: isActive ? hud.accentCyan : hud.textDim,
+                     letterSpacing: 0.8,
+                   ),
+                 ),
+@@ -284,7 +288,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+                 Container(
+                   width: 12,
+                   height: 1,
+-                  color: HudTheme.textDim.withValues(alpha: 0.3),
++                  color: hud.textDim.withValues(alpha: 0.3),
+                   margin: const EdgeInsets.symmetric(horizontal: 4),
+                 ),
+             ],
+@@ -311,28 +315,29 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+   }
+ 
+   Widget _buildStepRoot() {
++    final hud = context.hudTheme;
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+       children: [
+-        const Text('RULE NAME', style: HudTheme.labelMuted),
++        Text('RULE NAME', style: hud.label),
+         const SizedBox(height: 4),
+         TextField(
+           controller: _nameController,
+-          style: const TextStyle(
++          style: TextStyle(
+             fontFamily: HudTheme.fontCore,
+-            color: HudTheme.textMain,
++            color: hud.textMain,
+             fontSize: 13,
+           ),
+           decoration: _inputDecoration('e.g. TEMP CLEANUP'),
+         ),
+         const SizedBox(height: 16),
+-        const Text('CLEANUP ROOT PATH', style: HudTheme.labelMuted),
++        Text('CLEANUP ROOT PATH', style: hud.label),
+         const SizedBox(height: 4),
+         TextField(
+           controller: _rootController,
+-          style: const TextStyle(
++          style: TextStyle(
+             fontFamily: HudTheme.fontCore,
+-            color: HudTheme.textMain,
++            color: hud.textMain,
+             fontSize: 13,
+           ),
+           decoration: _inputDecoration(
+@@ -359,17 +364,17 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+         Container(
+           padding: const EdgeInsets.all(10),
+           decoration: BoxDecoration(
+-            color: HudTheme.accentAmber.withValues(alpha: 0.1),
++            color: hud.accentAmber.withValues(alpha: 0.1),
+             border: Border.all(
+-              color: HudTheme.accentAmber.withValues(alpha: 0.4),
++              color: hud.accentAmber.withValues(alpha: 0.4),
+             ),
+             borderRadius: BorderRadius.circular(4),
+           ),
+-          child: const Row(
++          child: Row(
+             children: [
+               Icon(
+                 Icons.shield_outlined,
+-                color: HudTheme.accentAmber,
++                color: hud.accentAmber,
+                 size: 18,
+               ),
+               const SizedBox(width: 8),
+@@ -378,7 +383,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+                   'SAFETY RAIL: Root paths are strictly allowlist-checked. Drive roots (C:\\), Windows, and Program Files are rejected outright.',
+                   style: TextStyle(
+                     fontFamily: HudTheme.fontCore,
+-                    color: HudTheme.accentAmber,
++                    color: hud.accentAmber,
+                     fontSize: 11,
+                   ),
+                 ),
+@@ -391,14 +396,15 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+   }
+ 
+   Widget _presetChip(String label, String path) {
++    final hud = context.hudTheme;
+     return ActionChip(
+-      backgroundColor: HudTheme.bgBase,
+-      side: BorderSide(color: HudTheme.accentCyan.withValues(alpha: 0.4)),
++      backgroundColor: hud.base,
++      side: BorderSide(color: hud.accentCyan.withValues(alpha: 0.4)),
+       label: Text(
+         label,
+-        style: const TextStyle(
++        style: TextStyle(
+           fontFamily: HudTheme.fontCore,
+-          color: HudTheme.accentCyan,
++          color: hud.accentCyan,
+           fontSize: 11,
+         ),
+       ),
+@@ -411,45 +417,46 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+   }
+ 
+   Widget _buildStepCriteria() {
++    final hud = context.hudTheme;
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+       children: [
+-        const Text('OLDER THAN (DAYS)', style: HudTheme.labelMuted),
++        Text('OLDER THAN (DAYS)', style: hud.label),
+         const SizedBox(height: 4),
+         TextField(
+           controller: _olderThanDaysController,
+           keyboardType: TextInputType.number,
+-          style: const TextStyle(
++          style: TextStyle(
+             fontFamily: HudTheme.fontCore,
+-            color: HudTheme.textMain,
++            color: hud.textMain,
+             fontSize: 13,
+           ),
+           decoration: _inputDecoration('e.g. 7 (days)'),
+         ),
+         const SizedBox(height: 14),
+-        const Text('MINIMUM SIZE (MB, OPTIONAL)', style: HudTheme.labelMuted),
++        Text('MINIMUM SIZE (MB, OPTIONAL)', style: hud.label),
+         const SizedBox(height: 4),
+         TextField(
+           controller: _largerThanMbController,
+           keyboardType: TextInputType.number,
+-          style: const TextStyle(
++          style: TextStyle(
+             fontFamily: HudTheme.fontCore,
+-            color: HudTheme.textMain,
++            color: hud.textMain,
+             fontSize: 13,
+           ),
+           decoration: _inputDecoration('e.g. 10 (leave empty for any size)'),
+         ),
+         const SizedBox(height: 14),
+-        const Text(
++        Text(
+           'EXTENSION ALLOWLIST (COMMA SEPARATED)',
+-          style: HudTheme.labelMuted,
++          style: hud.label,
+         ),
+         const SizedBox(height: 4),
+         TextField(
+           controller: _extensionsController,
+-          style: const TextStyle(
++          style: TextStyle(
+             fontFamily: HudTheme.fontCore,
+-            color: HudTheme.textMain,
++            color: hud.textMain,
+             fontSize: 13,
+           ),
+           decoration: _inputDecoration('e.g. .tmp, .log, .bak'),
+@@ -458,17 +465,17 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+         Row(
+           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+           children: [
+-            const Text(
++            Text(
+               'RECURSE SUBDIRECTORIES',
+               style: TextStyle(
+                 fontFamily: HudTheme.fontCore,
+-                color: HudTheme.textMain,
++                color: hud.textMain,
+                 fontSize: 12,
+               ),
+             ),
+             Switch(
+               value: _recurseSubdirectories,
+-              activeColor: HudTheme.accentCyan,
++              activeThumbColor: hud.accentCyan,
+               onChanged: (val) => setState(() => _recurseSubdirectories = val),
+             ),
+           ],
+@@ -478,17 +485,18 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+   }
+ 
+   Widget _buildStepSchedule() {
++    final hud = context.hudTheme;
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+       children: [
+-        const Text('RUN FREQUENCY', style: HudTheme.labelMuted),
++        Text('RUN FREQUENCY', style: hud.label),
+         const SizedBox(height: 8),
+         DropdownButtonFormField<AutomationScheduleKind>(
+           value: _scheduleKind,
+-          dropdownColor: HudTheme.bgPanel,
+-          style: const TextStyle(
++          dropdownColor: hud.panel,
++          style: TextStyle(
+             fontFamily: HudTheme.fontCore,
+-            color: HudTheme.textMain,
++            color: hud.textMain,
+             fontSize: 13,
+           ),
+           decoration: _inputDecoration('Frequency'),
+@@ -529,23 +537,23 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+         const SizedBox(height: 16),
+         if (_scheduleKind == AutomationScheduleKind.daily ||
+             _scheduleKind == AutomationScheduleKind.weekly) ...[
+-          const Text('TIME OF DAY (UTC)', style: HudTheme.labelMuted),
++          Text('TIME OF DAY (UTC)', style: hud.label),
+           const SizedBox(height: 8),
+           ListTile(
+-            tileColor: HudTheme.bgBase,
++            tileColor: hud.base,
+             shape: RoundedRectangleBorder(
+               borderRadius: BorderRadius.circular(4),
+-              side: BorderSide(color: HudTheme.textDim.withValues(alpha: 0.3)),
++              side: BorderSide(color: hud.textDim.withValues(alpha: 0.3)),
+             ),
+             title: Text(
+               '${_timeOfDay.hour.toString().padLeft(2, '0')}:${_timeOfDay.minute.toString().padLeft(2, '0')} UTC',
+-              style: const TextStyle(
++              style: TextStyle(
+                 fontFamily: HudTheme.fontCore,
+-                color: HudTheme.accentCyan,
++                color: hud.accentCyan,
+                 fontWeight: FontWeight.bold,
+               ),
+             ),
+-            trailing: const Icon(Icons.schedule, color: HudTheme.accentCyan),
++            trailing: Icon(Icons.schedule, color: hud.accentCyan),
+             onTap: () async {
+               final picked = await showTimePicker(
+                 context: context,
+@@ -556,14 +564,14 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+           ),
+         ],
+         if (_scheduleKind == AutomationScheduleKind.intervalHours) ...[
+-          const Text('INTERVAL HOURS', style: HudTheme.labelMuted),
++          Text('INTERVAL HOURS', style: hud.label),
+           const SizedBox(height: 4),
+           TextField(
+             controller: _intervalHoursController,
+             keyboardType: TextInputType.number,
+-            style: const TextStyle(
++            style: TextStyle(
+               fontFamily: HudTheme.fontCore,
+-              color: HudTheme.textMain,
++              color: hud.textMain,
+               fontSize: 13,
+             ),
+             decoration: _inputDecoration('e.g. 24'),
+@@ -574,25 +582,26 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+   }
+ 
+   Widget _buildStepDryRun() {
++    final hud = context.hudTheme;
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+       children: [
+-        const Text(
++        Text(
+           'MANDATORY DRY-RUN PREVIEW',
+           style: TextStyle(
+             fontFamily: HudTheme.fontCore,
+-            color: HudTheme.accentAmber,
++            color: hud.accentAmber,
+             fontWeight: FontWeight.bold,
+             fontSize: 12,
+             letterSpacing: 1,
+           ),
+         ),
+         const SizedBox(height: 8),
+-        const Text(
++        Text(
+           'Every automated rule must execute a dry-run preview on real paths from your machine before it can be armed. No files will be deleted during this step.',
+           style: TextStyle(
+             fontFamily: HudTheme.fontCore,
+-            color: HudTheme.textDim,
++            color: hud.textDim,
+             fontSize: 12,
+           ),
+         ),
+@@ -600,23 +609,23 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+         if (_dryRunPreview == null && !_isDryRunning)
+           Center(
+             child: ElevatedButton.icon(
+-              icon: const Icon(
++              icon: Icon(
+                 Icons.play_circle_outline,
+                 size: 18,
+-                color: HudTheme.accentCyan,
++                color: hud.accentCyan,
+               ),
+-              label: const Text(
++              label: Text(
+                 'RUN DRY-RUN PREVIEW NOW',
+                 style: TextStyle(
+                   fontFamily: HudTheme.fontCore,
+-                  color: HudTheme.accentCyan,
++                  color: hud.accentCyan,
+                   fontWeight: FontWeight.bold,
+                   letterSpacing: 1,
+                 ),
+               ),
+               style: ElevatedButton.styleFrom(
+-                backgroundColor: HudTheme.accentCyan.withValues(alpha: 0.15),
+-                side: const BorderSide(color: HudTheme.accentCyan),
++                backgroundColor: hud.accentCyan.withValues(alpha: 0.15),
++                side: BorderSide(color: hud.accentCyan),
+                 padding: const EdgeInsets.symmetric(
+                   horizontal: 20,
+                   vertical: 12,
+@@ -629,17 +638,17 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+             ),
+           )
+         else if (_isDryRunning)
+-          const Center(
+-            child: CircularProgressIndicator(color: HudTheme.accentCyan),
++          Center(
++            child: CircularProgressIndicator(color: hud.accentCyan),
+           )
+         else if (_dryRunPreview != null) ...[
+           Container(
+             padding: const EdgeInsets.all(14),
+             decoration: BoxDecoration(
+-              color: HudTheme.bgBase,
++              color: hud.base,
+               borderRadius: BorderRadius.circular(4),
+               border: Border.all(
+-                color: HudTheme.accentGreen.withValues(alpha: 0.6),
++                color: hud.accentGreen.withValues(alpha: 0.6),
+               ),
+             ),
+             child: Column(
+@@ -647,17 +656,17 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+               children: [
+                 Row(
+                   children: [
+-                    const Icon(
++                    Icon(
+                       Icons.check_circle,
+-                      color: HudTheme.accentGreen,
++                      color: hud.accentGreen,
+                       size: 18,
+                     ),
+                     const SizedBox(width: 8),
+                     Text(
+                       'PREVIEW RESULT: WOULD DELETE ${_dryRunPreview!.totalFiles} FILES (${formatBytes(_dryRunPreview!.totalBytes)})',
+-                      style: const TextStyle(
++                      style: TextStyle(
+                         fontFamily: HudTheme.fontCore,
+-                        color: HudTheme.accentGreen,
++                        color: hud.accentGreen,
+                         fontWeight: FontWeight.bold,
+                         fontSize: 12,
+                       ),
+@@ -667,9 +676,9 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+                 const SizedBox(height: 8),
+                 Text(
+                   'Scope evaluated on ${_rootController.text.trim()}',
+-                  style: const TextStyle(
++                  style: TextStyle(
+                     fontFamily: HudTheme.fontCore,
+-                    color: HudTheme.textDim,
++                    color: hud.textDim,
+                     fontSize: 11,
+                   ),
+                 ),
+@@ -682,14 +691,15 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+   }
+ 
+   Widget _buildStepArm() {
++    final hud = context.hudTheme;
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+       children: [
+-        const Text(
++        Text(
+           'CONFIRM AND ARM RULE',
+           style: TextStyle(
+             fontFamily: HudTheme.fontCore,
+-            color: HudTheme.accentCyan,
++            color: hud.accentCyan,
+             fontSize: 13,
+             fontWeight: FontWeight.bold,
+             letterSpacing: 1,
+@@ -699,10 +709,10 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+         Container(
+           padding: const EdgeInsets.all(12),
+           decoration: BoxDecoration(
+-            color: HudTheme.bgBase,
++            color: hud.base,
+             borderRadius: BorderRadius.circular(4),
+             border: Border.all(
+-              color: HudTheme.primaryBorder.withValues(alpha: 0.3),
++              color: hud.border.withValues(alpha: 0.3),
+             ),
+           ),
+           child: Column(
+@@ -710,38 +720,38 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+             children: [
+               Text(
+                 'RULE: ${_nameController.text.trim()}',
+-                style: const TextStyle(
++                style: TextStyle(
+                   fontFamily: HudTheme.fontCore,
+-                  color: HudTheme.textMain,
++                  color: hud.textMain,
+                   fontWeight: FontWeight.bold,
+                 ),
+               ),
+               const SizedBox(height: 4),
+               Text(
+                 'ROOT: ${_rootController.text.trim()}',
+-                style: const TextStyle(
++                style: TextStyle(
+                   fontFamily: HudTheme.fontCore,
+-                  color: HudTheme.textDim,
++                  color: hud.textDim,
+                   fontSize: 12,
+                 ),
+               ),
+               const SizedBox(height: 4),
+               Text(
+                 'SCHEDULE: ${_scheduleKind.toSerializedString()}',
+-                style: const TextStyle(
++                style: TextStyle(
+                   fontFamily: HudTheme.fontCore,
+-                  color: HudTheme.textDim,
++                  color: hud.textDim,
+                   fontSize: 12,
+                 ),
+               ),
+               const SizedBox(height: 8),
+-              Divider(color: HudTheme.textDim.withValues(alpha: 0.2)),
++              Divider(color: hud.textDim.withValues(alpha: 0.2)),
+               const SizedBox(height: 4),
+-              const Text(
++              Text(
+                 'MANDATORY RECYCLE BIN: Automated runs are moved to the OS recycle bin for safe recovery.',
+                 style: TextStyle(
+                   fontFamily: HudTheme.fontCore,
+-                  color: HudTheme.accentGreen,
++                  color: hud.accentGreen,
+                   fontSize: 11,
+                 ),
+               ),
+@@ -751,23 +761,23 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+         const SizedBox(height: 16),
+         CheckboxListTile(
+           value: _armImmediately,
+-          activeColor: HudTheme.accentGreen,
+-          tileColor: HudTheme.bgBase,
++          activeColor: hud.accentGreen,
++          tileColor: hud.base,
+           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+-          title: const Text(
++          title: Text(
+             'ARM THIS RULE IMMEDIATELY',
+             style: TextStyle(
+               fontFamily: HudTheme.fontCore,
+-              color: HudTheme.textMain,
++              color: hud.textMain,
+               fontSize: 12,
+               fontWeight: FontWeight.bold,
+             ),
+           ),
+-          subtitle: const Text(
++          subtitle: Text(
+             'Rule will run automatically on its schedule. If unchecked, rule remains un-armed until reviewed.',
+             style: TextStyle(
+               fontFamily: HudTheme.fontCore,
+-              color: HudTheme.textDim,
++              color: hud.textDim,
+               fontSize: 11,
+             ),
+           ),
+@@ -778,23 +788,24 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+   }
+ 
+   Widget _buildNavigationButtons() {
++    final hud = context.hudTheme;
+     return Row(
+       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+       children: [
+         if (_currentStep > 0)
+           OutlinedButton(
+             style: OutlinedButton.styleFrom(
+-              side: BorderSide(color: HudTheme.textDim.withValues(alpha: 0.4)),
++              side: BorderSide(color: hud.textDim.withValues(alpha: 0.4)),
+               shape: RoundedRectangleBorder(
+                 borderRadius: BorderRadius.circular(4),
+               ),
+             ),
+             onPressed: () => setState(() => _currentStep--),
+-            child: const Text(
++            child: Text(
+               'BACK',
+               style: TextStyle(
+                 fontFamily: HudTheme.fontCore,
+-                color: HudTheme.textMuted,
++                color: hud.textMuted,
+               ),
+             ),
+           )
+@@ -804,11 +815,11 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+           children: [
+             TextButton(
+               onPressed: () => Navigator.of(context).pop(),
+-              child: const Text(
++              child: Text(
+                 'CANCEL',
+                 style: TextStyle(
+                   fontFamily: HudTheme.fontCore,
+-                  color: HudTheme.textDim,
++                  color: hud.textDim,
+                 ),
+               ),
+             ),
+@@ -816,8 +827,8 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+             if (_currentStep < 4)
+               ElevatedButton(
+                 style: ElevatedButton.styleFrom(
+-                  backgroundColor: HudTheme.accentCyan.withValues(alpha: 0.15),
+-                  side: const BorderSide(color: HudTheme.accentCyan),
++                  backgroundColor: hud.accentCyan.withValues(alpha: 0.15),
++                  side: BorderSide(color: hud.accentCyan),
+                   shape: RoundedRectangleBorder(
+                     borderRadius: BorderRadius.circular(4),
+                   ),
+@@ -835,31 +846,31 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+                   _currentStep == 3 && _dryRunPreview == null
+                       ? 'PREVIEW'
+                       : 'NEXT',
+-                  style: const TextStyle(
++                  style: TextStyle(
+                     fontFamily: HudTheme.fontCore,
+-                    color: HudTheme.accentCyan,
++                    color: hud.accentCyan,
+                     fontWeight: FontWeight.bold,
+                   ),
+                 ),
+               )
+             else
+               ElevatedButton.icon(
+-                icon: const Icon(
++                icon: Icon(
+                   Icons.check,
+                   size: 16,
+-                  color: HudTheme.accentGreen,
++                  color: hud.accentGreen,
+                 ),
+-                label: const Text(
++                label: Text(
+                   'SAVE & FINISH',
+                   style: TextStyle(
+                     fontFamily: HudTheme.fontCore,
+-                    color: HudTheme.accentGreen,
++                    color: hud.accentGreen,
+                     fontWeight: FontWeight.bold,
+                   ),
+                 ),
+                 style: ElevatedButton.styleFrom(
+-                  backgroundColor: HudTheme.accentGreen.withValues(alpha: 0.15),
+-                  side: const BorderSide(color: HudTheme.accentGreen),
++                  backgroundColor: hud.accentGreen.withValues(alpha: 0.15),
++                  side: BorderSide(color: hud.accentGreen),
+                   shape: RoundedRectangleBorder(
+                     borderRadius: BorderRadius.circular(4),
+                   ),
+@@ -873,24 +884,25 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
+   }
+ 
+   InputDecoration _inputDecoration(String hint) {
++    final hud = context.hudTheme;
+     return InputDecoration(
+       hintText: hint,
+       hintStyle: TextStyle(
+         fontFamily: HudTheme.fontCore,
+-        color: HudTheme.textDim.withValues(alpha: 0.5),
++        color: hud.textDim.withValues(alpha: 0.5),
+         fontSize: 12,
+       ),
+       filled: true,
+-      fillColor: HudTheme.bgBase,
++      fillColor: hud.base,
+       isDense: true,
+       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+       enabledBorder: OutlineInputBorder(
+         borderRadius: BorderRadius.circular(4),
+-        borderSide: BorderSide(color: HudTheme.textDim.withValues(alpha: 0.3)),
++        borderSide: BorderSide(color: hud.textDim.withValues(alpha: 0.3)),
+       ),
+-      focusedBorder: const OutlineInputBorder(
++      focusedBorder: OutlineInputBorder(
+         borderRadius: BorderRadius.all(Radius.circular(4)),
+-        borderSide: BorderSide(color: HudTheme.accentCyan),
++        borderSide: BorderSide(color: hud.accentCyan),
+       ),
+     );
+   }
+diff --git a/frontend/gs_analyzer_ui/lib/widgets/scheduled_scans_panel.dart b/frontend/gs_analyzer_ui/lib/widgets/scheduled_scans_panel.dart
+index 2d1084d..4386c04 100644
+--- a/frontend/gs_analyzer_ui/lib/widgets/scheduled_scans_panel.dart
++++ b/frontend/gs_analyzer_ui/lib/widgets/scheduled_scans_panel.dart
+@@ -82,7 +82,7 @@ class ScheduledScansPanel extends ConsumerWidget {
+               'NO SCHEDULES — ADD ONE TO AUTO-SCAN',
+               style: TextStyle(
+                 fontFamily: HudTheme.fontCore,
+-                color: hud.textMain.withValues(alpha: 0.54),
++                color: hud.textDim,
+                 fontSize: 12,
+                 letterSpacing: 1.0,
+               ),
+@@ -159,7 +159,7 @@ class ScheduledScansPanel extends ConsumerWidget {
+               scan.type.toUpperCase(),
+               style: TextStyle(
+                 fontFamily: HudTheme.fontCore,
+-                color: scan.enabled ? hud.textMain.withValues(alpha: 0.70) : hud.textDim,
++                color: scan.enabled ? hud.textMuted : hud.textDim,
+               ),
+             ),
+           ),
+@@ -169,7 +169,7 @@ class ScheduledScansPanel extends ConsumerWidget {
+               whenStr,
+               style: TextStyle(
+                 fontFamily: HudTheme.fontCore,
+-                color: scan.enabled ? hud.textMain.withValues(alpha: 0.7) : hud.textDim,
++                color: scan.enabled ? hud.textMuted : hud.textDim,
+               ),
+             ),
+           ),
+@@ -247,7 +247,7 @@ class ScheduledScansPanel extends ConsumerWidget {
+         actions: [
+           TextButton(
+             onPressed: () => Navigator.pop(ctx),
+-            child: Text('CANCEL', style: TextStyle(color: hud.textMain.withValues(alpha: 0.54))),
++            child: Text('CANCEL', style: TextStyle(color: hud.textDim)),
+           ),
+           TextButton(
+             onPressed: () {
+@@ -323,7 +323,7 @@ class _ScheduleDialogState extends ConsumerState<_ScheduleDialog> {
+           mainAxisSize: MainAxisSize.min,
+           crossAxisAlignment: CrossAxisAlignment.start,
+           children: [
+-            Text('DRIVE', style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 12)),
++            Text('DRIVE', style: TextStyle(color: hud.textDim, fontSize: 12)),
+             DropdownButton<String>(
+               value: _selectedPath,
+               isExpanded: true,
+@@ -337,7 +337,7 @@ class _ScheduleDialogState extends ConsumerState<_ScheduleDialog> {
+                   : null, // Disable changing drive on edit
+             ),
+             const SizedBox(height: 16),
+-            Text('SCAN TYPE', style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 12)),
++            Text('SCAN TYPE', style: TextStyle(color: hud.textDim, fontSize: 12)),
+             DropdownButton<String>(
+               value: _selectedType,
+               isExpanded: true,
+@@ -349,7 +349,7 @@ class _ScheduleDialogState extends ConsumerState<_ScheduleDialog> {
+               onChanged: (val) => setState(() => _selectedType = val!),
+             ),
+             const SizedBox(height: 16),
+-            Text('SCHEDULE KIND', style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 12)),
++            Text('SCHEDULE KIND', style: TextStyle(color: hud.textDim, fontSize: 12)),
+             DropdownButton<String>(
+               value: _selectedKind,
+               isExpanded: true,
+@@ -363,7 +363,7 @@ class _ScheduleDialogState extends ConsumerState<_ScheduleDialog> {
+             ),
+             const SizedBox(height: 16),
+             if (_selectedKind == 'Interval') ...[
+-              Text('INTERVAL: ${_intervalMinutes.toInt()} MIN', style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 12)),
++              Text('INTERVAL: ${_intervalMinutes.toInt()} MIN', style: TextStyle(color: hud.textDim, fontSize: 12)),
+               Slider(
+                 value: _intervalMinutes,
+                 min: 1,
+@@ -374,7 +374,7 @@ class _ScheduleDialogState extends ConsumerState<_ScheduleDialog> {
+                 onChanged: (val) => setState(() => _intervalMinutes = val),
+               ),
+             ] else ...[
+-              Text('CRON EXPRESSION', style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 12)),
++              Text('CRON EXPRESSION', style: TextStyle(color: hud.textDim, fontSize: 12)),
+               TextField(
+                 controller: _cronController,
+                 style: TextStyle(color: hud.textMain, fontFamily: 'monospace'),
+@@ -390,7 +390,7 @@ class _ScheduleDialogState extends ConsumerState<_ScheduleDialog> {
+       actions: [
+         TextButton(
+           onPressed: () => Navigator.pop(context),
+-          child: Text('CANCEL', style: TextStyle(color: hud.textMain.withValues(alpha: 0.54))),
++          child: Text('CANCEL', style: TextStyle(color: hud.textDim)),
+         ),
+         TextButton(
+           onPressed: _save,
+diff --git a/frontend/gs_analyzer_ui/lib/widgets/temp_clean_progress_dialog.dart b/frontend/gs_analyzer_ui/lib/widgets/temp_clean_progress_dialog.dart
+index 98ebda0..7a5f7b4 100644
+--- a/frontend/gs_analyzer_ui/lib/widgets/temp_clean_progress_dialog.dart
++++ b/frontend/gs_analyzer_ui/lib/widgets/temp_clean_progress_dialog.dart
+@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:gs_analyzer_ui/providers/temp_cleaner_provider.dart';
+ import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
+-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
++import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
+ 
+ class TempCleanProgressDialog extends ConsumerStatefulWidget {
+   const TempCleanProgressDialog({super.key});
+@@ -35,28 +36,29 @@ class _TempCleanProgressDialogState
+     final double progressValue = total > 0
+         ? (completed / total).clamp(0.0, 1.0)
+         : (progress / 100).clamp(0.0, 1.0);
++    final hud = context.hudTheme;
+ 
+     return PopScope(
+       canPop: false,
+       child: AlertDialog(
+-        backgroundColor: HudTheme.bgPanel,
++        backgroundColor: hud.panel,
+         shape: RoundedRectangleBorder(
+-          side: const BorderSide(color: HudTheme.accentGreen, width: 2),
++          side: BorderSide(color: hud.accentGreen, width: 2),
+           borderRadius: BorderRadius.circular(8),
+         ),
+         title: Row(
+           children: [
+-            const Icon(
++            Icon(
+               Icons.cleaning_services_outlined,
+-              color: HudTheme.accentGreen,
++              color: hud.accentGreen,
+               size: 24,
+             ),
+             const SizedBox(width: 12),
+-            const Expanded(
++            Expanded(
+               child: Text(
+                 'PURGING TEMP SECTORS...',
+                 style: TextStyle(
+-                  color: HudTheme.accentGreen,
++                  color: hud.accentGreen,
+                   fontFamily: HudTheme.fontCore,
+                   fontWeight: FontWeight.bold,
+                   fontSize: 16,
+@@ -64,7 +66,7 @@ class _TempCleanProgressDialogState
+               ),
+             ),
+             IconButton(
+-              icon: const Icon(Icons.remove, color: HudTheme.accentGreen),
++              icon: Icon(Icons.remove, color: hud.accentGreen),
+               tooltip: 'Minimize',
+               visualDensity: VisualDensity.compact,
+               onPressed: () {
+@@ -82,22 +84,22 @@ class _TempCleanProgressDialogState
+             children: [
+               Text(
+                 target.isNotEmpty ? 'Target: $target' : 'Target: INITIALIZING...',
+-                style: HudTheme.bodyText,
++                style: hud.body,
+                 maxLines: 1,
+                 overflow: TextOverflow.ellipsis,
+               ),
+               const SizedBox(height: 8),
+               Text(
+                 total > 0 ? 'Completed: $completed of $total' : 'Completed: $completed',
+-                style: HudTheme.bodyText,
++                style: hud.body,
+                 maxLines: 1,
+                 overflow: TextOverflow.ellipsis,
+               ),
+               const SizedBox(height: 16),
+               LinearProgressIndicator(
+                 value: progressValue,
+-                color: HudTheme.accentGreen,
+-                backgroundColor: Colors.white10,
++                color: hud.accentGreen,
++                backgroundColor: hud.textMain.withValues(alpha: 0.1),
+                 minHeight: 8,
+               ),
+               const SizedBox(height: 8),
+@@ -105,7 +107,7 @@ class _TempCleanProgressDialogState
+                 alignment: Alignment.centerRight,
+                 child: Text(
+                   '${progress.toStringAsFixed(1)}%',
+-                  style: HudTheme.statGreen,
++                  style: hud.statGreen,
+                 ),
+               ),
+             ],
+diff --git a/frontend/gs_analyzer_ui/lib/widgets/temp_cleaner_panel.dart b/frontend/gs_analyzer_ui/lib/widgets/temp_cleaner_panel.dart
+index 97db191..47c1079 100644
+--- a/frontend/gs_analyzer_ui/lib/widgets/temp_cleaner_panel.dart
++++ b/frontend/gs_analyzer_ui/lib/widgets/temp_cleaner_panel.dart
+@@ -366,7 +366,7 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
+               const SizedBox(height: 16),
+               Text(
+                 'AFFECTED SECTORS:',
+-                style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 12),
++                style: TextStyle(color: hud.textDim, fontSize: 12),
+               ),
+               const SizedBox(height: 8),
+               ConstrainedBox(
+@@ -419,7 +419,7 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
+         actions: [
+           TextButton(
+             onPressed: () => Navigator.of(ctx).pop(),
+-            child: Text('ABORT', style: TextStyle(color: hud.textMain.withValues(alpha: 0.70))),
++            child: Text('ABORT', style: TextStyle(color: hud.textMuted)),
+           ),
+           ElevatedButton(
+             style: ElevatedButton.styleFrom(
+@@ -508,7 +508,7 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
+       children: [
+         Text(
+           label,
+-          style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 11),
++          style: TextStyle(color: hud.textDim, fontSize: 11),
+         ),
+         const SizedBox(height: 4),
+         Text(

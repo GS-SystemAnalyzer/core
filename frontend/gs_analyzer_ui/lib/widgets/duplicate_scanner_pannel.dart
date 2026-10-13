@@ -277,7 +277,7 @@ class _DuplicateScannerPanelState extends ConsumerState<DuplicateScannerPanel> {
                             title: Text(
                               file.path,
                               style: TextStyle(
-                                color: hud.textMain.withValues(alpha: 0.70),
+                                color: hud.textMuted,
                                 fontSize: 12,
                               ),
                             ),

@@ -82,7 +82,7 @@ class ScheduledScansPanel extends ConsumerWidget {
               'NO SCHEDULES — ADD ONE TO AUTO-SCAN',
               style: TextStyle(
                 fontFamily: HudTheme.fontCore,
-                color: hud.textMain.withValues(alpha: 0.54),
+                color: hud.textDim,
                 fontSize: 12,
                 letterSpacing: 1.0,
               ),
@@ -159,7 +159,7 @@ class ScheduledScansPanel extends ConsumerWidget {
               scan.type.toUpperCase(),
               style: TextStyle(
                 fontFamily: HudTheme.fontCore,
-                color: scan.enabled ? hud.textMain.withValues(alpha: 0.70) : hud.textDim,
+                color: scan.enabled ? hud.textMuted : hud.textDim,
               ),
             ),
           ),
@@ -169,7 +169,7 @@ class ScheduledScansPanel extends ConsumerWidget {
               whenStr,
               style: TextStyle(
                 fontFamily: HudTheme.fontCore,
-                color: scan.enabled ? hud.textMain.withValues(alpha: 0.7) : hud.textDim,
+                color: scan.enabled ? hud.textMuted : hud.textDim,
               ),
             ),
           ),
@@ -247,7 +247,7 @@ class ScheduledScansPanel extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('CANCEL', style: TextStyle(color: hud.textMain.withValues(alpha: 0.54))),
+            child: Text('CANCEL', style: TextStyle(color: hud.textDim)),
           ),
           TextButton(
             onPressed: () {
@@ -323,7 +323,7 @@ class _ScheduleDialogState extends ConsumerState<_ScheduleDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('DRIVE', style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 12)),
+            Text('DRIVE', style: TextStyle(color: hud.textDim, fontSize: 12)),
             DropdownButton<String>(
               value: _selectedPath,
               isExpanded: true,
@@ -337,7 +337,7 @@ class _ScheduleDialogState extends ConsumerState<_ScheduleDialog> {
                   : null, // Disable changing drive on edit
             ),
             const SizedBox(height: 16),
-            Text('SCAN TYPE', style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 12)),
+            Text('SCAN TYPE', style: TextStyle(color: hud.textDim, fontSize: 12)),
             DropdownButton<String>(
               value: _selectedType,
               isExpanded: true,
@@ -349,7 +349,7 @@ class _ScheduleDialogState extends ConsumerState<_ScheduleDialog> {
               onChanged: (val) => setState(() => _selectedType = val!),
             ),
             const SizedBox(height: 16),
-            Text('SCHEDULE KIND', style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 12)),
+            Text('SCHEDULE KIND', style: TextStyle(color: hud.textDim, fontSize: 12)),
             DropdownButton<String>(
               value: _selectedKind,
               isExpanded: true,
@@ -363,7 +363,7 @@ class _ScheduleDialogState extends ConsumerState<_ScheduleDialog> {
             ),
             const SizedBox(height: 16),
             if (_selectedKind == 'Interval') ...[
-              Text('INTERVAL: ${_intervalMinutes.toInt()} MIN', style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 12)),
+              Text('INTERVAL: ${_intervalMinutes.toInt()} MIN', style: TextStyle(color: hud.textDim, fontSize: 12)),
               Slider(
                 value: _intervalMinutes,
                 min: 1,
@@ -374,7 +374,7 @@ class _ScheduleDialogState extends ConsumerState<_ScheduleDialog> {
                 onChanged: (val) => setState(() => _intervalMinutes = val),
               ),
             ] else ...[
-              Text('CRON EXPRESSION', style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 12)),
+              Text('CRON EXPRESSION', style: TextStyle(color: hud.textDim, fontSize: 12)),
               TextField(
                 controller: _cronController,
                 style: TextStyle(color: hud.textMain, fontFamily: 'monospace'),
@@ -390,7 +390,7 @@ class _ScheduleDialogState extends ConsumerState<_ScheduleDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('CANCEL', style: TextStyle(color: hud.textMain.withValues(alpha: 0.54))),
+          child: Text('CANCEL', style: TextStyle(color: hud.textDim)),
         ),
         TextButton(
           onPressed: _save,

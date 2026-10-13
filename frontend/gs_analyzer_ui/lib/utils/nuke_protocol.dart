@@ -9,7 +9,8 @@ import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/providers/root_tree_provider.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import '../widgets/nuke_preview_dialog.dart';
 import '../widgets/nuke_progress_dialog.dart';
 import '../widgets/undo_history_panel.dart';
@@ -22,6 +23,7 @@ Future<void> executeNukeProtocol(
   List<String>? customPath,
   VoidCallback? onComplete,
 }) async {
+  final hud = context.hudTheme;
   final dirState = ref.read(directoryProvider);
   final dirNotifier = ref.read(directoryProvider.notifier);
   final List<String> targetsToNuke =
@@ -90,7 +92,7 @@ Future<void> executeNukeProtocol(
             children: [
               Text(
                 '${result.stagedFormatted} MOVED TO RECYCLE BIN',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: HudTheme.fontCore,
                   fontWeight: FontWeight.bold,
                 ),
@@ -109,7 +111,7 @@ Future<void> executeNukeProtocol(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        backgroundColor: HudTheme.accentGreen,
+                        backgroundColor: hud.accentGreen,
                       ),
                     );
                     // Refresh directory view
@@ -124,24 +126,24 @@ Future<void> executeNukeProtocol(
                       SnackBar(
                         content: Text(
                           'UNDO FAILED: $e',
-                          style: const TextStyle(fontFamily: HudTheme.fontCore),
+                          style: TextStyle(fontFamily: HudTheme.fontCore),
                         ),
-                        backgroundColor: HudTheme.accentRed,
+                        backgroundColor: hud.accentRed,
                       ),
                     );
                   }
                 },
-                child: const Text(
+                child: Text(
                   '[UNDO]',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: hud.textMain,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ],
           ),
-          backgroundColor: HudTheme.accentAmber,
+          backgroundColor: hud.accentAmber,
         ),
       );
     } else {
@@ -155,7 +157,7 @@ Future<void> executeNukeProtocol(
               fontWeight: FontWeight.bold,
             ),
           ),
-          backgroundColor: HudTheme.accentGreen,
+          backgroundColor: hud.accentGreen,
         ),
       );
     }
@@ -167,7 +169,7 @@ Future<void> executeNukeProtocol(
           'ERROR: $e',
           style: TextStyle(fontFamily: HudTheme.fontCore),
         ),
-        backgroundColor: HudTheme.accentRed,
+        backgroundColor: hud.accentRed,
       ),
     );
   } finally {

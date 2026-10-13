@@ -1,6 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
+import 'package:gs_analyzer_ui/utils/globals.dart';
+import 'package:gs_analyzer_ui/utils/nuke_protocol.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_color.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'mock_factory.dart';
 
@@ -119,9 +124,42 @@ void main() {
         );
 
         expect(armedBlastZone.contains('C:/Downloads/trash_1.tmp'), true);
-        expect(armedBlastZone.contains('C:/Downloads/trash_2.tmp'), true);
+        expect(armedBlastZone.contains('trash_2.tmp'.contains('trash_2') ? 'C:/Downloads/trash_2.tmp' : ''), true);
         expect(armedBlastZone.contains('C:/Downloads/Old_Cache_Folder'), true);
       },
     );
   });
+
+  group('executeNukeProtocol Execution & Safety Tests', () {
+    testWidgets('executeNukeProtocol returns early when target list is empty', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            scaffoldMessengerKey: snackbarKey,
+            theme: HudTheme.darkTheme(HudColor.darkAccentCyan),
+            home: Consumer(
+              builder: (context, ref, _) {
+                return Scaffold(
+                  body: ElevatedButton(
+                    onPressed: () {
+                      executeNukeProtocol(context, ref, customPath: []);
+                    },
+                    child: const Text('TRIGGER'),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('TRIGGER'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(SnackBar), findsNothing);
+    });
+  });
 }
+

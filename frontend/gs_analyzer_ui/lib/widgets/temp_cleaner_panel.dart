@@ -366,7 +366,7 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
               const SizedBox(height: 16),
               Text(
                 'AFFECTED SECTORS:',
-                style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 12),
+                style: TextStyle(color: hud.textDim, fontSize: 12),
               ),
               const SizedBox(height: 8),
               ConstrainedBox(
@@ -419,7 +419,7 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('ABORT', style: TextStyle(color: hud.textMain.withValues(alpha: 0.70))),
+            child: Text('ABORT', style: TextStyle(color: hud.textMuted)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -508,7 +508,7 @@ class _TempCleanerPanelState extends ConsumerState<TempCleanerPanel> {
       children: [
         Text(
           label,
-          style: TextStyle(color: hud.textMain.withValues(alpha: 0.54), fontSize: 11),
+          style: TextStyle(color: hud.textDim, fontSize: 11),
         ),
         const SizedBox(height: 4),
         Text(

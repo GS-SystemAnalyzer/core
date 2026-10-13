@@ -3,22 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/models/age_heatmap_model.dart';
 import 'package:gs_analyzer_ui/providers/age_heatmap_provider.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/directory_node_widget.dart';
 
 /// Resolves the HudTheme accent color for a given age bucket string.
-Color bucketColor(String bucket) {
+Color bucketColor(String bucket, BuildContext context) {
+  final hud = context.hudTheme;
   switch (bucket) {
     case 'fresh':
-      return HudTheme.accentCyan;
+      return hud.accentCyan;
     case 'recent':
-      return HudTheme.accentGreen;
+      return hud.accentGreen;
     case 'aging':
-      return HudTheme.accentAmber;
+      return hud.accentAmber;
     case 'stale':
-      return HudTheme.accentRed;
+      return hud.accentRed;
     default:
-      return HudTheme.textDim;
+      return hud.textDim;
   }
 }
 
@@ -33,32 +35,33 @@ class AgeHeatmapOverlay extends ConsumerWidget {
     final heatmapAsync = ref.watch(ageHeatmapProvider(currentPath));
 
     return heatmapAsync.when(
-      loading: () => _buildLoadingState(),
+      loading: () => _buildLoadingState(context),
       error: (err, _) {
         if (err is AgeHeatmapNoScanException) {
-          return _buildNoScanPrompt();
+          return _buildNoScanPrompt(context);
         }
-        return _buildErrorState(err.toString());
+        return _buildErrorState(err.toString(), context);
       },
-      data: (result) => _buildOverlay(result),
+      data: (result) => _buildOverlay(result, context),
     );
   }
 
-  Widget _buildLoadingState() {
+  Widget _buildLoadingState(BuildContext context) {
+    final hud = context.hudTheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      decoration: const BoxDecoration(
-        color: HudTheme.bgPanel,
-        border: Border(bottom: BorderSide(color: Colors.white10)),
+      decoration: BoxDecoration(
+        color: hud.panel,
+        border: Border(bottom: BorderSide(color: hud.textMain.withValues(alpha: 0.1))),
       ),
-      child: const Row(
+      child: Row(
         children: [
           SizedBox(
             width: 14,
             height: 14,
             child: CircularProgressIndicator(
               strokeWidth: 1.5,
-              color: HudTheme.accentCyan,
+              color: hud.accentCyan,
             ),
           ),
           SizedBox(width: 12),
@@ -66,7 +69,7 @@ class AgeHeatmapOverlay extends ConsumerWidget {
             'LOADING AGE HEATMAP...',
             style: TextStyle(
               fontFamily: HudTheme.fontCore,
-              color: HudTheme.textDim,
+              color: hud.textDim,
               fontSize: 12,
               letterSpacing: 1,
             ),
@@ -76,96 +79,100 @@ class AgeHeatmapOverlay extends ConsumerWidget {
     );
   }
 
-  Widget _buildNoScanPrompt() {
+  Widget _buildNoScanPrompt(BuildContext context) {
+    final hud = context.hudTheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
-        color: HudTheme.bgPanel,
-        border: Border.all(color: HudTheme.accentRed.withValues(alpha: 0.3)),
+        color: hud.panel,
+        border: Border.all(color: hud.accentRed.withValues(alpha: 0.3)),
         borderRadius: BorderRadius.circular(8),
       ),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.warning_amber_outlined,
-            color: HudTheme.accentAmber,
+            color: hud.accentAmber,
             size: 20,
           ),
           const SizedBox(width: 12),
           Text(
             'RUN A SCAN FIRST',
-            style: HudTheme.actionRed.copyWith(letterSpacing: 2),
+            style: hud.actionRed.copyWith(letterSpacing: 2),
           ),
           const SizedBox(width: 8),
           Text(
             '— scan a directory to generate age heatmap data',
-            style: HudTheme.labelMuted.copyWith(color: HudTheme.textDim),
+            style: hud.label.copyWith(color: hud.textDim),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildErrorState(String error) {
+  Widget _buildErrorState(String error, BuildContext context) {
+    final hud = context.hudTheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      decoration: const BoxDecoration(
-        color: HudTheme.bgPanel,
-        border: Border(bottom: BorderSide(color: Colors.white10)),
+      decoration: BoxDecoration(
+        color: hud.panel,
+        border: Border(bottom: BorderSide(color: hud.textMain.withValues(alpha: 0.1))),
       ),
       child: Text(
         'HEATMAP ERROR: $error',
-        style: HudTheme.actionRed.copyWith(fontSize: 12),
+        style: hud.actionRed.copyWith(fontSize: 12),
       ),
     );
   }
 
-  Widget _buildOverlay(AgeHeatmapResult result) {
+  Widget _buildOverlay(AgeHeatmapResult result, BuildContext context) {
+    final hud = context.hudTheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: const BoxDecoration(
-        color: HudTheme.bgPanel,
-        border: Border(bottom: BorderSide(color: Colors.white10)),
+      decoration: BoxDecoration(
+        color: hud.panel,
+        border: Border(bottom: BorderSide(color: hud.textMain.withValues(alpha: 0.1))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Legend bar
-          _buildLegendBar(),
+          _buildLegendBar(context),
           const SizedBox(height: 10),
           // Summary grid
-          _buildSummaryGrid(result.summary),
+          _buildSummaryGrid(result.summary, context),
         ],
       ),
     );
   }
 
-  Widget _buildLegendBar() {
+  Widget _buildLegendBar(BuildContext context) {
+    final hud = context.hudTheme;
     return Row(
       children: [
-        const Icon(
+        Icon(
           Icons.thermostat_outlined,
-          color: HudTheme.accentCyan,
+          color: hud.accentCyan,
           size: 16,
         ),
         const SizedBox(width: 8),
         Text(
           'FILE AGE MAP',
-          style: HudTheme.labelMuted.copyWith(
-            color: HudTheme.accentCyan,
+          style: hud.label.copyWith(
+            color: hud.accentCyan,
             fontWeight: FontWeight.bold,
             letterSpacing: 2,
           ),
         ),
         const SizedBox(width: 16),
-        _legendItem('FRESH', HudTheme.accentCyan),
+        _legendItem('FRESH', hud.accentCyan),
         const SizedBox(width: 12),
-        _legendItem('RECENT', HudTheme.accentGreen),
+        _legendItem('RECENT', hud.accentGreen),
         const SizedBox(width: 12),
-        _legendItem('AGING', HudTheme.accentAmber),
+        _legendItem('AGING', hud.accentAmber),
         const SizedBox(width: 12),
-        _legendItem('STALE', HudTheme.accentRed),
+        _legendItem('STALE', hud.accentRed),
       ],
     );
   }
@@ -200,7 +207,7 @@ class AgeHeatmapOverlay extends ConsumerWidget {
     );
   }
 
-  Widget _buildSummaryGrid(Map<String, AgeBucketSummary> summary) {
+  Widget _buildSummaryGrid(Map<String, AgeBucketSummary> summary, BuildContext context) {
     const buckets = ['fresh', 'recent', 'aging', 'stale'];
     const labels = ['< 7 DAYS', '7D – 1M', '1M – 1Y', '> 1 YEAR'];
 
@@ -209,7 +216,7 @@ class AgeHeatmapOverlay extends ConsumerWidget {
         final bucket = buckets[i];
         final data =
             summary[bucket] ?? const AgeBucketSummary(count: 0, totalBytes: 0);
-        final color = bucketColor(bucket);
+        final color = bucketColor(bucket, context);
 
         return Expanded(
           child: Container(

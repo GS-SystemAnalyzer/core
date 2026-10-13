@@ -7,7 +7,6 @@ import 'package:gs_analyzer_ui/providers/schedule_provider.dart';
 import 'package:gs_analyzer_ui/services/telemetry_service.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
 import 'package:flutter/material.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/providers/network_provider.dart';
 import 'package:gs_analyzer_ui/providers/disk_io_provider.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
@@ -18,6 +17,7 @@ import 'package:gs_analyzer_ui/providers/disk_alert_provider.dart';
 import 'package:gs_analyzer_ui/models/ram_alert.dart';
 import 'package:gs_analyzer_ui/providers/ram_alert_provider.dart';
 import 'package:gs_analyzer_ui/services/notification_service.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 import 'cpu_provider.dart';
 import 'nuke_provider.dart';
@@ -183,13 +183,20 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
 
       ref.read(directoryProvider.notifier).scanDirectory(root);
 
+      final hud = snackbarKey.currentContext?.hudTheme;
+
       snackbarKey.currentState?.showSnackBar(
         SnackBar(
           content: Text(
             'AUTO-SCAN COMPLETE',
-            style: HudTheme.headerCyan.copyWith(color: Colors.white),
+            style: hud?.header.copyWith(color: hud.textMain) ??
+                TextStyle(
+                  fontFamily: 'Courier',
+                  fontWeight: FontWeight.bold,
+                  color: hud?.textMain,
+                ),
           ),
-          backgroundColor: HudTheme.bgPanel,
+          backgroundColor: hud?.panel,
           duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
         ),

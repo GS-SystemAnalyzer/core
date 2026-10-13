@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 class CustomProgressIndicator extends StatelessWidget {
   final String label;
@@ -29,7 +29,7 @@ class CustomProgressIndicator extends StatelessWidget {
             ),
             Text(
               tag.toUpperCase(),
-              style: HudTheme.statGreen,
+              style: context.hudTheme.statGreen,
             ),
           ],
         ),
@@ -39,7 +39,7 @@ class CustomProgressIndicator extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           minHeight: height,
           valueColor: color,
-          backgroundColor: Colors.grey[800],
+          backgroundColor: context.hudTheme.textMuted,
         )
       ],
     );      

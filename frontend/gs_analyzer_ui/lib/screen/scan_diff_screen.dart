@@ -8,7 +8,7 @@ import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
 import 'package:gs_analyzer_ui/providers/scan_diff_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 /// Signed byte formatter: "+4.8 GB", "-512 MB", "0 B".
 String _formatSignedBytes(int bytes) {
@@ -34,27 +34,28 @@ class ScanDiffScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final drive = ref.watch(currentDriveProvider);
+    final hud = context.hudTheme;
 
     return Scaffold(
-      backgroundColor: HudTheme.bgPanel,
+      backgroundColor: hud.panel,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text('WHAT_CHANGED', style: HudTheme.headerCyan),
-        iconTheme: const IconThemeData(color: HudTheme.accentCyan),
+        title: Text('WHAT_CHANGED', style: hud.header),
+        iconTheme: IconThemeData(color: hud.accentCyan),
         actions: [
           if (drive != null)
             IconButton(
               tooltip: 'CLEAR BASELINE',
-              icon: const Icon(Icons.restart_alt, color: HudTheme.textDim),
+              icon: Icon(Icons.restart_alt, color: hud.textDim),
               onPressed: () => _confirmClearBaseline(context, ref, drive.name),
             ),
         ],
       ),
       body: drive == null
-          ? const _CenteredMessage(
+          ? _CenteredMessage(
               text: 'NO DRIVE SELECTED',
-              color: HudTheme.textDim,
+              color: hud.textDim,
             )
           : ref
                 .watch(scanDiffProvider(drive.name))
@@ -74,21 +75,21 @@ class ScanDiffScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: HudTheme.bgPanel,
-        title: Text('CLEAR BASELINE', style: HudTheme.headerCyan),
+        backgroundColor: context.hudTheme.panel,
+        title: Text('CLEAR BASELINE', style: context.hudTheme.header),
         content: Text(
           'Forget the stored baseline for $root? The next scan will report '
           'a fresh baseline with no changes.',
-          style: HudTheme.bodyText,
+          style: context.hudTheme.body,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('CANCEL', style: TextStyle(color: HudTheme.textDim)),
+            child: Text('CANCEL', style: TextStyle(color: context.hudTheme.textDim)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('CLEAR', style: HudTheme.actionRed),
+            child: Text('CLEAR', style: context.hudTheme.actionRed),
           ),
         ],
       ),
@@ -112,45 +113,46 @@ class _DiffBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hud = context.hudTheme;
     if (!diff.hasBaseline) {
-      return const _CenteredMessage(
+      return _CenteredMessage(
         text: 'FIRST SCAN — BASELINE SAVED.\nNEXT SCAN WILL SHOW CHANGES.',
-        color: HudTheme.textDim,
+        color: hud.textDim,
       );
     }
 
     if (diff.isEmpty) {
-      return const _CenteredMessage(
+      return _CenteredMessage(
         text: 'NO CHANGES SINCE LAST SCAN',
-        color: HudTheme.accentGreen,
+        color: hud.accentGreen,
       );
     }
 
     return Column(
       children: [
         _SummaryStrip(diff: diff),
-        const Divider(color: Colors.white10, height: 1),
+        Divider(color: hud.textMain.withValues(alpha: 0.1), height: 1),
         Expanded(
           child: ListView(
             children: [
               _DiffSection(
                 title: 'ADDED',
-                color: HudTheme.accentGreen,
+                color: hud.accentGreen,
                 entries: diff.added,
               ),
               _DiffSection(
                 title: 'REMOVED',
-                color: HudTheme.accentRed,
+                color: hud.accentRed,
                 entries: diff.removed,
               ),
               _DiffSection(
                 title: 'GROWN',
-                color: HudTheme.accentAmber,
+                color: hud.accentAmber,
                 entries: diff.grown,
               ),
               _DiffSection(
                 title: 'SHRUNK',
-                color: HudTheme.accentCyan,
+                color: hud.accentCyan,
                 entries: diff.shrunk,
               ),
             ],
@@ -169,23 +171,24 @@ class _SummaryStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = diff.summary;
+    final hud = context.hudTheme;
     // NET: red when the drive consumed more space (>0), green when freed (<0).
     final netColor = s.netDeltaBytes > 0
-        ? HudTheme.accentRed
-        : (s.netDeltaBytes < 0 ? HudTheme.accentGreen : HudTheme.textDim);
+        ? hud.accentRed
+        : (s.netDeltaBytes < 0 ? hud.accentGreen : hud.textDim);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: HudTheme.bgBase,
+      color: hud.base,
       child: Wrap(
         spacing: 12,
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          _chip('+${s.addedCount} ADDED', HudTheme.accentGreen),
-          _chip('-${s.removedCount} REMOVED', HudTheme.accentRed),
-          _chip('▲${s.grownCount} GROWN', HudTheme.accentAmber),
-          _chip('▼${s.shrunkCount} SHRUNK', HudTheme.accentCyan),
+          _chip('+${s.addedCount} ADDED', hud.accentGreen, context),
+          _chip('-${s.removedCount} REMOVED', hud.accentRed, context),
+          _chip('▲${s.grownCount} GROWN', hud.accentAmber, context),
+          _chip('▼${s.shrunkCount} SHRUNK', hud.accentCyan, context),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
@@ -195,7 +198,7 @@ class _SummaryStrip extends StatelessWidget {
             ),
             child: Text(
               'NET: ${_formatSignedBytes(s.netDeltaBytes)}',
-              style: HudTheme.bodyText.copyWith(
+              style: hud.body.copyWith(
                 color: netColor,
                 fontWeight: FontWeight.bold,
               ),
@@ -206,7 +209,7 @@ class _SummaryStrip extends StatelessWidget {
     );
   }
 
-  Widget _chip(String label, Color color) {
+  Widget _chip(String label, Color color, BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -215,7 +218,7 @@ class _SummaryStrip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: HudTheme.bodyText.copyWith(
+        style: context.hudTheme.body.copyWith(
           color: color,
           fontWeight: FontWeight.bold,
         ),
@@ -245,7 +248,7 @@ class _DiffSection extends StatelessWidget {
         initiallyExpanded: true,
         title: Text(
           '$title (${entries.length})',
-          style: HudTheme.bodyText.copyWith(
+          style: context.hudTheme.body.copyWith(
             color: color,
             fontWeight: FontWeight.bold,
           ),
@@ -274,11 +277,12 @@ class _DiffRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final hud = context.hudTheme;
     // Folder icon → amber, file icon → green, per the project icon convention.
     final icon = entry.isDirectory ? Icons.folder : Icons.insert_drive_file;
     final iconColor = entry.isDirectory
-        ? HudTheme.accentAmber
-        : HudTheme.accentGreen;
+        ? hud.accentAmber
+        : hud.accentGreen;
 
     return InkWell(
       onTap: () => _jumpToExplorer(context, ref),
@@ -298,7 +302,7 @@ class _DiffRow extends ConsumerWidget {
                     entry.displayName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: HudTheme.bodyText,
+                    style: hud.body,
                   ),
                   Text(
                     entry.childCount != null
@@ -306,8 +310,8 @@ class _DiffRow extends ConsumerWidget {
                         : entry.parentPath,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: HudTheme.bodyText.copyWith(
-                      color: HudTheme.textDim,
+                    style: hud.body.copyWith(
+                      color: hud.textDim,
                       fontSize: 11,
                     ),
                   ),
@@ -317,7 +321,7 @@ class _DiffRow extends ConsumerWidget {
             const SizedBox(width: 10),
             Text(
               _formatSignedBytes(entry.deltaBytes),
-              style: HudTheme.bodyText.copyWith(
+              style: hud.body.copyWith(
                 color: color,
                 fontWeight: FontWeight.bold,
               ),
@@ -345,9 +349,9 @@ class _LoadingState extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const CircularProgressIndicator(color: HudTheme.accentCyan),
+        CircularProgressIndicator(color: context.hudTheme.accentCyan),
         const SizedBox(height: 16),
-        Text('ANALYZING CHANGES...', style: HudTheme.labelMuted),
+        Text('ANALYZING CHANGES...', style: context.hudTheme.label),
       ],
     );
   }
@@ -360,17 +364,18 @@ class _ErrorState extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final hud = context.hudTheme;
     // 409 (no scan cached) surfaces as DiffNoScanException → prompt to scan.
     if (error is DiffNoScanException) {
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('NO SCAN DATA — RUN A SCAN FIRST', style: HudTheme.labelMuted),
+          Text('NO SCAN DATA — RUN A SCAN FIRST', style: hud.label),
           const SizedBox(height: 16),
           OutlinedButton(
             style: OutlinedButton.styleFrom(
-              foregroundColor: HudTheme.accentCyan,
-              side: const BorderSide(color: HudTheme.accentCyan),
+              foregroundColor: hud.accentCyan,
+              side: BorderSide(color: hud.accentCyan),
             ),
             onPressed: () {
               // Return to Storage so the user can launch a scan.
@@ -386,7 +391,7 @@ class _ErrorState extends ConsumerWidget {
 
     return _CenteredMessage(
       text: 'DIFF UNAVAILABLE\n$error',
-      color: HudTheme.accentRed,
+      color: hud.accentRed,
     );
   }
 }
@@ -405,7 +410,7 @@ class _CenteredMessage extends StatelessWidget {
         child: Text(
           text,
           textAlign: TextAlign.center,
-          style: HudTheme.bodyText.copyWith(color: color),
+          style: context.hudTheme.body.copyWith(color: color),
         ),
       ),
     );
