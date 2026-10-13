@@ -6,7 +6,7 @@ import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
 import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';
 import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 /// Renders a list of stacked disk alert banners at the top of the Storage screen,
 /// ordered by usedPercent descending.
@@ -51,8 +51,9 @@ class DiskAlertBannerCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final hud = context.hudTheme;
     final isCritical = alert.isCritical;
-    final alertColor = isCritical ? Colors.redAccent : Colors.amber;
+    final alertColor = isCritical ? hud.accentRed : hud.accentAmber;
     final badgeBg = alertColor.withValues(alpha: 0.15);
 
     final titleText = isCritical ? 'CRITICAL DISK SPACE' : 'LOW DISK SPACE WARNING';
@@ -65,7 +66,7 @@ class DiskAlertBannerCard extends ConsumerWidget {
     return Container(
       padding: EdgeInsets.all(d.panelPad * 0.8),
       decoration: BoxDecoration(
-        color: HudTheme.bgPanel,
+        color: hud.panel,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: alertColor, width: 1.5),
         boxShadow: [
@@ -101,7 +102,7 @@ class DiskAlertBannerCard extends ConsumerWidget {
                   children: [
                     Text(
                       titleText,
-                      style: HudTheme.headerCyan.copyWith(
+                      style: hud.header.copyWith(
                         color: alertColor,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -132,8 +133,8 @@ class DiskAlertBannerCard extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Text(
                   displayText,
-                  style: HudTheme.bodyText.copyWith(
-                    color: Colors.white.withValues(alpha: 0.9),
+                  style: hud.body.copyWith(
+                    color: hud.textMain.withValues(alpha: 0.9),
                     fontSize: 12,
                   ),
                 ),

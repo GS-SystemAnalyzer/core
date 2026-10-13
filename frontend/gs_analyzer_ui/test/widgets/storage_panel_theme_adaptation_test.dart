@@ -28,6 +28,10 @@ import 'package:gs_analyzer_ui/widgets/file_type_analyzer_panel.dart';
 import 'package:gs_analyzer_ui/widgets/permission_audit_panel.dart';
 import 'package:gs_analyzer_ui/widgets/telemetry_hud_widget.dart';
 import 'package:gs_analyzer_ui/widgets/temp_cleaner_panel.dart';
+import 'package:gs_analyzer_ui/models/disk_alert.dart';
+import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
+import 'package:gs_analyzer_ui/widgets/disk_alert_banner.dart';
+import 'package:gs_analyzer_ui/widgets/go_up_row_widget.dart';
 import 'package:gs_analyzer_ui/widgets/undo_history_panel.dart';
 import 'package:gs_analyzer_ui/widgets/watcher_event_log_panel.dart';
 import 'package:mocktail/mocktail.dart';
@@ -1217,6 +1221,254 @@ void main() {
 
       final darkEventIcon = tester.widget<Icon>(find.byIcon(Icons.edit_outlined));
       expect(darkEventIcon.color, equals(HudColor.darkAccentCyan));
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('GoUpRowWidget adapts border decoration, icon color, and text style between themes',
+        (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final mockNotifier = MockDirectoryNotifier();
+
+      // 1. Light Mode
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            directoryProvider.overrideWith((ref) => mockNotifier),
+          ],
+          child: MaterialApp(
+            theme: HudTheme.lightTheme(HudColor.lightAccentCyan),
+            home: const Scaffold(
+              body: GoUpRowWidget(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final lightContainer = tester.widget<Container>(
+        find.descendant(
+          of: find.byType(GoUpRowWidget),
+          matching: find.byType(Container),
+        ).first,
+      );
+      final lightDec = lightContainer.decoration as BoxDecoration;
+      expect(
+        (lightDec.border as Border).bottom.color,
+        equals(HudColor.lightTextMain.withValues(alpha: 0.1)),
+      );
+
+      final lightIcon = tester.widget<Icon>(find.byIcon(Icons.keyboard_return_outlined));
+      expect(lightIcon.color, equals(HudColor.lightAccentCyan));
+
+      final lightText = tester.widget<Text>(find.text('[..] GO UP A DIRECTORY'));
+      expect(lightText.style?.color, equals(HudColor.lightTextMain));
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+
+      // 2. Dark Mode
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            directoryProvider.overrideWith((ref) => mockNotifier),
+          ],
+          child: MaterialApp(
+            theme: HudTheme.darkTheme(HudColor.darkAccentCyan),
+            home: const Scaffold(
+              body: GoUpRowWidget(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final darkContainer = tester.widget<Container>(
+        find.descendant(
+          of: find.byType(GoUpRowWidget),
+          matching: find.byType(Container),
+        ).first,
+      );
+      final darkDec = darkContainer.decoration as BoxDecoration;
+      expect(
+        (darkDec.border as Border).bottom.color,
+        equals(HudColor.darkTextMain.withValues(alpha: 0.1)),
+      );
+
+      final darkIcon = tester.widget<Icon>(find.byIcon(Icons.keyboard_return_outlined));
+      expect(darkIcon.color, equals(HudColor.darkAccentCyan));
+
+      final darkText = tester.widget<Text>(find.text('[..] GO UP A DIRECTORY'));
+      expect(darkText.style?.color, equals(HudColor.darkTextMain));
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('DiskAlertBannerCard adapts critical and warning colors between Light and Dark themes',
+        (tester) async {
+      final criticalAlert = DiskAlert(
+        driveName: 'C:\\',
+        label: 'Windows (C:)',
+        driveType: 'Fixed',
+        usedPercent: 98.5,
+        freeBytes: 1500000000,
+        freeFormatted: '1.5 GB',
+        thresholdPercent: 90.0,
+        severity: 'critical',
+      );
+
+      final warningAlert = DiskAlert(
+        driveName: 'D:\\',
+        label: 'Data (D:)',
+        driveType: 'Fixed',
+        usedPercent: 92.0,
+        freeBytes: 8000000000,
+        freeFormatted: '8.0 GB',
+        thresholdPercent: 90.0,
+        severity: 'warning',
+      );
+
+      const testDensity = HudDensity(
+        gap: 8.0,
+        panelPad: 12.0,
+        rowHeight: 32.0,
+        titleSize: 12.0,
+        valueSize: 32.0,
+        isMax: false,
+      );
+
+      // 1. Light Theme
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: HudTheme.lightTheme(HudColor.lightAccentCyan),
+            home: Scaffold(
+              body: Column(
+                children: [
+                  DiskAlertBannerCard(alert: criticalAlert, d: testDensity),
+                  DiskAlertBannerCard(alert: warningAlert, d: testDensity),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final lightCritCard = tester.widget<Container>(
+        find.descendant(
+          of: find.widgetWithText(DiskAlertBannerCard, 'CRITICAL DISK SPACE'),
+          matching: find.byType(Container),
+        ).first,
+      );
+      final lightCritDec = lightCritCard.decoration as BoxDecoration;
+      expect(lightCritDec.color, equals(HudColor.lightBgPanel));
+      expect((lightCritDec.border as Border).top.color, equals(HudColor.lightAccentRed));
+
+      final lightCritIcon = tester.widget<Icon>(find.byIcon(Icons.error_outline));
+      expect(lightCritIcon.color, equals(HudColor.lightAccentRed));
+
+      final lightCritTitle = tester.widget<Text>(find.text('CRITICAL DISK SPACE'));
+      expect(lightCritTitle.style?.color, equals(HudColor.lightAccentRed));
+
+      final lightCritBtn = tester.widget<ElevatedButton>(find.byKey(const Key('cleanup_btn_C:\\')));
+      expect(
+        (lightCritBtn.style?.side?.resolve({}) as BorderSide).color,
+        equals(HudColor.lightAccentRed),
+      );
+
+      final lightWarnCard = tester.widget<Container>(
+        find.descendant(
+          of: find.widgetWithText(DiskAlertBannerCard, 'LOW DISK SPACE WARNING'),
+          matching: find.byType(Container),
+        ).first,
+      );
+      final lightWarnDec = lightWarnCard.decoration as BoxDecoration;
+      expect(lightWarnDec.color, equals(HudColor.lightBgPanel));
+      expect((lightWarnDec.border as Border).top.color, equals(HudColor.lightAccentAmber));
+
+      final lightWarnIcon = tester.widget<Icon>(find.byIcon(Icons.warning_amber_rounded));
+      expect(lightWarnIcon.color, equals(HudColor.lightAccentAmber));
+
+      final lightWarnTitle = tester.widget<Text>(find.text('LOW DISK SPACE WARNING'));
+      expect(lightWarnTitle.style?.color, equals(HudColor.lightAccentAmber));
+
+      final lightWarnBtn = tester.widget<ElevatedButton>(find.byKey(const Key('cleanup_btn_D:\\')));
+      expect(
+        (lightWarnBtn.style?.side?.resolve({}) as BorderSide).color,
+        equals(HudColor.lightAccentAmber),
+      );
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+
+      // 2. Dark Theme
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: HudTheme.darkTheme(HudColor.darkAccentCyan),
+            home: Scaffold(
+              body: Column(
+                children: [
+                  DiskAlertBannerCard(alert: criticalAlert, d: testDensity),
+                  DiskAlertBannerCard(alert: warningAlert, d: testDensity),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final darkCritCard = tester.widget<Container>(
+        find.descendant(
+          of: find.widgetWithText(DiskAlertBannerCard, 'CRITICAL DISK SPACE'),
+          matching: find.byType(Container),
+        ).first,
+      );
+      final darkCritDec = darkCritCard.decoration as BoxDecoration;
+      expect(darkCritDec.color, equals(HudColor.darkBgPanel));
+      expect((darkCritDec.border as Border).top.color, equals(HudColor.darkAccentRed));
+
+      final darkCritIcon = tester.widget<Icon>(find.byIcon(Icons.error_outline));
+      expect(darkCritIcon.color, equals(HudColor.darkAccentRed));
+
+      final darkCritTitle = tester.widget<Text>(find.text('CRITICAL DISK SPACE'));
+      expect(darkCritTitle.style?.color, equals(HudColor.darkAccentRed));
+
+      final darkCritBtn = tester.widget<ElevatedButton>(find.byKey(const Key('cleanup_btn_C:\\')));
+      expect(
+        (darkCritBtn.style?.side?.resolve({}) as BorderSide).color,
+        equals(HudColor.darkAccentRed),
+      );
+
+      final darkWarnCard = tester.widget<Container>(
+        find.descendant(
+          of: find.widgetWithText(DiskAlertBannerCard, 'LOW DISK SPACE WARNING'),
+          matching: find.byType(Container),
+        ).first,
+      );
+      final darkWarnDec = darkWarnCard.decoration as BoxDecoration;
+      expect(darkWarnDec.color, equals(HudColor.darkBgPanel));
+      expect((darkWarnDec.border as Border).top.color, equals(HudColor.darkAccentAmber));
+
+      final darkWarnIcon = tester.widget<Icon>(find.byIcon(Icons.warning_amber_rounded));
+      expect(darkWarnIcon.color, equals(HudColor.darkAccentAmber));
+
+      final darkWarnTitle = tester.widget<Text>(find.text('LOW DISK SPACE WARNING'));
+      expect(darkWarnTitle.style?.color, equals(HudColor.darkAccentAmber));
+
+      final darkWarnBtn = tester.widget<ElevatedButton>(find.byKey(const Key('cleanup_btn_D:\\')));
+      expect(
+        (darkWarnBtn.style?.side?.resolve({}) as BorderSide).color,
+        equals(HudColor.darkAccentAmber),
+      );
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
