@@ -99,6 +99,14 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
     }
   }
 
+  // Explorer-style visibility tiers: protected-system entries read locked (accentRed,
+  // dimmed), hidden-but-not-system entries are dimmed, everything else is unchanged.
+  (double, bool, bool) _visibilityStyle() {
+    if (widget.node.isSystem) return (0.5, true, true);
+    if (widget.node.isHidden) return (0.45, false, true);
+    return (1.0, false, false);
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen(
@@ -116,6 +124,12 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
     final double leftPadding = widget.depth * 20.0;
     final isDir = widget.node.isDirectory;
     final hud = context.hudTheme;
+    final (visOpacity, visLocked, applyVis) = _visibilityStyle();
+    // Normal entries keep their exact base color (preserving MaterialColor identity);
+    // only hidden/system entries are dimmed or locked.
+    Color visColor(Color base) => applyVis
+        ? (visLocked ? hud.accentRed : base).withValues(alpha: visOpacity)
+        : base;
 
     if (widget.isTreeView) {
       return Column(
@@ -150,14 +164,16 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                     isDir
                         ? Icons.folder_outlined
                         : Icons.insert_drive_file_outlined,
-                    color: isDir ? hud.accentAmber : hud.accentGreen,
+                    color: visColor(isDir ? hud.accentAmber : hud.accentGreen),
                     size: 16,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       widget.node.name,
-                      style: hud.body,
+                      style: applyVis
+                          ? hud.body.copyWith(color: visColor(hud.body.color ?? hud.textMain))
+                          : hud.body,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -275,9 +291,7 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                       if (heatmapColor == null) const SizedBox(width: 32),
                       Icon(
                         isDir ? Icons.folder : Icons.insert_drive_file_outlined,
-                        color: isDir
-                            ? hud.accentAmber
-                            : hud.accentGreen,
+                        color: visColor(isDir ? hud.accentAmber : hud.accentGreen),
                         size: 20,
                       ),
                       const SizedBox(width: 8),
@@ -285,7 +299,7 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                         child: Text(
                           widget.node.name,
                           style: hud.body.copyWith(
-                            color: hud.textMain,
+                            color: visColor(hud.textMain),
                             fontWeight: FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
