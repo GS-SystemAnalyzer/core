@@ -4,6 +4,8 @@ class StorageNode {
   final String type;
   final int sizeBytes;
   final DateTime lastModified;
+  final bool isHidden;
+  final bool isSystem;
   bool get isDirectory => type.toLowerCase() == 'directory';
 
   StorageNode({
@@ -12,6 +14,8 @@ class StorageNode {
     required this.type,
     required this.sizeBytes,
     required this.lastModified,
+    this.isHidden = false,
+    this.isSystem = false,
   });
 
   factory StorageNode.fromJson(Map<String, dynamic> json) {
@@ -21,6 +25,8 @@ class StorageNode {
       type: json['type'] ?? 'File',
       sizeBytes: json['sizeBytes'] ?? 0,
       lastModified: DateTime.parse(json['lastModified']),
+      isHidden: json['isHidden'] ?? false,
+      isSystem: json['isSystem'] ?? false,
     );
   }
 }

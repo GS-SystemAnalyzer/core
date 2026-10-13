@@ -152,11 +152,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _buildToggle('SKIP HIDDEN', scan.skipHiddenFiles, (val) {
             scan.skipHiddenFiles = val;
             notifier.updateUI();
-          }),
+          }, subtitle: 'Folders like AppData — shown dimmed when OFF'),
           _buildToggle('SKIP SYSTEM', scan.skipSystemFiles, (val) {
             scan.skipSystemFiles = val;
             notifier.updateUI();
-          }),
+          }, subtitle: 'Protected OS files (e.g. \$RECYCLE.BIN) — fully hidden when ON'),
           const SizedBox(height: 16),
           Align(
             alignment: Alignment.centerLeft,
@@ -889,7 +889,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildToggle(String label, bool value, Function(bool) onChanged) {
+  Widget _buildToggle(String label, bool value, Function(bool) onChanged,
+      {String? subtitle}) {
     return InkWell(
       onTap: () => onChanged(!value),
       child: Padding(
@@ -897,7 +898,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            HudLabel(label),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  HudLabel(label),
+                  if (subtitle != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2.0),
+                      child: Text(
+                        subtitle,
+                        style: context.hudTheme.body.copyWith(
+                          color: context.hudTheme.textDim,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
             Switch(
               value: value,
               activeThumbColor: context.HudTheme.accentCyan,
