@@ -98,7 +98,9 @@ namespace GSSystemAnalyzer.Services
 						Path = item.FullName,
 						Type = item.Attributes.HasFlag(FileAttributes.Directory) ? "Directory" : "File",
 						SizeBytes = itemSize,
-						LastModified = safeDate
+						LastModified = safeDate,
+						IsHidden = item.Attributes.HasFlag(FileAttributes.Hidden),
+						IsSystem = item.Attributes.HasFlag(FileAttributes.System)
 					};
 				}).ToList();
 
