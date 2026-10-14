@@ -361,5 +361,92 @@ void main() {
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
     });
+
+    testWidgets('Save changes button adapts foreground and background colors to theme in enabled and disabled states', (tester) async {
+      final savedSettings = AppSettings.fromjson({
+        'appearance': {'theme': 'cyber_light', 'accentColor': 'cyan'},
+      });
+
+      final lightNotifier = MockSettingsNotifier(
+        SettingsState(isLoading: false, savedSettings: savedSettings, currentSettings: savedSettings.clone()),
+      );
+
+      // 1. Verify in Light Mode - Disabled state (no unsaved changes)
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            settingsProvider.overrideWith((ref) => lightNotifier),
+          ],
+          child: MaterialApp(
+            theme: HudTheme.lightTheme(HudColor.lightAccentCyan),
+            home: const SettingsScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final saveBtnFinder = find.widgetWithText(ElevatedButton, 'SAVE CHANGES');
+      await tester.scrollUntilVisible(saveBtnFinder, 300);
+      await tester.pumpAndSettle();
+
+      final lightDisabledSaveBtn = tester.widget<ElevatedButton>(saveBtnFinder);
+      expect(lightDisabledSaveBtn.onPressed, isNull);
+      expect(lightDisabledSaveBtn.style?.foregroundColor?.resolve({}), equals(HudColor.lightTextDim));
+      expect(lightDisabledSaveBtn.style?.backgroundColor?.resolve({}), equals(HudColor.lightTextMain.withValues(alpha: 0.1)));
+
+      // 1b. Verify in Light Mode - Enabled state (with unsaved changes)
+      final modifiedSettings = savedSettings.clone();
+      modifiedSettings.appearance.theme = 'cyber_dark';
+      lightNotifier.state = lightNotifier.state.copyWith(currentSettings: modifiedSettings);
+      await tester.pumpAndSettle();
+
+      final lightEnabledSaveBtn = tester.widget<ElevatedButton>(saveBtnFinder);
+      expect(lightEnabledSaveBtn.onPressed, isNotNull);
+      expect(lightEnabledSaveBtn.style?.foregroundColor?.resolve({}), equals(HudColor.lightTextPaint));
+      expect(lightEnabledSaveBtn.style?.backgroundColor?.resolve({}), equals(HudColor.lightAccentCyan));
+
+      // Clean up before Dark Mode
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+
+      // 2. Verify in Dark Mode - Disabled state (no unsaved changes)
+      final darkNotifier = MockSettingsNotifier(
+        SettingsState(isLoading: false, savedSettings: savedSettings, currentSettings: savedSettings.clone()),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            settingsProvider.overrideWith((ref) => darkNotifier),
+          ],
+          child: MaterialApp(
+            theme: HudTheme.darkTheme(HudColor.darkAccentCyan),
+            home: const SettingsScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(saveBtnFinder, 300);
+      await tester.pumpAndSettle();
+
+      final darkDisabledSaveBtn = tester.widget<ElevatedButton>(saveBtnFinder);
+      expect(darkDisabledSaveBtn.onPressed, isNull);
+      expect(darkDisabledSaveBtn.style?.foregroundColor?.resolve({}), equals(HudColor.darkTextDim));
+      expect(darkDisabledSaveBtn.style?.backgroundColor?.resolve({}), equals(HudColor.darkTextMain.withValues(alpha: 0.1)));
+
+      // 2b. Verify in Dark Mode - Enabled state (with unsaved changes)
+      darkNotifier.state = darkNotifier.state.copyWith(currentSettings: modifiedSettings);
+      await tester.pumpAndSettle();
+
+      final darkEnabledSaveBtn = tester.widget<ElevatedButton>(saveBtnFinder);
+      expect(darkEnabledSaveBtn.onPressed, isNotNull);
+      expect(darkEnabledSaveBtn.style?.foregroundColor?.resolve({}), equals(HudColor.darkTextPaint));
+      expect(darkEnabledSaveBtn.style?.backgroundColor?.resolve({}), equals(HudColor.darkAccentCyan));
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    });
   });
 }
+

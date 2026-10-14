@@ -100,8 +100,8 @@ class _SystemLoadBar extends ConsumerWidget {
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: d.gap),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.white10)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: theme.textMain.withValues(alpha: 0.1))),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -163,12 +163,12 @@ class _LoadMetric extends StatelessWidget {
           child: LinearProgressIndicator(
             value: pct.clamp(0.0, 1.0),
             color: color,
-            backgroundColor: Colors.white10,
+            backgroundColor: context.hudTheme.textMain.withValues(alpha: 0.1),
             minHeight: 4,
           ),
         ),
         const SizedBox(width: 8),
-        Text(value, style: context.HudTheme.body.copyWith(color: color)),
+        Text(value, style: context.hudTheme.body.copyWith(color: color)),
       ],
     );
   }
@@ -213,8 +213,8 @@ class _Toolbar extends ConsumerWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.white10)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: theme.textMain.withValues(alpha: 0.1))),
       ),
       child: Row(
         children: [
@@ -234,10 +234,10 @@ class _Toolbar extends ConsumerWidget {
                   size: 18,
                 ),
                 filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.04),
+                fillColor: theme.textMain.withValues(alpha: 0.04),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(4),
-                  borderSide: const BorderSide(color: Colors.white12),
+                  borderSide: BorderSide(color: theme.textMain.withValues(alpha: 0.12)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(4),
@@ -316,8 +316,8 @@ class _ToolbarChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        border: Border.all(color: Colors.white12),
+        color: theme.textMain.withValues(alpha: 0.04),
+        border: Border.all(color: theme.textMain.withValues(alpha: 0.12)),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
@@ -347,7 +347,7 @@ class _TableHeader extends ConsumerWidget {
       height: d.rowHeight + 16,
       decoration: BoxDecoration(
         color: context.HudTheme.panel,
-        border: const Border(bottom: BorderSide(color: Colors.white10)),
+        border: Border(bottom: BorderSide(color: context.hudTheme.textMain.withValues(alpha: 0.1))),
       ),
       child: const Row(
         children: [
@@ -421,7 +421,7 @@ class _ProcessRow extends ConsumerWidget {
         // ── Main row
         InkWell(
           onTap: onTap,
-          hoverColor: Colors.white.withValues(alpha: 0.03),
+          hoverColor: theme.textMain.withValues(alpha: 0.03),
           child: Container(
             height: d.rowHeight + 16,
             padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: 8),
@@ -432,7 +432,7 @@ class _ProcessRow extends ConsumerWidget {
                   color: isSelected ? theme.accentCyan : Colors.transparent,
                   width: 3,
                 ),
-                bottom: const BorderSide(color: Colors.white10),
+                bottom: BorderSide(color: theme.textMain.withValues(alpha: 0.1)),
               ),
             ),
             child: Row(
@@ -584,7 +584,7 @@ class _DetailDrawer extends ConsumerWidget {
         color: theme.accentCyan.withValues(alpha: 0.04),
         border: Border(
           left: BorderSide(color: theme.accentCyan, width: 3),
-          bottom: BorderSide(color: Colors.white10),
+          bottom: BorderSide(color: theme.textMain.withValues(alpha: 0.1)),
         ),
       ),
       child: SingleChildScrollView(
@@ -759,8 +759,8 @@ class _Footer extends ConsumerWidget {
     final theme = context.HudTheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Colors.white10)),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: theme.textMain.withValues(alpha: 0.1))),
       ),
       child: Row(
         children: [
