@@ -161,7 +161,7 @@ class DiskIoCard extends ConsumerWidget {
                       style: TextStyle(
                         fontFamily: HudTheme.fontCore,
                         fontSize: 12,
-                        color: hud.textMain.withValues(alpha: 0.70),
+                        color: hud.textMuted,
                       ),
                     ),
                     Text(
@@ -262,7 +262,7 @@ class DiskIoCard extends ConsumerWidget {
                 style: TextStyle(
                   fontFamily: HudTheme.fontCore,
                   fontSize: 11,
-                  color: hud.textMain.withValues(alpha: 0.54),
+                  color: hud.textDim,
                 ),
               ),
               Text(
@@ -270,7 +270,7 @@ class DiskIoCard extends ConsumerWidget {
                 style: TextStyle(
                   fontFamily: HudTheme.fontCore,
                   fontSize: 11,
-                  color: hud.textMain.withValues(alpha: 0.54),
+                  color: hud.textDim,
                 ),
               ),
             ],

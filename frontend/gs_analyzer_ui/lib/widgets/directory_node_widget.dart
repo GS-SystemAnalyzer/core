@@ -235,7 +235,7 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
       });
     }
     final Color? heatmapColor = nodeBucket != null
-        ? bucketColor(nodeBucket!)
+        ? bucketColor(nodeBucket!, context)
         : null;
     final bool showReviewBadge =
         nodeBucket == 'stale' && isDir && widget.node.sizeBytes > 1073741824;

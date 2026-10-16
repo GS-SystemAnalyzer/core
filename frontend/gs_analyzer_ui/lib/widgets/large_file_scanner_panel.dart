@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/storage_mode_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/nuke_protocol.dart';
 import 'package:gs_analyzer_ui/providers/large_file_provider.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 class LargeFileScannerPanel extends ConsumerStatefulWidget {
   const LargeFileScannerPanel({super.key});
@@ -34,26 +35,27 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
   Widget build(BuildContext context) {
     final largeFileState = ref.watch(largeFileProvider);
     final largeFileNotifier = ref.read(largeFileProvider.notifier);
+    final hud = context.hudTheme;
     return Container(
-      color: HudTheme.bgBase,
+      color: hud.base,
       child: Column(
         children: [
           // Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            decoration: const BoxDecoration(
-              color: HudTheme.bgPanel,
-              border: Border(bottom: BorderSide(color: Colors.white10)),
+            decoration: BoxDecoration(
+              color: hud.panel,
+              border: Border(bottom: BorderSide(color: hud.textMain.withValues(alpha: 0.1))),
             ),
             child: Row(
               children: [
-                const Icon(Icons.radar_outlined, color: HudTheme.accentCyan),
+                Icon(Icons.radar_outlined, color: hud.accentCyan),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'LARGE FILE HUNTER PROTOCOL',
                     style: TextStyle(
-                      color: HudTheme.accentCyan,
+                      color: hud.accentCyan,
                       fontFamily: HudTheme.fontCore,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -64,8 +66,8 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
                   onPressed: () =>
                       ref.read(storageModeProvider.notifier).state =
                           StorageMode.diskAnalyzer,
-                  icon: const Icon(Icons.close, color: HudTheme.textDim),
-                  label: const Text('CLOSE TOOL', style: HudTheme.bodyText),
+                  icon: Icon(Icons.close, color: hud.textDim),
+                  label: Text('CLOSE TOOL', style: hud.body),
                 ),
               ],
             ),
@@ -74,8 +76,8 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
           // Controls
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.white10)),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: hud.textMain.withValues(alpha: 0.1))),
             ),
             child: Wrap(
               spacing: 16,
@@ -86,33 +88,33 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
                   width: 260,
                   child: TextField(
                     controller: _pathController,
-                    style: HudTheme.bodyText.copyWith(
-                      color: HudTheme.accentCyan,
+                    style: hud.body.copyWith(
+                      color: hud.accentCyan,
                       fontSize: 13,
                     ),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(
+                      prefixIcon: Icon(
                         Icons.folder_outlined,
-                        color: HudTheme.textDim,
+                        color: hud.textDim,
                         size: 20,
                       ),
                       labelText: 'TARGET SECTOR',
-                      labelStyle: HudTheme.labelMuted,
+                      labelStyle: hud.label,
                       isDense: true,
                       filled: true,
-                      fillColor: Colors.black26,
+                      fillColor: hud.textPaint.withValues(alpha: 0.26),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(4),
-                        borderSide: const BorderSide(color: Colors.white10),
+                        borderSide: BorderSide(color: hud.textMain.withValues(alpha: 0.1)),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(4),
-                        borderSide: const BorderSide(color: Colors.white10),
+                        borderSide: BorderSide(color: hud.textMain.withValues(alpha: 0.1)),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(4),
-                        borderSide: const BorderSide(
-                          color: HudTheme.accentAmber,
+                        borderSide: BorderSide(
+                          color: hud.accentAmber,
                         ),
                       ),
                     ),
@@ -120,8 +122,8 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
                 ),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: HudTheme.accentCyan,
-                    foregroundColor: Colors.black,
+                    backgroundColor: hud.accentCyan,
+                    foregroundColor: hud.textPaint,
                   ),
                   icon: const Icon(Icons.saved_search_outlined, size: 18),
                   label: const Text(
@@ -140,11 +142,11 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
                 if (largeFileState.largeFiles.isNotEmpty) ...[
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: HudTheme.accentRed.withValues(
+                      backgroundColor: hud.accentRed.withValues(
                         alpha: 0.2,
                       ),
-                      foregroundColor: HudTheme.accentRed,
-                      side: const BorderSide(color: HudTheme.accentRed),
+                      foregroundColor: hud.accentRed,
+                      side: BorderSide(color: hud.accentRed),
                     ),
                     icon: const Icon(Icons.delete_forever_outlined, size: 18),
                     label: Text(
@@ -179,27 +181,27 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const CircularProgressIndicator(
-                          color: HudTheme.accentCyan,
+                        CircularProgressIndicator(
+                          color: hud.accentCyan,
                         ),
                         const SizedBox(height: 24),
-                        const Text(
+                        Text(
                           'SCANNING DEEP SECTORS...',
-                          style: HudTheme.statGreen,
+                          style: hud.statGreen,
                         ),
                         const SizedBox(height: 16),
                         TextButton.icon(
                           onPressed: () => largeFileNotifier.abortScan(),
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.dangerous,
-                            color: HudTheme.accentRed,
+                            color: hud.accentRed,
                           ),
-                          label: const Text(
+                          label: Text(
                             'ABORT SCAN',
-                            style: HudTheme.actionRed,
+                            style: hud.actionRed,
                           ),
                           style: TextButton.styleFrom(
-                            backgroundColor: HudTheme.accentRed.withValues(
+                            backgroundColor: hud.accentRed.withValues(
                               alpha: 0.1,
                             ),
                             padding: const EdgeInsets.symmetric(
@@ -215,15 +217,15 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
                 ? Center(
                     child: Text(
                       'ERROR: ${largeFileState.errorMessage}',
-                      style: HudTheme.actionRed,
+                      style: hud.actionRed,
                     ),
                   )
                 : largeFileState.largeFiles.isEmpty
                 ? Center(
                     child: Text(
                       'AWAITING LARGE FILE SCAN COMMAND....',
-                      style: HudTheme.bodyText.copyWith(
-                        color: HudTheme.textDim,
+                      style: hud.body.copyWith(
+                        color: hud.textDim,
                       ),
                     ),
                   )
@@ -232,16 +234,16 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
                     itemBuilder: (context, index) {
                       final file = largeFileState.largeFiles[index];
                       return Container(
-                        decoration: HudTheme.listItemDecoration,
+                        decoration: hud.listItemDecoration,
                         child: ListTile(
-                          leading: const Icon(
+                          leading: Icon(
                             Icons.description_outlined,
-                            color: HudTheme.textDim,
+                            color: hud.textDim,
                           ),
                           title: Text(
                             file.path,
-                            style: HudTheme.bodyText.copyWith(
-                              color: Colors.white,
+                            style: hud.body.copyWith(
+                              color: hud.textMain,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -254,28 +256,28 @@ class _LargeFileScannerPanelState extends ConsumerState<LargeFileScannerPanel> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: HudTheme.accentCyan.withValues(
+                                  color: hud.accentCyan.withValues(
                                     alpha: 0.1,
                                   ),
                                   borderRadius: BorderRadius.circular(4),
                                   border: Border.all(
-                                    color: HudTheme.accentCyan.withValues(
+                                    color: hud.accentCyan.withValues(
                                       alpha: 0.5,
                                     ),
                                   ),
                                 ),
                                 child: Text(
                                   file.sizeFormatted,
-                                  style: HudTheme.statGreen.copyWith(
-                                    color: HudTheme.accentCyan,
+                                  style: hud.statGreen.copyWith(
+                                    color: hud.accentCyan,
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 16),
                               IconButton(
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.delete_forever_outlined,
-                                  color: HudTheme.accentRed,
+                                  color: hud.accentRed,
                                 ),
                                 onPressed: () => executeNukeProtocol(
                                   context,

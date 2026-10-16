@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:gs_analyzer_ui/models/nuke_preview.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 class NukePreviewResult {
   final bool confirmed;
@@ -58,21 +59,22 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final hud = context.hudTheme;
     return AlertDialog(
-      backgroundColor: HudTheme.bgPanel,
+      backgroundColor: hud.panel,
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: HudTheme.accentRed, width: 2),
+        side: BorderSide(color: hud.accentRed, width: 2),
         borderRadius: BorderRadius.circular(8),
       ),
-      title: const Row(
+      title: Row(
         children: [
           Icon(
             Icons.warning_amber_outlined,
-            color: HudTheme.accentRed,
+            color: hud.accentRed,
             size: 28,
           ),
           SizedBox(width: 12),
-          Text('CONFIRM OBLITERATION', style: HudTheme.actionRed),
+          Text('CONFIRM OBLITERATION', style: hud.actionRed),
         ],
       ),
       content: SizedBox(width: 500, child: _buildContent()),
@@ -85,13 +87,13 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
               planToken: '',
             ),
           ),
-          child: const Text('ABORT', style: TextStyle(color: Colors.white70)),
+          child: Text('ABORT', style: TextStyle(color: hud.textMuted)),
         ),
         if (!_isLoading && _error == null)
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: HudTheme.accentRed.withValues(alpha: 0.2),
-              side: const BorderSide(color: HudTheme.accentRed),
+              backgroundColor: hud.accentRed.withValues(alpha: 0.2),
+              side: BorderSide(color: hud.accentRed),
             ),
             onPressed: () => Navigator.of(context).pop(
               NukePreviewResult(
@@ -102,8 +104,8 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
             ),
             child: Text(
               _useRecycleBin ? 'MOVE TO RECYCLE BIN' : 'EXECUTE NUKE',
-              style: const TextStyle(
-                color: HudTheme.accentRed,
+              style: TextStyle(
+                color: hud.accentRed,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -113,15 +115,16 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
   }
 
   Widget _buildContent() {
+    final hud = context.hudTheme;
     if (_isLoading) {
-      return const Column(
+      return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           CircularProgressIndicator(),
           SizedBox(height: 16),
           Text(
             'CALCULATING BLAST RADIUS...',
-            style: TextStyle(color: HudTheme.accentRed),
+            style: TextStyle(color: hud.accentRed),
           ),
         ],
       );
@@ -130,7 +133,7 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
     if (_error != null) {
       return Text(
         'PREVIEW FAILED: $_error',
-        style: const TextStyle(color: HudTheme.accentRed),
+        style: TextStyle(color: hud.accentRed),
       );
     }
 
@@ -143,7 +146,7 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.black45,
+            color: hud.textPaint.withValues(alpha: 0.45),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Row(
@@ -156,9 +159,9 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
         ),
 
         const SizedBox(height: 16),
-        const Text(
+        Text(
           'AFFECTED SECTORS:',
-          style: TextStyle(color: Colors.white54, fontSize: 12),
+          style: TextStyle(color: hud.textDim, fontSize: 12),
         ),
         const SizedBox(height: 8),
         ConstrainedBox(
@@ -172,8 +175,8 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
                 padding: const EdgeInsetsGeometry.only(bottom: 8.0),
                 child: Text(
                   '> ${item.path} (${item.fileCount} items)',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: hud.textMain,
                     fontSize: 13,
                     fontFamily: HudTheme.fontCore,
                   ),
@@ -187,22 +190,22 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.black45,
+            color: hud.textPaint.withValues(alpha: 0.45),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'MOVE TO RECYCLE BIN',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: hud.textMain,
                   fontFamily: HudTheme.fontCore,
                 ),
               ),
               Switch(
                 value: _useRecycleBin,
-                activeColor: HudTheme.accentAmber,
+                activeThumbColor: hud.accentAmber,
                 onChanged: (val) => setState(() => _useRecycleBin = val),
               ),
             ],
@@ -214,10 +217,10 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: _useRecycleBin
-                ? HudTheme.accentAmber.withValues(alpha: 0.1)
-                : HudTheme.accentRed.withValues(alpha: 0.1),
+                ? hud.accentAmber.withValues(alpha: 0.1)
+                : hud.accentRed.withValues(alpha: 0.1),
             border: Border.all(
-              color: _useRecycleBin ? HudTheme.accentAmber : HudTheme.accentRed,
+              color: _useRecycleBin ? hud.accentAmber : hud.accentRed,
             ),
             borderRadius: BorderRadius.circular(4),
           ),
@@ -226,7 +229,7 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
                 ? 'FILES WILL BE RECOVERABLE FROM YOUR SYSTEM RECYCLE BIN'
                 : '⚠ THIS CANNOT BE UNDONE — FILES WILL BE PERMANENTLY DELETED',
             style: TextStyle(
-              color: _useRecycleBin ? HudTheme.accentAmber : HudTheme.accentRed,
+              color: _useRecycleBin ? hud.accentAmber : hud.accentRed,
               fontSize: 12,
               fontWeight: FontWeight.bold,
               fontFamily: HudTheme.fontCore,
@@ -238,18 +241,19 @@ class _NukePreviewDialogState extends State<NukePreviewDialog> {
   }
 
   Widget _buildStat(String label, String value) {
+    final hud = context.hudTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(color: Colors.white54, fontSize: 11),
+          style: TextStyle(color: hud.textDim, fontSize: 11),
         ),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            color: HudTheme.accentRed,
+          style: TextStyle(
+            color: hud.accentRed,
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),

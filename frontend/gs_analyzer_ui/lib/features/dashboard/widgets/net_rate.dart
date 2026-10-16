@@ -81,7 +81,7 @@ class _NetRateState extends ConsumerState<NetRate> {
                 'RX RATE',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.white60
+                  color: theme.textDim
                 ),
               ),
               subtitle: Text(
@@ -106,7 +106,7 @@ class _NetRateState extends ConsumerState<NetRate> {
                 'TX RATE',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.white60
+                  color: theme.textDim
                 ),
               ),
               subtitle: Text(

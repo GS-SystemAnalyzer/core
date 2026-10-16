@@ -1,6 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 class CpuBarChart extends StatelessWidget {
   final Map<String, List<double>> coreGroups;
@@ -11,6 +11,7 @@ class CpuBarChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final labels = coreGroups.keys.toList();
     final barGroups = <BarChartGroupData>[];
+    final hud = context.hudTheme;
 
     int x = 0;
     for (final entry in coreGroups.entries) {
@@ -21,7 +22,7 @@ class CpuBarChart extends StatelessWidget {
           barRods: entry.value.map((load) {
             return BarChartRodData(
               toY: load,
-              color: load > 80 ? HudTheme.accentAmber : HudTheme.accentCyan,
+              color: load > 80 ? hud.accentAmber : hud.accentCyan,
               width: 14,
               borderRadius: BorderRadius.circular(3),
             );
@@ -40,8 +41,8 @@ class CpuBarChart extends StatelessWidget {
           show: true,
           drawVerticalLine: false,
           getDrawingHorizontalLine: (value) {
-            return const FlLine(
-              color: Colors.white12,
+            return FlLine(
+              color: hud.textMain.withValues(alpha: 0.12),
               strokeWidth: 1,
               dashArray: [4, 4],
             );
@@ -66,7 +67,7 @@ class CpuBarChart extends StatelessWidget {
                 }
                 return SideTitleWidget(
                   meta: meta,
-                  child: Text(labels[index], style: HudTheme.labelMuted),
+                  child: Text(labels[index], style: hud.label),
                 );
               },
             ),

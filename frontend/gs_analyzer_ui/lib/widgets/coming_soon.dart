@@ -87,6 +87,7 @@ class _DummyDashboardBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hud = context.hudTheme;
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -96,7 +97,7 @@ class _DummyDashboardBackground extends StatelessWidget {
             height: 40,
             width: 250,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
+              color: hud.textMain.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
           ),
@@ -108,7 +109,7 @@ class _DummyDashboardBackground extends StatelessWidget {
                   flex: 2,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
+                      color: hud.textMain.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
@@ -121,7 +122,7 @@ class _DummyDashboardBackground extends StatelessWidget {
                       Expanded(
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
+                            color: hud.textMain.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
@@ -130,7 +131,7 @@ class _DummyDashboardBackground extends StatelessWidget {
                       Expanded(
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
+                            color: hud.textMain.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),

@@ -5,7 +5,8 @@ import 'package:gs_analyzer_ui/models/automation_rule.dart';
 import 'package:gs_analyzer_ui/models/nuke_preview.dart';
 import 'package:gs_analyzer_ui/providers/automation_provider.dart';
 import 'package:gs_analyzer_ui/utils/formatters.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 class RuleEditorDialog extends ConsumerStatefulWidget {
   final AutomationRule? existingRule;
@@ -168,11 +169,12 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final hud = context.hudTheme;
     return Dialog(
-      backgroundColor: HudTheme.bgPanel,
+      backgroundColor: hud.panel,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: HudTheme.primaryBorder.withValues(alpha: 0.5)),
+        side: BorderSide(color: hud.border.withValues(alpha: 0.5)),
       ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 620, maxHeight: 680),
@@ -190,9 +192,9 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                 const SizedBox(height: 8),
                 Text(
                   _errorMessage!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: HudTheme.fontCore,
-                    color: HudTheme.accentRed,
+                    color: hud.accentRed,
                     fontSize: 12,
                   ),
                 ),
@@ -207,23 +209,24 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
   }
 
   Widget _buildHeader() {
+    final hud = context.hudTheme;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
           children: [
-            const Icon(Icons.security, color: HudTheme.accentCyan, size: 20),
+            Icon(Icons.security, color: hud.accentCyan, size: 20),
             const SizedBox(width: 8),
             Text(
               widget.existingRule != null
                   ? 'EDIT_AUTOMATION_RULE'
                   : 'NEW_AUTOMATION_RULE',
-              style: HudTheme.headerCyan,
+              style: hud.header,
             ),
           ],
         ),
         IconButton(
-          icon: const Icon(Icons.close, color: HudTheme.textDim, size: 20),
+          icon: Icon(Icons.close, color: hud.textDim, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ],
@@ -232,6 +235,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
 
   Widget _buildStepIndicator() {
     final steps = ['ROOT', 'CRITERIA', 'SCHEDULE', 'DRY_RUN', 'ARM'];
+    final hud = context.hudTheme;
     return Row(
       children: List.generate(steps.length, (index) {
         final isActive = index == _currentStep;
@@ -246,12 +250,12 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: isDone
-                      ? HudTheme.accentGreen
-                      : (isActive ? HudTheme.accentCyan : Colors.transparent),
+                      ? hud.accentGreen
+                      : (isActive ? hud.accentCyan : Colors.transparent),
                   border: Border.all(
                     color: isDone
-                        ? HudTheme.accentGreen
-                        : (isActive ? HudTheme.accentCyan : HudTheme.textDim),
+                        ? hud.accentGreen
+                        : (isActive ? hud.accentCyan : hud.textDim),
                   ),
                 ),
                 child: Text(
@@ -261,8 +265,8 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     color: (isActive || isDone)
-                        ? HudTheme.bgBase
-                        : HudTheme.textDim,
+                        ? hud.base
+                        : hud.textDim,
                   ),
                 ),
               ),
@@ -275,7 +279,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                     fontFamily: HudTheme.fontCore,
                     fontSize: 10,
                     fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                    color: isActive ? HudTheme.accentCyan : HudTheme.textDim,
+                    color: isActive ? hud.accentCyan : hud.textDim,
                     letterSpacing: 0.8,
                   ),
                 ),
@@ -284,7 +288,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                 Container(
                   width: 12,
                   height: 1,
-                  color: HudTheme.textDim.withValues(alpha: 0.3),
+                  color: hud.textDim.withValues(alpha: 0.3),
                   margin: const EdgeInsets.symmetric(horizontal: 4),
                 ),
             ],
@@ -311,28 +315,29 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
   }
 
   Widget _buildStepRoot() {
+    final hud = context.hudTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('RULE NAME', style: HudTheme.labelMuted),
+        Text('RULE NAME', style: hud.label),
         const SizedBox(height: 4),
         TextField(
           controller: _nameController,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: HudTheme.fontCore,
-            color: HudTheme.textMain,
+            color: hud.textMain,
             fontSize: 13,
           ),
           decoration: _inputDecoration('e.g. TEMP CLEANUP'),
         ),
         const SizedBox(height: 16),
-        const Text('CLEANUP ROOT PATH', style: HudTheme.labelMuted),
+        Text('CLEANUP ROOT PATH', style: hud.label),
         const SizedBox(height: 4),
         TextField(
           controller: _rootController,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: HudTheme.fontCore,
-            color: HudTheme.textMain,
+            color: hud.textMain,
             fontSize: 13,
           ),
           decoration: _inputDecoration(
@@ -359,17 +364,17 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: HudTheme.accentAmber.withValues(alpha: 0.1),
+            color: hud.accentAmber.withValues(alpha: 0.1),
             border: Border.all(
-              color: HudTheme.accentAmber.withValues(alpha: 0.4),
+              color: hud.accentAmber.withValues(alpha: 0.4),
             ),
             borderRadius: BorderRadius.circular(4),
           ),
-          child: const Row(
+          child: Row(
             children: [
               Icon(
                 Icons.shield_outlined,
-                color: HudTheme.accentAmber,
+                color: hud.accentAmber,
                 size: 18,
               ),
               const SizedBox(width: 8),
@@ -378,7 +383,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                   'SAFETY RAIL: Root paths are strictly allowlist-checked. Drive roots (C:\\), Windows, and Program Files are rejected outright.',
                   style: TextStyle(
                     fontFamily: HudTheme.fontCore,
-                    color: HudTheme.accentAmber,
+                    color: hud.accentAmber,
                     fontSize: 11,
                   ),
                 ),
@@ -391,14 +396,15 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
   }
 
   Widget _presetChip(String label, String path) {
+    final hud = context.hudTheme;
     return ActionChip(
-      backgroundColor: HudTheme.bgBase,
-      side: BorderSide(color: HudTheme.accentCyan.withValues(alpha: 0.4)),
+      backgroundColor: hud.base,
+      side: BorderSide(color: hud.accentCyan.withValues(alpha: 0.4)),
       label: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: HudTheme.fontCore,
-          color: HudTheme.accentCyan,
+          color: hud.accentCyan,
           fontSize: 11,
         ),
       ),
@@ -411,45 +417,46 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
   }
 
   Widget _buildStepCriteria() {
+    final hud = context.hudTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('OLDER THAN (DAYS)', style: HudTheme.labelMuted),
+        Text('OLDER THAN (DAYS)', style: hud.label),
         const SizedBox(height: 4),
         TextField(
           controller: _olderThanDaysController,
           keyboardType: TextInputType.number,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: HudTheme.fontCore,
-            color: HudTheme.textMain,
+            color: hud.textMain,
             fontSize: 13,
           ),
           decoration: _inputDecoration('e.g. 7 (days)'),
         ),
         const SizedBox(height: 14),
-        const Text('MINIMUM SIZE (MB, OPTIONAL)', style: HudTheme.labelMuted),
+        Text('MINIMUM SIZE (MB, OPTIONAL)', style: hud.label),
         const SizedBox(height: 4),
         TextField(
           controller: _largerThanMbController,
           keyboardType: TextInputType.number,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: HudTheme.fontCore,
-            color: HudTheme.textMain,
+            color: hud.textMain,
             fontSize: 13,
           ),
           decoration: _inputDecoration('e.g. 10 (leave empty for any size)'),
         ),
         const SizedBox(height: 14),
-        const Text(
+        Text(
           'EXTENSION ALLOWLIST (COMMA SEPARATED)',
-          style: HudTheme.labelMuted,
+          style: hud.label,
         ),
         const SizedBox(height: 4),
         TextField(
           controller: _extensionsController,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: HudTheme.fontCore,
-            color: HudTheme.textMain,
+            color: hud.textMain,
             fontSize: 13,
           ),
           decoration: _inputDecoration('e.g. .tmp, .log, .bak'),
@@ -458,17 +465,17 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'RECURSE SUBDIRECTORIES',
               style: TextStyle(
                 fontFamily: HudTheme.fontCore,
-                color: HudTheme.textMain,
+                color: hud.textMain,
                 fontSize: 12,
               ),
             ),
             Switch(
               value: _recurseSubdirectories,
-              activeColor: HudTheme.accentCyan,
+              activeThumbColor: hud.accentCyan,
               onChanged: (val) => setState(() => _recurseSubdirectories = val),
             ),
           ],
@@ -478,17 +485,18 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
   }
 
   Widget _buildStepSchedule() {
+    final hud = context.hudTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('RUN FREQUENCY', style: HudTheme.labelMuted),
+        Text('RUN FREQUENCY', style: hud.label),
         const SizedBox(height: 8),
         DropdownButtonFormField<AutomationScheduleKind>(
           value: _scheduleKind,
-          dropdownColor: HudTheme.bgPanel,
-          style: const TextStyle(
+          dropdownColor: hud.panel,
+          style: TextStyle(
             fontFamily: HudTheme.fontCore,
-            color: HudTheme.textMain,
+            color: hud.textMain,
             fontSize: 13,
           ),
           decoration: _inputDecoration('Frequency'),
@@ -529,23 +537,23 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
         const SizedBox(height: 16),
         if (_scheduleKind == AutomationScheduleKind.daily ||
             _scheduleKind == AutomationScheduleKind.weekly) ...[
-          const Text('TIME OF DAY (UTC)', style: HudTheme.labelMuted),
+          Text('TIME OF DAY (UTC)', style: hud.label),
           const SizedBox(height: 8),
           ListTile(
-            tileColor: HudTheme.bgBase,
+            tileColor: hud.base,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(4),
-              side: BorderSide(color: HudTheme.textDim.withValues(alpha: 0.3)),
+              side: BorderSide(color: hud.textDim.withValues(alpha: 0.3)),
             ),
             title: Text(
               '${_timeOfDay.hour.toString().padLeft(2, '0')}:${_timeOfDay.minute.toString().padLeft(2, '0')} UTC',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: HudTheme.fontCore,
-                color: HudTheme.accentCyan,
+                color: hud.accentCyan,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            trailing: const Icon(Icons.schedule, color: HudTheme.accentCyan),
+            trailing: Icon(Icons.schedule, color: hud.accentCyan),
             onTap: () async {
               final picked = await showTimePicker(
                 context: context,
@@ -556,14 +564,14 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
           ),
         ],
         if (_scheduleKind == AutomationScheduleKind.intervalHours) ...[
-          const Text('INTERVAL HOURS', style: HudTheme.labelMuted),
+          Text('INTERVAL HOURS', style: hud.label),
           const SizedBox(height: 4),
           TextField(
             controller: _intervalHoursController,
             keyboardType: TextInputType.number,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: HudTheme.fontCore,
-              color: HudTheme.textMain,
+              color: hud.textMain,
               fontSize: 13,
             ),
             decoration: _inputDecoration('e.g. 24'),
@@ -574,25 +582,26 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
   }
 
   Widget _buildStepDryRun() {
+    final hud = context.hudTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'MANDATORY DRY-RUN PREVIEW',
           style: TextStyle(
             fontFamily: HudTheme.fontCore,
-            color: HudTheme.accentAmber,
+            color: hud.accentAmber,
             fontWeight: FontWeight.bold,
             fontSize: 12,
             letterSpacing: 1,
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Every automated rule must execute a dry-run preview on real paths from your machine before it can be armed. No files will be deleted during this step.',
           style: TextStyle(
             fontFamily: HudTheme.fontCore,
-            color: HudTheme.textDim,
+            color: hud.textDim,
             fontSize: 12,
           ),
         ),
@@ -600,23 +609,23 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
         if (_dryRunPreview == null && !_isDryRunning)
           Center(
             child: ElevatedButton.icon(
-              icon: const Icon(
+              icon: Icon(
                 Icons.play_circle_outline,
                 size: 18,
-                color: HudTheme.accentCyan,
+                color: hud.accentCyan,
               ),
-              label: const Text(
+              label: Text(
                 'RUN DRY-RUN PREVIEW NOW',
                 style: TextStyle(
                   fontFamily: HudTheme.fontCore,
-                  color: HudTheme.accentCyan,
+                  color: hud.accentCyan,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: HudTheme.accentCyan.withValues(alpha: 0.15),
-                side: const BorderSide(color: HudTheme.accentCyan),
+                backgroundColor: hud.accentCyan.withValues(alpha: 0.15),
+                side: BorderSide(color: hud.accentCyan),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 12,
@@ -629,17 +638,17 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
             ),
           )
         else if (_isDryRunning)
-          const Center(
-            child: CircularProgressIndicator(color: HudTheme.accentCyan),
+          Center(
+            child: CircularProgressIndicator(color: hud.accentCyan),
           )
         else if (_dryRunPreview != null) ...[
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: HudTheme.bgBase,
+              color: hud.base,
               borderRadius: BorderRadius.circular(4),
               border: Border.all(
-                color: HudTheme.accentGreen.withValues(alpha: 0.6),
+                color: hud.accentGreen.withValues(alpha: 0.6),
               ),
             ),
             child: Column(
@@ -647,17 +656,17 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
               children: [
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.check_circle,
-                      color: HudTheme.accentGreen,
+                      color: hud.accentGreen,
                       size: 18,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'PREVIEW RESULT: WOULD DELETE ${_dryRunPreview!.totalFiles} FILES (${formatBytes(_dryRunPreview!.totalBytes)})',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: HudTheme.fontCore,
-                        color: HudTheme.accentGreen,
+                        color: hud.accentGreen,
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
@@ -667,9 +676,9 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                 const SizedBox(height: 8),
                 Text(
                   'Scope evaluated on ${_rootController.text.trim()}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: HudTheme.fontCore,
-                    color: HudTheme.textDim,
+                    color: hud.textDim,
                     fontSize: 11,
                   ),
                 ),
@@ -682,14 +691,15 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
   }
 
   Widget _buildStepArm() {
+    final hud = context.hudTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'CONFIRM AND ARM RULE',
           style: TextStyle(
             fontFamily: HudTheme.fontCore,
-            color: HudTheme.accentCyan,
+            color: hud.accentCyan,
             fontSize: 13,
             fontWeight: FontWeight.bold,
             letterSpacing: 1,
@@ -699,10 +709,10 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: HudTheme.bgBase,
+            color: hud.base,
             borderRadius: BorderRadius.circular(4),
             border: Border.all(
-              color: HudTheme.primaryBorder.withValues(alpha: 0.3),
+              color: hud.border.withValues(alpha: 0.3),
             ),
           ),
           child: Column(
@@ -710,38 +720,38 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
             children: [
               Text(
                 'RULE: ${_nameController.text.trim()}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: HudTheme.fontCore,
-                  color: HudTheme.textMain,
+                  color: hud.textMain,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 'ROOT: ${_rootController.text.trim()}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: HudTheme.fontCore,
-                  color: HudTheme.textDim,
+                  color: hud.textDim,
                   fontSize: 12,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 'SCHEDULE: ${_scheduleKind.toSerializedString()}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: HudTheme.fontCore,
-                  color: HudTheme.textDim,
+                  color: hud.textDim,
                   fontSize: 12,
                 ),
               ),
               const SizedBox(height: 8),
-              Divider(color: HudTheme.textDim.withValues(alpha: 0.2)),
+              Divider(color: hud.textDim.withValues(alpha: 0.2)),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'MANDATORY RECYCLE BIN: Automated runs are moved to the OS recycle bin for safe recovery.',
                 style: TextStyle(
                   fontFamily: HudTheme.fontCore,
-                  color: HudTheme.accentGreen,
+                  color: hud.accentGreen,
                   fontSize: 11,
                 ),
               ),
@@ -751,23 +761,23 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
         const SizedBox(height: 16),
         CheckboxListTile(
           value: _armImmediately,
-          activeColor: HudTheme.accentGreen,
-          tileColor: HudTheme.bgBase,
+          activeColor: hud.accentGreen,
+          tileColor: hud.base,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-          title: const Text(
+          title: Text(
             'ARM THIS RULE IMMEDIATELY',
             style: TextStyle(
               fontFamily: HudTheme.fontCore,
-              color: HudTheme.textMain,
+              color: hud.textMain,
               fontSize: 12,
               fontWeight: FontWeight.bold,
             ),
           ),
-          subtitle: const Text(
+          subtitle: Text(
             'Rule will run automatically on its schedule. If unchecked, rule remains un-armed until reviewed.',
             style: TextStyle(
               fontFamily: HudTheme.fontCore,
-              color: HudTheme.textDim,
+              color: hud.textDim,
               fontSize: 11,
             ),
           ),
@@ -778,23 +788,24 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
   }
 
   Widget _buildNavigationButtons() {
+    final hud = context.hudTheme;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         if (_currentStep > 0)
           OutlinedButton(
             style: OutlinedButton.styleFrom(
-              side: BorderSide(color: HudTheme.textDim.withValues(alpha: 0.4)),
+              side: BorderSide(color: hud.textDim.withValues(alpha: 0.4)),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
             onPressed: () => setState(() => _currentStep--),
-            child: const Text(
+            child: Text(
               'BACK',
               style: TextStyle(
                 fontFamily: HudTheme.fontCore,
-                color: HudTheme.textMuted,
+                color: hud.textMuted,
               ),
             ),
           )
@@ -804,11 +815,11 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
           children: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
+              child: Text(
                 'CANCEL',
                 style: TextStyle(
                   fontFamily: HudTheme.fontCore,
-                  color: HudTheme.textDim,
+                  color: hud.textDim,
                 ),
               ),
             ),
@@ -816,8 +827,8 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
             if (_currentStep < 4)
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: HudTheme.accentCyan.withValues(alpha: 0.15),
-                  side: const BorderSide(color: HudTheme.accentCyan),
+                  backgroundColor: hud.accentCyan.withValues(alpha: 0.15),
+                  side: BorderSide(color: hud.accentCyan),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(4),
                   ),
@@ -835,31 +846,31 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                   _currentStep == 3 && _dryRunPreview == null
                       ? 'PREVIEW'
                       : 'NEXT',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: HudTheme.fontCore,
-                    color: HudTheme.accentCyan,
+                    color: hud.accentCyan,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               )
             else
               ElevatedButton.icon(
-                icon: const Icon(
+                icon: Icon(
                   Icons.check,
                   size: 16,
-                  color: HudTheme.accentGreen,
+                  color: hud.accentGreen,
                 ),
-                label: const Text(
+                label: Text(
                   'SAVE & FINISH',
                   style: TextStyle(
                     fontFamily: HudTheme.fontCore,
-                    color: HudTheme.accentGreen,
+                    color: hud.accentGreen,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: HudTheme.accentGreen.withValues(alpha: 0.15),
-                  side: const BorderSide(color: HudTheme.accentGreen),
+                  backgroundColor: hud.accentGreen.withValues(alpha: 0.15),
+                  side: BorderSide(color: hud.accentGreen),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(4),
                   ),
@@ -873,24 +884,25 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
   }
 
   InputDecoration _inputDecoration(String hint) {
+    final hud = context.hudTheme;
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(
         fontFamily: HudTheme.fontCore,
-        color: HudTheme.textDim.withValues(alpha: 0.5),
+        color: hud.textDim.withValues(alpha: 0.5),
         fontSize: 12,
       ),
       filled: true,
-      fillColor: HudTheme.bgBase,
+      fillColor: hud.base,
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(4),
-        borderSide: BorderSide(color: HudTheme.textDim.withValues(alpha: 0.3)),
+        borderSide: BorderSide(color: hud.textDim.withValues(alpha: 0.3)),
       ),
-      focusedBorder: const OutlineInputBorder(
+      focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.all(Radius.circular(4)),
-        borderSide: BorderSide(color: HudTheme.accentCyan),
+        borderSide: BorderSide(color: hud.accentCyan),
       ),
     );
   }

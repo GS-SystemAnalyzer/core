@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/nuke_provider.dart';
 import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import '../services/api_service.dart';
 
 class NukeProgressDialog extends ConsumerStatefulWidget {
@@ -27,22 +28,23 @@ class _NukeProgressDialogState extends ConsumerState<NukeProgressDialog> {
     final target = ref.watch(nukeTargetProvider);
     final completed = ref.watch(nukeCompletedProvider);
     final total = ref.watch(nukeTotalProvider);
+    final hud = context.hudTheme;
 
     return PopScope(
       canPop: false,
       child: AlertDialog(
-        backgroundColor: HudTheme.bgPanel,
+        backgroundColor: hud.panel,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(color: HudTheme.accentRed, width: 2),
+          side: BorderSide(color: hud.accentRed, width: 2),
           borderRadius: BorderRadius.circular(8),
         ),
         title: Row(
           children: [
-            const Expanded(
-              child: Text('NUKE IN PROGRESS...', style: HudTheme.actionRed),
+            Expanded(
+              child: Text('NUKE IN PROGRESS...', style: hud.actionRed),
             ),
             IconButton(
-              icon: const Icon(Icons.remove, color: HudTheme.accentRed),
+              icon: Icon(Icons.remove, color: hud.accentRed),
               tooltip: 'Minimize',
               visualDensity: VisualDensity.compact,
               onPressed: () {
@@ -58,22 +60,22 @@ class _NukeProgressDialogState extends ConsumerState<NukeProgressDialog> {
           children: [
             Text(
               'Target: $target',
-              style: HudTheme.bodyText,
+              style: hud.body,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),
             Text(
               total > 0 ? 'Completed: $completed of $total' : 'Completed: $completed',
-              style: HudTheme.bodyText,
+              style: hud.body,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 16),
             LinearProgressIndicator(
               value: progress / 100,
-              color: HudTheme.accentRed,
-              backgroundColor: Colors.white10,
+              color: hud.accentRed,
+              backgroundColor: hud.textMain.withValues(alpha: 0.1),
               minHeight: 8,
             ),
             const SizedBox(height: 8),
@@ -81,7 +83,7 @@ class _NukeProgressDialogState extends ConsumerState<NukeProgressDialog> {
               alignment: Alignment.centerRight,
               child: Text(
                 '${progress.toStringAsFixed(1)}%',
-                style: HudTheme.actionRed,
+                style: hud.actionRed,
               ),
             ),
           ],
@@ -89,12 +91,12 @@ class _NukeProgressDialogState extends ConsumerState<NukeProgressDialog> {
         actions: [
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: HudTheme.accentRed.withValues(alpha: 0.2),
-              foregroundColor: HudTheme.accentRed,
-              side: const BorderSide(color: HudTheme.accentRed),
+              backgroundColor: hud.accentRed.withValues(alpha: 0.2),
+              foregroundColor: hud.accentRed,
+              side: BorderSide(color: hud.accentRed),
             ),
-            icon: const Icon(Icons.cancel_outlined, color: HudTheme.accentRed),
-            label: const Text(
+            icon: Icon(Icons.cancel_outlined, color: hud.accentRed),
+            label: Text(
               'ABORT',
               style: TextStyle(
                 fontWeight: FontWeight.bold,

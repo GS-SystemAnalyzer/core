@@ -2,33 +2,39 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:gs_analyzer_ui/models/extension_breakdown_model.dart';
 import 'package:gs_analyzer_ui/models/watcher_event.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 class CsvExporter {
+  static Future<Directory> _resolveTargetDirectory() async {
+    final home = Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'];
+    if (home != null) {
+      final sep = Platform.pathSeparator;
+      final downloads = Directory('$home${sep}Downloads');
+      if (await downloads.exists()) return downloads;
+
+      final desktop = Directory('$home${sep}Desktop');
+      if (await desktop.exists()) return desktop;
+
+      final homeDir = Directory(home);
+      if (await homeDir.exists()) return homeDir;
+    }
+    return Directory.systemTemp;
+  }
+
   static Future<void> exportExtensionBreakdown(
     BuildContext context,
     List<ExtensionBreakdownItem> items,
   ) async {
     try {
-      final userProfile = Platform.environment['USERPROFILE'];
-      if (userProfile == null) {
-        throw Exception('Could not locate user profile directory.');
-      }
-
-      var targetDir = Directory('$userProfile\\Downloads');
-      if (!await targetDir.exists()) {
-        targetDir = Directory('$userProfile\\Desktop');
-        if (!await targetDir.exists()) {
-          throw Exception('Could not locate Downloads or Desktop folder.');
-        }
-      }
+      final hud = context.hudTheme;
+      final targetDir = await _resolveTargetDirectory();
 
       final timestamp = DateTime.now()
           .toIso8601String()
           .replaceAll(':', '-')
           .split('.')
           .first;
-      final file = File('${targetDir.path}\\ExtensionBreakdown_$timestamp.csv');
+      final file = File('${targetDir.path}${Platform.pathSeparator}ExtensionBreakdown_$timestamp.csv');
 
       final buffer = StringBuffer();
       // CSV Header
@@ -59,21 +65,22 @@ class CsvExporter {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Exported to ${file.path}', style: HudTheme.bodyText),
-            backgroundColor: HudTheme.bgPanel,
+            content: Text('Exported to ${file.path}', style: hud.body),
+            backgroundColor: hud.panel,
             duration: const Duration(seconds: 4),
           ),
         );
       }
     } catch (e) {
       if (context.mounted) {
+        final hud = context.hudTheme;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               'Failed to export CSV: $e',
-              style: HudTheme.actionRed,
+              style: hud.actionRed,
             ),
-            backgroundColor: HudTheme.bgPanel,
+            backgroundColor: hud.panel,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -86,25 +93,14 @@ class CsvExporter {
     List<WatcherEvent> events,
   ) async {
     try {
-      final userProfile = Platform.environment['USERPROFILE'];
-      if (userProfile == null) {
-        throw Exception('Could not locate user profile directory.');
-      }
-
-      var targetDir = Directory('$userProfile\\Downloads');
-      if (!await targetDir.exists()) {
-        targetDir = Directory('$userProfile\\Desktop');
-        if (!await targetDir.exists()) {
-          throw Exception('Could not locate Downloads or Desktop folder.');
-        }
-      }
+      final targetDir = await _resolveTargetDirectory();
 
       final timestamp = DateTime.now()
           .toIso8601String()
           .replaceAll(':', '-')
           .split('.')
           .first;
-      final file = File('${targetDir.path}\\WatcherEventLog_$timestamp.csv');
+      final file = File('${targetDir.path}${Platform.pathSeparator}WatcherEventLog_$timestamp.csv');
 
       final buffer = StringBuffer();
       // CSV Header
@@ -128,8 +124,8 @@ class CsvExporter {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Exported to ${file.path}', style: HudTheme.bodyText),
-            backgroundColor: HudTheme.bgPanel,
+            content: Text('Exported to ${file.path}', style: context.hudTheme.body),
+            backgroundColor: context.hudTheme.panel,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -140,9 +136,9 @@ class CsvExporter {
           SnackBar(
             content: Text(
               'Failed to export CSV: $e',
-              style: HudTheme.actionRed,
+              style: context.hudTheme.actionRed,
             ),
-            backgroundColor: HudTheme.bgPanel,
+            backgroundColor: context.hudTheme.panel,
             duration: const Duration(seconds: 4),
           ),
         );

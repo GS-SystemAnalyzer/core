@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/providers/temp_cleaner_provider.dart';
 import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
-import 'package:gs_analyzer_ui/utils/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 class TempCleanProgressDialog extends ConsumerStatefulWidget {
   const TempCleanProgressDialog({super.key});
@@ -35,28 +36,29 @@ class _TempCleanProgressDialogState
     final double progressValue = total > 0
         ? (completed / total).clamp(0.0, 1.0)
         : (progress / 100).clamp(0.0, 1.0);
+    final hud = context.hudTheme;
 
     return PopScope(
       canPop: false,
       child: AlertDialog(
-        backgroundColor: HudTheme.bgPanel,
+        backgroundColor: hud.panel,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(color: HudTheme.accentGreen, width: 2),
+          side: BorderSide(color: hud.accentGreen, width: 2),
           borderRadius: BorderRadius.circular(8),
         ),
         title: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.cleaning_services_outlined,
-              color: HudTheme.accentGreen,
+              color: hud.accentGreen,
               size: 24,
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Text(
                 'PURGING TEMP SECTORS...',
                 style: TextStyle(
-                  color: HudTheme.accentGreen,
+                  color: hud.accentGreen,
                   fontFamily: HudTheme.fontCore,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -64,7 +66,7 @@ class _TempCleanProgressDialogState
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.remove, color: HudTheme.accentGreen),
+              icon: Icon(Icons.remove, color: hud.accentGreen),
               tooltip: 'Minimize',
               visualDensity: VisualDensity.compact,
               onPressed: () {
@@ -82,22 +84,22 @@ class _TempCleanProgressDialogState
             children: [
               Text(
                 target.isNotEmpty ? 'Target: $target' : 'Target: INITIALIZING...',
-                style: HudTheme.bodyText,
+                style: hud.body,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
               Text(
                 total > 0 ? 'Completed: $completed of $total' : 'Completed: $completed',
-                style: HudTheme.bodyText,
+                style: hud.body,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 16),
               LinearProgressIndicator(
                 value: progressValue,
-                color: HudTheme.accentGreen,
-                backgroundColor: Colors.white10,
+                color: hud.accentGreen,
+                backgroundColor: hud.textMain.withValues(alpha: 0.1),
                 minHeight: 8,
               ),
               const SizedBox(height: 8),
@@ -105,7 +107,7 @@ class _TempCleanProgressDialogState
                 alignment: Alignment.centerRight,
                 child: Text(
                   '${progress.toStringAsFixed(1)}%',
-                  style: HudTheme.statGreen,
+                  style: hud.statGreen,
                 ),
               ),
             ],

@@ -14,6 +14,11 @@ import 'package:gs_analyzer_ui/screen/telemetry_history_screen.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/utils/theme/hud_color.dart';
 import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
+import 'package:gs_analyzer_ui/models/process_telemetry.dart';
+import 'package:gs_analyzer_ui/providers/cpu_provider.dart';
+import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
+import 'package:gs_analyzer_ui/providers/ram_provider.dart';
+import 'package:gs_analyzer_ui/screen/process_explorer_screen.dart';
 import 'package:gs_analyzer_ui/widgets/side_bar_widget.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -31,6 +36,20 @@ class MockEmptyRulesNotifier extends AutomationRulesNotifier {
 
 class MockNetworkNotifier extends StateNotifier<NetworkState> implements NetworkNotifier {
   MockNetworkNotifier([NetworkState state = const NetworkState()]) : super(state);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class MockRamNotifier extends StateNotifier<RamState> implements RamNotifier {
+  MockRamNotifier([RamState state = const RamState()]) : super(state);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class MockCpuNotifier extends StateNotifier<CpuState> implements CpuNotifier {
+  MockCpuNotifier([CpuState state = const CpuState()]) : super(state);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -327,6 +346,131 @@ void main() {
 
       final darkStandbySub = tester.widget<Text>(find.text('Awaiting target matrix assignment for Directory Indexing.'));
       expect(darkStandbySub.style?.color, equals(HudColor.darkTextDim));
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('ProcessExplorerScreen adapts toolbar borders, chips, table header, and row borders between themes', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final sampleGroup = ProcessGroup(
+        name: 'svchost.exe',
+        processes: [
+          ProcessTelemetry(
+            pid: 1234,
+            name: 'svchost.exe',
+            ramMb: 128.0,
+            percentMem: 1.0,
+            cpuPercent: 2.0,
+            status: 'RUNNING',
+            user: 'SYSTEM',
+          ),
+        ],
+      );
+
+      final ramState = RamState(
+        isLoading: false,
+        activeGb: 4.0,
+        totalGb: 16.0,
+        groupedProcesses: [sampleGroup],
+      );
+
+      const testDensity = HudDensity(
+        gap: 8.0,
+        panelPad: 12.0,
+        rowHeight: 32.0,
+        titleSize: 12.0,
+        valueSize: 32.0,
+        isMax: false,
+      );
+
+      // 1. Light Mode
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ramProvider.overrideWith((ref) => MockRamNotifier(ramState)),
+            cpuProvider.overrideWith((ref) => MockCpuNotifier(const CpuState())),
+            hudDensityProvider.overrideWithValue(testDensity),
+          ],
+          child: MaterialApp(
+            theme: HudTheme.lightTheme(HudColor.lightAccentCyan),
+            home: const Scaffold(
+              body: ProcessExplorerScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final lightLoadBarContainer = tester.widget<Container>(
+        find.ancestor(of: find.text('PROCS: 1'), matching: find.byType(Container)).first,
+      );
+      final lightLoadBarBorder = (lightLoadBarContainer.decoration as BoxDecoration).border as Border;
+      expect(lightLoadBarBorder.bottom.color, equals(HudColor.lightTextMain.withValues(alpha: 0.1)));
+
+      final lightToolbarContainer = tester.widget<Container>(
+        find.ancestor(of: find.byType(TextField), matching: find.byType(Container)).first,
+      );
+      final lightToolbarBorder = (lightToolbarContainer.decoration as BoxDecoration).border as Border;
+      expect(lightToolbarBorder.bottom.color, equals(HudColor.lightTextMain.withValues(alpha: 0.1)));
+
+      final lightChipContainer = tester.widget<Container>(
+        find.ancestor(of: find.text('SORT: % CPU'), matching: find.byType(Container)).first,
+      );
+      final lightChipDec = lightChipContainer.decoration as BoxDecoration;
+      expect(lightChipDec.color, equals(HudColor.lightTextMain.withValues(alpha: 0.04)));
+
+      final lightHeaderContainer = tester.widget<Container>(
+        find.ancestor(of: find.text('COMMAND'), matching: find.byType(Container)).first,
+      );
+      final lightHeaderBorder = (lightHeaderContainer.decoration as BoxDecoration).border as Border;
+      expect(lightHeaderBorder.bottom.color, equals(HudColor.lightTextMain.withValues(alpha: 0.1)));
+
+      // 2. Dark Mode
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ramProvider.overrideWith((ref) => MockRamNotifier(ramState)),
+            cpuProvider.overrideWith((ref) => MockCpuNotifier(const CpuState())),
+            hudDensityProvider.overrideWithValue(testDensity),
+          ],
+          child: MaterialApp(
+            theme: HudTheme.darkTheme(HudColor.darkAccentCyan),
+            home: const Scaffold(
+              body: ProcessExplorerScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final darkLoadBarContainer = tester.widget<Container>(
+        find.ancestor(of: find.text('PROCS: 1'), matching: find.byType(Container)).first,
+      );
+      final darkLoadBarBorder = (darkLoadBarContainer.decoration as BoxDecoration).border as Border;
+      expect(darkLoadBarBorder.bottom.color, equals(HudColor.darkTextMain.withValues(alpha: 0.1)));
+
+      final darkToolbarContainer = tester.widget<Container>(
+        find.ancestor(of: find.byType(TextField), matching: find.byType(Container)).first,
+      );
+      final darkToolbarBorder = (darkToolbarContainer.decoration as BoxDecoration).border as Border;
+      expect(darkToolbarBorder.bottom.color, equals(HudColor.darkTextMain.withValues(alpha: 0.1)));
+
+      final darkChipContainer = tester.widget<Container>(
+        find.ancestor(of: find.text('SORT: % CPU'), matching: find.byType(Container)).first,
+      );
+      final darkChipDec = darkChipContainer.decoration as BoxDecoration;
+      expect(darkChipDec.color, equals(HudColor.darkTextMain.withValues(alpha: 0.04)));
+
+      final darkHeaderContainer = tester.widget<Container>(
+        find.ancestor(of: find.text('COMMAND'), matching: find.byType(Container)).first,
+      );
+      final darkHeaderBorder = (darkHeaderContainer.decoration as BoxDecoration).border as Border;
+      expect(darkHeaderBorder.bottom.color, equals(HudColor.darkTextMain.withValues(alpha: 0.1)));
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();

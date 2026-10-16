@@ -174,7 +174,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   deleteIcon: Icon(
                     Icons.close,
                     size: 16,
-                    color: hud.textMain.withValues(alpha: 0.70),
+                    color: hud.textMuted,
                   ),
                   onDeleted: () {
                     scan.excludedPaths.remove(path);
@@ -682,7 +682,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   : hud.textMain.withValues(alpha: 0.1),
               foregroundColor: state.hasUnsavedChanges
                   ? hud.textPaint
-                  : hud.textMain.withValues(alpha: 0.54),
+                  : hud.textDim,
             ),
             onPressed: state.hasUnsavedChanges
                 ? () async {
