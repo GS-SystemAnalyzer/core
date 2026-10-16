@@ -110,10 +110,12 @@ void main() {
       expect(darkExt.fileTypeColor('ARCHIVES'), darkExt.accentAmber);
       expect(darkExt.fileTypeColor('code'), darkExt.accentPurple);
       expect(darkExt.fileTypeColor('Code'), darkExt.accentPurple);
-      expect(darkExt.fileTypeColor('system'), darkExt.textDim);
-      expect(darkExt.fileTypeColor('SYSTEM'), darkExt.textDim);
-      expect(darkExt.fileTypeColor('other'), darkExt.textDim.withValues(alpha: 0.2));
-      expect(darkExt.fileTypeColor('unknown'), darkExt.textDim.withValues(alpha: 0.2));
+      expect(darkExt.fileTypeColor('system'), darkExt.textMain.withValues(alpha: 0.38));
+      expect(darkExt.fileTypeColor('SYSTEM'), darkExt.textMain.withValues(alpha: 0.38));
+      expect(darkExt.fileTypeColor('System'), darkExt.textMain.withValues(alpha: 0.38));
+      expect(darkExt.fileTypeColor('other'), darkExt.textMain.withValues(alpha: 0.7));
+      expect(darkExt.fileTypeColor('unknown'), darkExt.textMain.withValues(alpha: 0.7));
+      expect(darkExt.fileTypeColor(''), darkExt.textMain.withValues(alpha: 0.7));
 
       final lightExt = HudTheme.lightTheme(Colors.blue).extension<HudThemeExtension>()!;
       expect(lightExt.fileTypeColor('media'), lightExt.accentCyan);
@@ -121,8 +123,19 @@ void main() {
       expect(lightExt.fileTypeColor('executables'), lightExt.accentRed);
       expect(lightExt.fileTypeColor('archives'), lightExt.accentAmber);
       expect(lightExt.fileTypeColor('code'), lightExt.accentPurple);
-      expect(lightExt.fileTypeColor('system'), lightExt.textDim);
-      expect(lightExt.fileTypeColor('unknown'), lightExt.textDim.withValues(alpha: 0.2));
+      expect(lightExt.fileTypeColor('system'), lightExt.textMain.withValues(alpha: 0.38));
+      expect(lightExt.fileTypeColor('unknown'), lightExt.textMain.withValues(alpha: 0.7));
+    });
+
+    test('fileTypeColor computes system and default categories dynamically from textMain', () {
+      final baseExt = HudTheme.darkTheme(Colors.cyan).extension<HudThemeExtension>()!;
+      const customTextMain = Color(0xFF123456);
+      final customExt = baseExt.copyWith(textMain: customTextMain);
+
+      expect(customExt.fileTypeColor('system'), customTextMain.withValues(alpha: 0.38));
+      expect(customExt.fileTypeColor('SYSTEM'), customTextMain.withValues(alpha: 0.38));
+      expect(customExt.fileTypeColor('default'), customTextMain.withValues(alpha: 0.7));
+      expect(customExt.fileTypeColor('anything_else'), customTextMain.withValues(alpha: 0.7));
     });
   });
 
