@@ -136,35 +136,14 @@ public class ScanExportServiceTests
 	}
 
 	[Fact]
-	public async Task ExportHtmlAsync_IsOfflineSelfContained_WithInlineSvgAndCyberHudTheme()
+	public async Task ExportAsync_HtmlFormat_ThrowsNotSupportedException()
 	{
 		var root = @"C:\Data";
-		var rootMeta = new ScanRootMeta(root, 2, DateTimeOffset.UtcNow, 10240, 2, root);
-		_mockCache.Setup(c => c.GetScanRoot(root, null)).Returns(rootMeta);
-		_mockCache.Setup(c => c.HasScanRoot(root)).Returns(true);
-
-		var file1 = new CachedFileEntry("song.mp3", ".mp3", 6000, DateTime.UtcNow);
-		var file2 = new CachedFileEntry("doc.pdf", ".pdf", 4240, DateTime.UtcNow);
-		var dir = new CachedDirNode(root, Array.Empty<string>(), new[] { file1, file2 }, 10240, 10240, DateTimeOffset.UtcNow, false);
-		_mockCache.Setup(c => c.GetNodesUnderRoot(root)).Returns(new[] { dir });
-
 		using var ms = new MemoryStream();
-		await _exportService.ExportAsync(root, "html", false, ms);
-
-		var html = Encoding.UTF8.GetString(ms.ToArray());
-
-		// Self contained checks
-		Assert.Contains("<!DOCTYPE html>", html);
-		Assert.Contains("<svg width=\"240\" height=\"240\"", html);
-		Assert.Contains("CYBER-HUD OFFLINE REPORT", html);
-		Assert.Contains("--accent-cyan: #00f0ff", html);
-		Assert.Contains("MEDIA", html);
-		Assert.Contains("DOCUMENTS", html);
-
-		// Verify zero external network references
-		Assert.DoesNotContain("http://", html);
-		Assert.DoesNotContain("https://", html);
+		await Assert.ThrowsAsync<NotSupportedException>(() =>
+			_exportService.ExportAsync(root, "html", false, ms));
 	}
+
 
 	[Fact]
 	public async Task ExportAsync_WithRedactPathsTrue_ReplacesUserProfileWithTilde()
@@ -221,4 +200,58 @@ public class ScanExportServiceTests
 		var directories = tree.GetProperty("directories");
 		Assert.Equal(2, directories.GetArrayLength());
 	}
+
+	[Fact]
+	public void GetReportSummary_ReturnsAggregatedDataAndRespectsRedaction()
+	{
+		var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+		var root = userProfile;
+		var rootMeta = new ScanRootMeta(root, 2, DateTimeOffset.UtcNow, 10240, 2, root);
+		_mockCache.Setup(c => c.GetScanRoot(root, null)).Returns(rootMeta);
+
+		var file1 = new CachedFileEntry("song.mp3", ".mp3", 6000, DateTime.UtcNow);
+		var file2 = new CachedFileEntry("doc.pdf", ".pdf", 4240, DateTime.UtcNow);
+		var dir = new CachedDirNode(root, Array.Empty<string>(), new[] { file1, file2 }, 10240, 10240, DateTimeOffset.UtcNow, false);
+		_mockCache.Setup(c => c.GetNodesUnderRoot(root)).Returns(new[] { dir });
+
+		var summary = _exportService.GetReportSummary(root, redactPaths: true);
+
+		Assert.NotNull(summary);
+		Assert.Equal("~", summary.Root);
+		Assert.Equal(10240, summary.TotalBytes);
+		Assert.Equal(2, summary.TotalFiles);
+		Assert.Equal(1, summary.DirectoryNodeCount);
+		Assert.NotEmpty(summary.Categories);
+		Assert.NotEmpty(summary.TopDirectories);
+		Assert.Equal("~", summary.TopDirectories[0].Path);
+	}
+
+	[Fact]
+	public void GetReportSummary_LimitsTopDirectoriesTo100()
+	{
+		var root = @"C:\Data";
+		var rootMeta = new ScanRootMeta(root, 150, DateTimeOffset.UtcNow, 150000, 150, root);
+		_mockCache.Setup(c => c.GetScanRoot(root, null)).Returns(rootMeta);
+
+		var nodes = Enumerable.Range(1, 150)
+			.Select(i => new CachedDirNode(
+				$@"C:\Data\Dir{i}",
+				Array.Empty<string>(),
+				new[] { new CachedFileEntry($"f{i}.txt", ".txt", i * 10, DateTime.UtcNow) },
+				i * 10,
+				i * 10,
+				DateTimeOffset.UtcNow,
+				false))
+			.ToArray();
+
+		_mockCache.Setup(c => c.GetNodesUnderRoot(root)).Returns(nodes);
+
+		var summary = _exportService.GetReportSummary(root, redactPaths: false);
+
+		Assert.NotNull(summary);
+		Assert.Equal(100, summary.TopDirectories.Count);
+		// Assert top directory is the largest recursive size
+		Assert.Equal(1500, summary.TopDirectories[0].RecursiveBytes);
+	}
 }
+

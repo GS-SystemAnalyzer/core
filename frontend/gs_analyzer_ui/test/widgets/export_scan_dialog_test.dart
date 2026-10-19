@@ -11,6 +11,7 @@ import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
 import 'package:gs_analyzer_ui/widgets/export_scan_dialog.dart';
 import 'package:mocktail/mocktail.dart';
 
+
 class MockApiService extends Mock implements ApiService {}
 
 void main() {
@@ -321,5 +322,54 @@ void main() {
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
     });
+
+    testWidgets('calls getScanReportSummary when HTML format is selected', (tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final mockApi = MockApiService();
+      when(() => mockApi.getScanReportSummary(
+        root: any(named: 'root'),
+        redactPaths: any(named: 'redactPaths'),
+      )).thenThrow(Exception('Simulated summary error'));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: HudTheme.darkTheme(HudColor.darkAccentCyan),
+            home: Scaffold(
+              body: ExportScanDialog(
+                driveName: r'C:\',
+                apiService: mockApi,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap HTML format
+      await tester.tap(find.text('HTML'));
+      await tester.pumpAndSettle();
+
+      // Tap EXPORT
+      final exportBtn = find.widgetWithText(OutlinedButton, 'EXPORT');
+      await tester.ensureVisible(exportBtn);
+      await tester.tap(exportBtn);
+      await tester.pumpAndSettle();
+
+      verify(() => mockApi.getScanReportSummary(
+        root: r'C:\',
+        redactPaths: false,
+      )).called(1);
+
+      expect(find.text('Exception: Simulated summary error'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    });
   });
 }
+

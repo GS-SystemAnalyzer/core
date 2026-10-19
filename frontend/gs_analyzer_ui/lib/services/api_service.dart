@@ -22,6 +22,8 @@ import 'package:gs_analyzer_ui/models/scan_diff.dart';
 import 'package:gs_analyzer_ui/models/cache_stats.dart';
 import 'package:gs_analyzer_ui/models/scan_export_options.dart';
 import 'package:gs_analyzer_ui/models/automation_rule.dart';
+import 'package:gs_analyzer_ui/models/scan_report_summary.dart';
+
 
 class ApiService {
   final http.Client _client;
@@ -913,6 +915,33 @@ class ApiService {
       );
     }
   }
+
+  /// Retrieves bounded scan report summary data (top 100 directories, categories, metadata).
+  /// Throws [DiffNoScanException] if 409 Conflict is returned (no cache).
+  Future<ScanReportSummary> getScanReportSummary({
+    required String root,
+    bool redactPaths = false,
+  }) async {
+    final uri = Uri.parse('http://localhost:5200/api/scan/report-summary').replace(
+      queryParameters: {
+        'root': root,
+        'redactPaths': redactPaths.toString(),
+      },
+    );
+
+    final response = await _client.get(uri);
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      return ScanReportSummary.fromJson(data);
+    } else if (response.statusCode == 409) {
+      throw const DiffNoScanException();
+    } else {
+      throw Exception(
+        'Failed to get scan report summary: HTTP ${response.statusCode}',
+      );
+    }
+  }
+
 
   Future<List<AutomationRule>> getAutomationRules() async {
     final uri = Uri.parse('$automationUrl/rules');
