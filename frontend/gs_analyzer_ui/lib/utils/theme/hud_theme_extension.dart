@@ -155,7 +155,7 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
     case 'code':
       return accentPurple;
     case 'system':
-      return textMain.withValues(alpha: 0.38);
+      return accentBlue;
     default:
       return textMain.withValues(alpha: 0.7);
   }

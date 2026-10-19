@@ -79,6 +79,41 @@ void main() {
       expect(copied.statGreen, ext.statGreen);
     });
 
+    test('copyWith preserves every field when called with no arguments', () {
+      final ext = HudTheme.darkTheme(Colors.cyan).extension<HudThemeExtension>()!;
+      final copied = ext.copyWith();
+
+      expect(copied.accentColor, ext.accentColor);
+      expect(copied.base, ext.base);
+      expect(copied.panel, ext.panel);
+      expect(copied.border, ext.border);
+      expect(copied.accentCyan, ext.accentCyan);
+      expect(copied.accentGreen, ext.accentGreen);
+      expect(copied.accentRed, ext.accentRed);
+      expect(copied.accentAmber, ext.accentAmber);
+      expect(copied.accentPurple, ext.accentPurple);
+      expect(copied.accentBlue, ext.accentBlue);
+      expect(copied.textMain, ext.textMain);
+      expect(copied.textMuted, ext.textMuted);
+      expect(copied.textDim, ext.textDim);
+      expect(copied.textPaint, ext.textPaint);
+      expect(copied.header, ext.header);
+      expect(copied.labelStyle, ext.labelStyle);
+      expect(copied.valueStyle, ext.valueStyle);
+      expect(copied.statGreen, ext.statGreen);
+      expect(copied.actionRed, ext.actionRed);
+      expect(copied.body, ext.body);
+      expect(copied.hudPanelDecoration, ext.hudPanelDecoration);
+      expect(copied.listItemDecoration, ext.listItemDecoration);
+    });
+
+    test('backward-compat getters: label delegates to labelStyle, statCyan to valueStyle', () {
+      final ext = HudTheme.darkTheme(Colors.cyan).extension<HudThemeExtension>()!;
+
+      expect(ext.label, ext.labelStyle);
+      expect(ext.statCyan, ext.valueStyle);
+    });
+
     test('lerp smoothly interpolates between two extensions', () {
       final ext1 = HudTheme.darkTheme(Colors.blue).extension<HudThemeExtension>()!;
       final ext2 = HudTheme.lightTheme(Colors.green).extension<HudThemeExtension>()!;
@@ -110,9 +145,9 @@ void main() {
       expect(darkExt.fileTypeColor('ARCHIVES'), darkExt.accentAmber);
       expect(darkExt.fileTypeColor('code'), darkExt.accentPurple);
       expect(darkExt.fileTypeColor('Code'), darkExt.accentPurple);
-      expect(darkExt.fileTypeColor('system'), darkExt.textMain.withValues(alpha: 0.38));
-      expect(darkExt.fileTypeColor('SYSTEM'), darkExt.textMain.withValues(alpha: 0.38));
-      expect(darkExt.fileTypeColor('System'), darkExt.textMain.withValues(alpha: 0.38));
+      expect(darkExt.fileTypeColor('system'), darkExt.accentBlue);
+      expect(darkExt.fileTypeColor('SYSTEM'), darkExt.accentBlue);
+      expect(darkExt.fileTypeColor('System'), darkExt.accentBlue);
       expect(darkExt.fileTypeColor('other'), darkExt.textMain.withValues(alpha: 0.7));
       expect(darkExt.fileTypeColor('unknown'), darkExt.textMain.withValues(alpha: 0.7));
       expect(darkExt.fileTypeColor(''), darkExt.textMain.withValues(alpha: 0.7));
@@ -123,24 +158,26 @@ void main() {
       expect(lightExt.fileTypeColor('executables'), lightExt.accentRed);
       expect(lightExt.fileTypeColor('archives'), lightExt.accentAmber);
       expect(lightExt.fileTypeColor('code'), lightExt.accentPurple);
-      expect(lightExt.fileTypeColor('system'), lightExt.textMain.withValues(alpha: 0.38));
+      expect(lightExt.fileTypeColor('system'), lightExt.accentBlue);
       expect(lightExt.fileTypeColor('unknown'), lightExt.textMain.withValues(alpha: 0.7));
     });
 
-    test('fileTypeColor computes system and default categories dynamically from textMain', () {
+    test('fileTypeColor returns accentBlue for system and derives default from textMain', () {
       final baseExt = HudTheme.darkTheme(Colors.cyan).extension<HudThemeExtension>()!;
       const customTextMain = Color(0xFF123456);
       final customExt = baseExt.copyWith(textMain: customTextMain);
 
-      expect(customExt.fileTypeColor('system'), customTextMain.withValues(alpha: 0.38));
-      expect(customExt.fileTypeColor('SYSTEM'), customTextMain.withValues(alpha: 0.38));
+      // 'system' now maps to accentBlue, independent of textMain
+      expect(customExt.fileTypeColor('system'), customExt.accentBlue);
+      expect(customExt.fileTypeColor('SYSTEM'), customExt.accentBlue);
+      // default / unrecognised categories still derive from textMain
       expect(customExt.fileTypeColor('default'), customTextMain.withValues(alpha: 0.7));
       expect(customExt.fileTypeColor('anything_else'), customTextMain.withValues(alpha: 0.7));
     });
   });
 
   group('HudThemeContext extension methods', () {
-    testWidgets('context.HudTheme retrieves mounted HudThemeExtension', (tester) async {
+    testWidgets('context.hudTheme retrieves mounted HudThemeExtension', (tester) async {
       late HudThemeExtension retrievedTheme;
       late TextTheme retrievedTextTheme;
 
@@ -149,8 +186,8 @@ void main() {
           theme: HudTheme.darkTheme(Colors.amber),
           home: Builder(
             builder: (context) {
-              retrievedTheme = context.HudTheme;
-              retrievedTextTheme = context.HudTextTheme;
+              retrievedTheme = context.hudTheme;
+              retrievedTextTheme = context.hudTextTheme;
               return const SizedBox();
             },
           ),
@@ -163,14 +200,14 @@ void main() {
       expect(retrievedTextTheme, isNotNull);
     });
 
-    testWidgets('context.HudTheme falls back gracefully when extension is unmounted', (tester) async {
+    testWidgets('context.hudTheme falls back gracefully when extension is unmounted', (tester) async {
       late HudThemeExtension fallbackTheme;
 
       await tester.pumpWidget(
         MaterialApp(
           home: Builder(
             builder: (context) {
-              fallbackTheme = context.HudTheme;
+              fallbackTheme = context.hudTheme;
               return const SizedBox();
             },
           ),
@@ -180,6 +217,58 @@ void main() {
       expect(fallbackTheme, isNotNull);
       expect(fallbackTheme.base, HudColor.darkBgBase);
       expect(fallbackTheme.accentCyan, HudColor.darkAccentCyan);
+    });
+
+    // ignore: deprecated_member_use_from_same_package
+    testWidgets('deprecated context.HudTheme alias still works', (tester) async {
+      late HudThemeExtension retrievedTheme;
+      late TextTheme retrievedTextTheme;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: HudTheme.darkTheme(Colors.amber),
+          home: Builder(
+            builder: (context) {
+              // ignore: deprecated_member_use
+              retrievedTheme = context.HudTheme;
+              // ignore: deprecated_member_use
+              retrievedTextTheme = context.HudTextTheme;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+
+      expect(retrievedTheme, isNotNull);
+      expect(retrievedTheme.accentColor, Colors.amber);
+      expect(retrievedTextTheme, isNotNull);
+    });
+
+    testWidgets('hudTheme and deprecated HudTheme return the same instance', (tester) async {
+      late HudThemeExtension newAccessor;
+      late HudThemeExtension deprecatedAccessor;
+      late TextTheme newTextAccessor;
+      late TextTheme deprecatedTextAccessor;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: HudTheme.lightTheme(Colors.purple),
+          home: Builder(
+            builder: (context) {
+              newAccessor = context.hudTheme;
+              // ignore: deprecated_member_use
+              deprecatedAccessor = context.HudTheme;
+              newTextAccessor = context.hudTextTheme;
+              // ignore: deprecated_member_use
+              deprecatedTextAccessor = context.HudTextTheme;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+
+      expect(identical(newAccessor, deprecatedAccessor), isTrue);
+      expect(identical(newTextAccessor, deprecatedTextAccessor), isTrue);
     });
   });
 }
