@@ -52,6 +52,11 @@ public class ScanExportService : IScanExportService
 
 		var totalBytes = rootMeta?.TotalBytes ?? allNodes.Sum(n => n.OwnBytes);
 		var totalFiles = rootMeta?.TotalFiles ?? allNodes.Sum(n => n.Files.Count);
+		if (totalBytes == 0 && allNodes.Count > 0)
+		{
+			totalBytes = allNodes.Sum(n => n.OwnBytes);
+			totalFiles = allNodes.Sum(n => n.Files.Count);
+		}
 		var scannedAt = rootMeta?.ScannedAt ?? DateTimeOffset.UtcNow;
 		var displayRoot = Redact(root, redactPaths);
 
@@ -73,7 +78,8 @@ public class ScanExportService : IScanExportService
 			{
 				var catKey = cat.Name.ToLowerInvariant();
 				if (!categoryTotals.ContainsKey(catKey)) catKey = "other";
-				categoryTotals[catKey] = (cat.TotalBytes, cat.FileCount);
+				var current = categoryTotals[catKey];
+				categoryTotals[catKey] = (current.bytes + cat.TotalBytes, current.count + cat.FileCount);
 			}
 
 			if (totalBytes <= 0) totalBytes = fileTypeResult.TotalScannedBytes;
@@ -373,19 +379,32 @@ public class ScanExportService : IScanExportService
 			return path;
 		}
 
-		var result = path;
-		if (result.StartsWith(_userProfile, StringComparison.OrdinalIgnoreCase))
+		if (IsSubpathOrSame(path, _userProfile))
 		{
-			result = "~" + result.Substring(_userProfile.Length);
+			return "~" + path.Substring(_userProfile.Length);
 		}
 
 		var altProfile = _userProfile.Replace('\\', '/');
-		if (result.StartsWith(altProfile, StringComparison.OrdinalIgnoreCase))
+		if (IsSubpathOrSame(path, altProfile))
 		{
-			result = "~" + result.Substring(altProfile.Length);
+			return "~" + path.Substring(altProfile.Length);
 		}
 
-		return result;
+		return path;
+
+		static bool IsSubpathOrSame(string candidate, string prefix)
+		{
+			if (!candidate.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+			{
+				return false;
+			}
+			if (candidate.Length == prefix.Length)
+			{
+				return true;
+			}
+			var nextChar = candidate[prefix.Length];
+			return nextChar == '\\' || nextChar == '/';
+		}
 	}
 
 	private static string GetCategory(string extension)

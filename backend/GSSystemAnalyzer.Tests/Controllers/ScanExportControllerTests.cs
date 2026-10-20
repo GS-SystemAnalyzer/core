@@ -164,6 +164,52 @@ public class ScanExportControllerTests
 		var badRequest = Assert.IsType<BadRequestObjectResult>(result);
 		Assert.NotNull(badRequest.Value);
 	}
+
+	[Fact]
+	public void GetReportSummary_Returns400_WhenDriveNotReadyAndDirMissing()
+	{
+		_mockDriveService.Setup(d => d.GetReadyDrives()).Returns(new List<DriveMetric>());
+
+		var result = _controller.GetReportSummary(root: @"Z:\NonExistentDrive");
+		Assert.IsType<BadRequestObjectResult>(result);
+	}
+
+	[Fact]
+	public void GetReportSummary_Returns409_WhenSummaryIsNull()
+	{
+		_mockExportService.Setup(e => e.HasCachedScan(It.IsAny<string>())).Returns(true);
+		_mockExportService.Setup(e => e.GetReportSummary(It.IsAny<string>(), It.IsAny<bool>())).Returns((ScanReportSummaryDto?)null);
+
+		var result = _controller.GetReportSummary(root: @"C:\");
+
+		var conflict = Assert.IsType<ConflictObjectResult>(result);
+		Assert.NotNull(conflict.Value);
+	}
+
+	[Fact]
+	public void GetReportSummary_PassesRedactPaths_ToExportService()
+	{
+		_mockExportService.Setup(e => e.HasCachedScan(It.IsAny<string>())).Returns(true);
+		var fakeSummary = new ScanReportSummaryDto(
+			@"~",
+			DateTimeOffset.UtcNow,
+			DateTimeOffset.UtcNow,
+			1024,
+			10,
+			1,
+			new List<ScanCategorySummaryDto>(),
+			new List<TopDirectorySummaryDto>());
+
+		_mockExportService.Setup(e => e.GetReportSummary(@"C:\", true))
+			.Returns(fakeSummary);
+
+		var result = _controller.GetReportSummary(root: @"C:\", redactPaths: true);
+
+		var okResult = Assert.IsType<OkObjectResult>(result);
+		var summary = Assert.IsType<ScanReportSummaryDto>(okResult.Value);
+		Assert.Equal("~", summary.Root);
+		_mockExportService.Verify(e => e.GetReportSummary(@"C:\", true), Times.Once);
+	}
 }
 
 
