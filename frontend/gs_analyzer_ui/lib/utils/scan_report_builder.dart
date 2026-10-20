@@ -26,7 +26,7 @@ String buildSvgDonutChart(
 ) {
   if (totalBytes <= 0) {
     return '''<svg width="240" height="240" viewBox="0 0 240 240" role="img" aria-label="No scan data">
-  <circle cx="120" cy="120" r="90" fill="none" stroke="${palette.borderColor}" stroke-width="30"/>
+  <circle cx="120" cy="120" r="85" fill="none" stroke="${palette.borderColor}" stroke-width="30"/>
   <text x="120" y="125" text-anchor="middle" fill="${palette.textDim}" font-family="monospace" font-size="12">NO DATA</text>
 </svg>''';
   }
@@ -39,7 +39,7 @@ String buildSvgDonutChart(
 
   final sb = StringBuffer();
   sb.writeln('<svg width="240" height="240" viewBox="0 0 240 240" role="img" aria-label="File type breakdown">');
-  sb.writeln('  <circle cx="$cx" cy="$cy" r="$r" fill="none" stroke="${palette.bgDark}" stroke-width="$strokeWidth"/>');
+  sb.writeln('  <circle cx="$cx" cy="$cy" r="$r" fill="none" stroke="${palette.bgBase}" stroke-width="$strokeWidth"/>');
 
   var currentOffset = 0.0;
   for (final cat in categories) {
@@ -63,7 +63,7 @@ String buildSvgDonutChart(
     currentOffset += dashLength;
   }
 
-  sb.writeln('  <text x="$cx" y="${cy - 5}" text-anchor="middle" fill="${palette.accentCyan}" font-family="monospace" font-size="14" font-weight="bold">TOTAL</text>');
+  sb.writeln('  <text x="$cx" y="${cy - 5}" text-anchor="middle" fill="${palette.accentColor}" font-family="monospace" font-size="14" font-weight="bold">TOTAL</text>');
   sb.writeln('  <text x="$cx" y="${cy + 15}" text-anchor="middle" fill="${palette.textPrimary}" font-family="monospace" font-size="11">${formatBytes(totalBytes)}</text>');
   sb.writeln('</svg>');
 
@@ -121,10 +121,10 @@ String buildScanReportHtml(ScanReportSummary data, ReportPalette palette) {
 <title>GS System Analyzer — Scan Report [$displayRoot]</title>
 <style>
   :root {
-    --bg-dark: ${palette.bgDark};
+    --bg-base: ${palette.bgBase};
     --bg-panel: ${palette.bgPanel};
     --bg-card: ${palette.bgCard};
-    --accent-cyan: ${palette.accentCyan};
+    --accent-color: ${palette.accentColor};
     --text-primary: ${palette.textPrimary};
     --text-dim: ${palette.textDim};
     --border-color: ${palette.borderColor};
@@ -133,7 +133,7 @@ String buildScanReportHtml(ScanReportSummary data, ReportPalette palette) {
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    background-color: var(--bg-dark);
+    background-color: var(--bg-base);
     color: var(--text-primary);
     font-family: var(--font-sans);
     padding: 24px;
@@ -148,7 +148,7 @@ String buildScanReportHtml(ScanReportSummary data, ReportPalette palette) {
     margin-bottom: 24px;
   }
   .title-group h1 {
-    color: var(--accent-cyan);
+    color: var(--accent-color);
     font-size: 24px;
     letter-spacing: 1.5px;
     font-family: var(--font-mono);
@@ -160,8 +160,8 @@ String buildScanReportHtml(ScanReportSummary data, ReportPalette palette) {
   }
   .badge {
     background-color: var(--bg-card);
-    border: 1px solid var(--accent-cyan);
-    color: var(--accent-cyan);
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
     padding: 6px 12px;
     border-radius: 4px;
     font-family: var(--font-mono);
@@ -188,7 +188,7 @@ String buildScanReportHtml(ScanReportSummary data, ReportPalette palette) {
     font-family: var(--font-mono);
   }
   .card-value {
-    color: var(--accent-cyan);
+    color: var(--accent-color);
     font-size: 22px;
     font-weight: bold;
     font-family: var(--font-mono);
@@ -200,7 +200,7 @@ String buildScanReportHtml(ScanReportSummary data, ReportPalette palette) {
     letter-spacing: 1px;
     font-family: var(--font-mono);
     margin-bottom: 12px;
-    border-left: 3px solid var(--accent-cyan);
+    border-left: 3px solid var(--accent-color);
     padding-left: 8px;
   }
   .chart-layout {
@@ -229,7 +229,7 @@ String buildScanReportHtml(ScanReportSummary data, ReportPalette palette) {
   }
   th {
     background-color: var(--bg-card);
-    color: var(--accent-cyan);
+    color: var(--accent-color);
     text-align: left;
     padding: 10px;
     border-bottom: 1px solid var(--border-color);

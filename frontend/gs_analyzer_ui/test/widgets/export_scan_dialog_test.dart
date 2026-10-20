@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gs_analyzer_ui/models/scan_export_options.dart';
+import 'package:gs_analyzer_ui/models/scan_report_summary.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
 import 'package:gs_analyzer_ui/utils/theme/hud_color.dart';
@@ -363,6 +364,55 @@ void main() {
       verify(() => mockApi.getScanReportSummary(
         root: r'C:\',
         redactPaths: false,
+      )).called(1);
+
+      expect(find.text('Exception: Simulated summary error'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('calls getScanReportSummary with redactPaths true when toggle checked', (tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final mockApi = MockApiService();
+      when(() => mockApi.getScanReportSummary(
+        root: any(named: 'root'),
+        redactPaths: any(named: 'redactPaths'),
+      )).thenThrow(Exception('Simulated summary error'));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: HudTheme.darkTheme(HudColor.darkAccentAmber),
+            home: Scaffold(
+              body: ExportScanDialog(
+                driveName: r'C:\',
+                apiService: mockApi,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('HTML'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('REDACT USER PATHS'));
+      await tester.pumpAndSettle();
+
+      final exportBtn = find.widgetWithText(OutlinedButton, 'EXPORT');
+      await tester.ensureVisible(exportBtn);
+      await tester.tap(exportBtn);
+      await tester.pumpAndSettle();
+
+      verify(() => mockApi.getScanReportSummary(
+        root: r'C:\',
+        redactPaths: true,
       )).called(1);
 
       expect(find.text('Exception: Simulated summary error'), findsOneWidget);

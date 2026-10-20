@@ -65,11 +65,11 @@ void main() {
 
       final expectedBg = ReportPalette.toCssHex(hud.base);
       final expectedText = ReportPalette.toCssHex(hud.textMain);
-      final expectedAccent = ReportPalette.toCssHex(hud.accentCyan);
+      final expectedAccent = ReportPalette.toCssHex(hud.accentColor);
 
-      expect(html, contains('--bg-dark: $expectedBg'));
+      expect(html, contains('--bg-base: $expectedBg'));
       expect(html, contains('--text-primary: $expectedText'));
-      expect(html, contains('--accent-cyan: $expectedAccent'));
+      expect(html, contains('--accent-color: $expectedAccent'));
     });
 
     test('applies light theme tokens when light theme is active', () {
@@ -81,13 +81,39 @@ void main() {
 
       final expectedBg = ReportPalette.toCssHex(hud.base);
       final expectedText = ReportPalette.toCssHex(hud.textMain);
-      final expectedAccent = ReportPalette.toCssHex(hud.accentCyan);
+      final expectedAccent = ReportPalette.toCssHex(hud.accentColor);
 
-      expect(html, contains('--bg-dark: $expectedBg'));
+      expect(html, contains('--bg-base: $expectedBg'));
       expect(html, contains('--text-primary: $expectedText'));
-      expect(html, contains('--accent-cyan: $expectedAccent'));
+      expect(html, contains('--accent-color: $expectedAccent'));
       // Light theme background must not be dark
       expect(expectedBg.toLowerCase(), equals('#eef2f5'));
+    });
+
+    test('applies user-selected Amber accent in dark theme to HTML report', () {
+      final amberTheme = HudTheme.darkTheme(HudColor.darkAccentAmber);
+      final hud = amberTheme.extension<HudThemeExtension>()!;
+      final palette = ReportPalette.fromHudTheme(hud);
+
+      final html = buildScanReportHtml(sampleData, palette);
+
+      final expectedAccent = ReportPalette.toCssHex(HudColor.darkAccentAmber);
+      expect(html, contains('--accent-color: $expectedAccent'));
+      expect(html, isNot(contains('--accent-color: ${ReportPalette.toCssHex(HudColor.darkAccentCyan)}')));
+    });
+
+    test('applies user-selected Green accent in light theme to HTML report', () {
+      final greenTheme = HudTheme.lightTheme(HudColor.lightAccentGreen);
+      final hud = greenTheme.extension<HudThemeExtension>()!;
+      final palette = ReportPalette.fromHudTheme(hud);
+
+      final html = buildScanReportHtml(sampleData, palette);
+
+      final expectedAccent = ReportPalette.toCssHex(HudColor.lightAccentGreen);
+      final expectedBg = ReportPalette.toCssHex(HudColor.lightBgBase);
+
+      expect(html, contains('--accent-color: $expectedAccent'));
+      expect(html, contains('--bg-base: $expectedBg'));
     });
 
     test('HTML-escapes special characters in root, category names, and directory paths', () {
@@ -131,6 +157,7 @@ void main() {
       final svg = buildSvgDonutChart([], 0, palette);
 
       expect(svg, contains('<svg width="240" height="240"'));
+      expect(svg, contains('<circle cx="120" cy="120" r="85"'));
       expect(svg, contains('NO DATA'));
       expect(svg, contains('aria-label="No scan data"'));
     });

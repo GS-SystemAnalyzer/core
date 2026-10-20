@@ -2,25 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:gs_analyzer_ui/utils/theme/hud_theme_extension.dart';
 
 class ReportPalette {
-  final String bgDark;
+  final String bgBase;
   final String bgPanel;
   final String bgCard;
   final String textPrimary;
   final String textDim;
-  final String accentCyan;
+  final String accentColor;
   final String borderColor;
   final Map<String, String> categoryColors;
 
   const ReportPalette({
-    required this.bgDark,
+    required this.bgBase,
     required this.bgPanel,
     required this.bgCard,
     required this.textPrimary,
     required this.textDim,
-    required this.accentCyan,
+    required this.accentColor,
     required this.borderColor,
     required this.categoryColors,
   });
+
+  String get bgDark => bgBase;
+  String get accentCyan => accentColor;
 
   static String toCssHex(Color color) {
     final rgb = color.toARGB32() & 0x00FFFFFF;
@@ -39,12 +42,12 @@ class ReportPalette {
     ];
 
     return ReportPalette(
-      bgDark: toCssHex(hud.base),
+      bgBase: toCssHex(hud.base),
       bgPanel: toCssHex(hud.panel),
       bgCard: toCssHex(hud.listItemDecoration.color ?? hud.panel),
       textPrimary: toCssHex(hud.textMain),
       textDim: toCssHex(hud.textDim),
-      accentCyan: toCssHex(hud.accentCyan),
+      accentColor: toCssHex(hud.accentColor),
       borderColor: toCssHex(hud.border),
       categoryColors: {
         for (final cat in categories) cat: toCssHex(hud.fileTypeColor(cat)),

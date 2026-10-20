@@ -889,7 +889,8 @@ class ApiService {
     }
   }
 
-  /// Exports the cached scan report in JSON, CSV, or HTML format.
+  /// Exports the cached scan report in JSON or CSV format.
+  /// (HTML export is rendered client-side via [getScanReportSummary]).
   /// Throws [DiffNoScanException] if 409 Conflict is returned (no cache).
   Future<Uint8List> exportScan({
     required String root,
