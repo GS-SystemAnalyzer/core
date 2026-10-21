@@ -54,19 +54,27 @@ public class ScanExportController : ControllerBase
 
 		var effectiveRoot = _exportService.HasCachedScan(targetRoot) ? targetRoot : normalizedRoot;
 		var normFormat = (format ?? "json").Trim().ToLowerInvariant();
+		if (normFormat == "html")
+		{
+			return BadRequest(new
+			{
+				error = "UNSUPPORTED_FORMAT",
+				message = "HTML report generation has been moved to the client. Use GET /api/scan/report-summary to retrieve report data."
+			});
+		}
+
 		var ext = normFormat switch
 		{
 			"csv" => "csv",
-			"html" => "html",
 			_ => "json"
 		};
 
 		var contentType = normFormat switch
 		{
 			"csv" => "text/csv; charset=utf-8",
-			"html" => "text/html; charset=utf-8",
 			_ => "application/json; charset=utf-8"
 		};
+
 
 		var driveLetter = Path.GetPathRoot(effectiveRoot)?.TrimEnd(':', '\\', '/') ?? "root";
 		if (string.IsNullOrWhiteSpace(driveLetter)) driveLetter = "scan";
@@ -95,6 +103,49 @@ public class ScanExportController : ControllerBase
 			}
 			return new EmptyResult();
 		}
+	}
+
+	[HttpGet("/api/scan/report-summary")]
+	[HttpGet("/api/storage/scan/report-summary")]
+	public IActionResult GetReportSummary(
+		[FromQuery] string? root,
+		[FromQuery] bool redactPaths = false)
+	{
+		if (string.IsNullOrWhiteSpace(root))
+		{
+			return BadRequest(new { error = "ROOT_REQUIRED", message = "root query parameter is required." });
+		}
+
+		var targetRoot = ResolveTargetPath(root);
+		var normalizedRoot = NormalizeRoot(targetRoot);
+
+		var readyDrives = _driveService.GetReadyDrives();
+		if (!readyDrives.Any(d => d.Name.Equals(normalizedRoot, StringComparison.OrdinalIgnoreCase)) && !Directory.Exists(targetRoot))
+		{
+			return BadRequest(new { error = "DRIVE_NOT_READY", message = $"Drive not ready or path not accessible: {normalizedRoot}" });
+		}
+
+		if (!_exportService.HasCachedScan(targetRoot) && !_exportService.HasCachedScan(normalizedRoot))
+		{
+			return Conflict(new
+			{
+				error = "NO_SCAN_CACHED",
+				message = "No scan result found for this root. Run a scan first."
+			});
+		}
+
+		var effectiveRoot = _exportService.HasCachedScan(targetRoot) ? targetRoot : normalizedRoot;
+		var summary = _exportService.GetReportSummary(effectiveRoot, redactPaths);
+		if (summary == null)
+		{
+			return Conflict(new
+			{
+				error = "NO_SCAN_CACHED",
+				message = "No scan result found for this root. Run a scan first."
+			});
+		}
+
+		return Ok(summary);
 	}
 
 	private static string ResolveTargetPath(string requested)

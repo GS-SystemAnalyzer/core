@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_saver/file_saver.dart';
@@ -12,6 +14,9 @@ import 'package:gs_analyzer_ui/providers/storage_view_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'package:gs_analyzer_ui/utils/formatters.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
+import 'package:gs_analyzer_ui/utils/scan_report_builder.dart';
+import 'package:gs_analyzer_ui/utils/theme/report_palette.dart';
+
 
 class ExportScanDialog extends ConsumerStatefulWidget {
   final String driveName;
@@ -73,11 +78,23 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
 
     try {
       final api = widget.apiService ?? ApiService();
-      final bytes = await api.exportScan(
-        root: widget.driveName,
-        format: _selectedFormat,
-        redactPaths: _redactPaths,
-      );
+      final Uint8List bytes;
+      if (_selectedFormat == ScanExportFormat.html) {
+        final summary = await api.getScanReportSummary(
+          root: widget.driveName,
+          redactPaths: _redactPaths,
+        );
+        final palette = ReportPalette.fromHudTheme(hud);
+        final html = buildScanReportHtml(summary, palette);
+        bytes = Uint8List.fromList(utf8.encode(html));
+      } else {
+        bytes = await api.exportScan(
+          root: widget.driveName,
+          format: _selectedFormat,
+          redactPaths: _redactPaths,
+        );
+      }
+
 
       final cleanDrive = widget.driveName.replaceAll(RegExp(r'[:\\/]+'), '');
       final timestamp = DateFormat('yyyy-MM-ddTHHmmss').format(DateTime.now());
@@ -166,9 +183,13 @@ class _ExportScanDialogState extends ConsumerState<ExportScanDialog> {
         );
       }
     } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
       activeCtl.state = false;
       minCtl.state = false;
     }
+
   }
 
   void _triggerScanNow() {
