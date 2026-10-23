@@ -193,32 +193,38 @@ namespace GSSystemAnalyzer.Services
 					payload.CpuPackageCelsius = null;
 				}
 
-				// Tier 2: DELL VBS
-				var dell = _dellOemTelemetry.TryGetDellOemTelemetry();
-
-				if (dell != null)
-				{
-					// Fans
-					if ((payload.CpuFanRpm == 0 || payload.CpuFanRpm == null) && dell.CpuFanRpm.HasValue)
-						payload.CpuFanRpm = dell.CpuFanRpm;
-					if ((payload.ChassisFan1Rpm == 0 || payload.ChassisFan1Rpm == null) && dell.ChassisFanRpm.HasValue)
-						payload.ChassisFan1Rpm = dell.ChassisFanRpm;
-					if ((payload.GpuFanRpm == 0 || payload.GpuFanRpm == null) && dell.GpuFanRpm.HasValue)
-						payload.GpuFanRpm = dell.GpuFanRpm;
-
-					// Temps
-					if ((payload.CpuPackageCelsius == 0 || payload.CpuPackageCelsius == null) &&
-						dell.CpuTempCelsius.HasValue) payload.CpuPackageCelsius = dell.CpuTempCelsius;
-					if ((payload.MotherboardCelsius == 0 || payload.MotherboardCelsius == null) &&
-						dell.MotherboardCelsius.HasValue) payload.MotherboardCelsius = dell.MotherboardCelsius;
-					if (payload.RamCelsius == null && dell.RamCelsius.HasValue) payload.RamCelsius = dell.RamCelsius;
-					if (payload.AmbientCelsius == null && dell.AmbientCelsius.HasValue) payload.AmbientCelsius = dell.AmbientCelsius;
-				}
-
-				// Tier 3: Standard WMI Fallback
+				// Tier 2: WMI Fallback
 				if (payload.CpuPackageCelsius == 0 || payload.CpuPackageCelsius == null)
 				{
 					payload.CpuPackageCelsius = _wmiFallback.GetCpuTemperatureCelsius();
+				}
+
+				// Tier 3: OEM Fallback
+				bool needsTemp = payload.CpuPackageCelsius == 0 || payload.CpuPackageCelsius == null;
+				bool needsFan = payload.CpuFanRpm == 0 || payload.CpuFanRpm == null;
+
+				if (needsTemp || needsFan)
+				{
+					var dell = _dellOemTelemetry.TryGetDellOemTelemetry();
+
+					if (dell != null)
+					{
+						// Fans
+						if ((payload.CpuFanRpm == 0 || payload.CpuFanRpm == null) && dell.CpuFanRpm.HasValue)
+							payload.CpuFanRpm = dell.CpuFanRpm;
+						if ((payload.ChassisFan1Rpm == 0 || payload.ChassisFan1Rpm == null) && dell.ChassisFanRpm.HasValue)
+							payload.ChassisFan1Rpm = dell.ChassisFanRpm;
+						if ((payload.GpuFanRpm == 0 || payload.GpuFanRpm == null) && dell.GpuFanRpm.HasValue)
+							payload.GpuFanRpm = dell.GpuFanRpm;
+
+						// Temps
+						if ((payload.CpuPackageCelsius == 0 || payload.CpuPackageCelsius == null) &&
+							dell.CpuTempCelsius.HasValue) payload.CpuPackageCelsius = dell.CpuTempCelsius;
+						if ((payload.MotherboardCelsius == 0 || payload.MotherboardCelsius == null) &&
+							dell.MotherboardCelsius.HasValue) payload.MotherboardCelsius = dell.MotherboardCelsius;
+						if (payload.RamCelsius == null && dell.RamCelsius.HasValue) payload.RamCelsius = dell.RamCelsius;
+						if (payload.AmbientCelsius == null && dell.AmbientCelsius.HasValue) payload.AmbientCelsius = dell.AmbientCelsius;
+					}
 				}
 
 				// Exception shield, in case everything falls(Cache restoration)

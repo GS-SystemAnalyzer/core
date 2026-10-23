@@ -6,6 +6,7 @@ namespace GSSystemAnalyzer.Services
 	public class WmiThermalFallback : IWmiThermalFallback
 	{
 		private readonly ILogger<WmiThermalFallback> _logger;
+		private bool _isAvailable = true;
 
 		public WmiThermalFallback(ILogger<WmiThermalFallback> logger)
 		{
@@ -14,6 +15,11 @@ namespace GSSystemAnalyzer.Services
 
 		public double? GetCpuTemperatureCelsius()
 		{
+			if (!_isAvailable)
+			{
+				return null;
+			}
+
 			try
 			{
 #pragma warning disable CA1416
@@ -30,9 +36,26 @@ namespace GSSystemAnalyzer.Services
 				}
 #pragma warning restore CA1416
 			}
+			catch (System.Management.ManagementException mex)
+			{
+				if (mex.ErrorCode == System.Management.ManagementStatus.AccessDenied ||
+				    mex.ErrorCode == System.Management.ManagementStatus.InvalidClass ||
+				    mex.ErrorCode == System.Management.ManagementStatus.InvalidNamespace ||
+				    mex.ErrorCode == System.Management.ManagementStatus.NotFound ||
+				    mex.ErrorCode == System.Management.ManagementStatus.NotSupported)
+				{
+					_isAvailable = false;
+					_logger.LogDebug("WMI thermal fallback unavailable ({Message}); disabling for session.", mex.Message);
+				}
+				else
+				{
+					_logger.LogWarning("WMI thermal fallback query encountered non-fatal error: {Message}", mex.Message);
+				}
+			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "WMI thermal fallback query failed");
+				_isAvailable = false;
+				_logger.LogDebug("WMI thermal fallback failed ({Message}); disabling for session.", ex.Message);
 			}
 
 			return null;

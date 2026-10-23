@@ -88,5 +88,39 @@ namespace GSSystemAnalyzer.Tests.Services
 			// 3. ASSERT: Verify graceful null return (no crash)
 			Assert.True(dellData == null);
 		}
+
+		[Fact]
+		public void TryGetDellOemTelemetry_OnManagementException_LogsDebugOnceAndDisablesForSession()
+		{
+			if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+				return;
+
+			var mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<DellOemTelemetry>>();
+			var telemetry = new DellOemTelemetry(mockLogger.Object);
+
+			var first = telemetry.TryGetDellOemTelemetry();
+			var second = telemetry.TryGetDellOemTelemetry();
+
+			Assert.Null(first);
+			Assert.Null(second);
+
+			mockLogger.Verify(
+				x => x.Log(
+					Microsoft.Extensions.Logging.LogLevel.Error,
+					It.IsAny<Microsoft.Extensions.Logging.EventId>(),
+					It.IsAny<It.IsAnyType>(),
+					It.IsAny<System.Exception>(),
+					It.IsAny<System.Func<It.IsAnyType, System.Exception?, string>>()),
+				Times.Never);
+
+			mockLogger.Verify(
+				x => x.Log(
+					Microsoft.Extensions.Logging.LogLevel.Debug,
+					It.IsAny<Microsoft.Extensions.Logging.EventId>(),
+					It.IsAny<It.IsAnyType>(),
+					It.IsAny<System.Exception>(),
+					It.IsAny<System.Func<It.IsAnyType, System.Exception?, string>>()),
+				Times.Once);
+		}
 	}
 }
