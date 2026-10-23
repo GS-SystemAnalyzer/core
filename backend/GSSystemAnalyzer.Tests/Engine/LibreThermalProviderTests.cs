@@ -261,6 +261,67 @@ namespace GSSystemAnalyzer.Tests.Engine
 			Assert.Null(result.CpuPackageCelsius); // Safely degraded to null for the Ghost UI
 		}
 
+		[Fact]
+		public async Task GetThermalData_ExecutesTiersInDocumentedOrder_WmiBeforeDell()
+		{
+			if (!_isWindows) return;
+
+			var callOrder = new List<string>();
+
+			var mockComputer = new Mock<IComputerEngine>();
+			var mockCpu = CreateMockHardware(HardwareType.Cpu, new List<ISensor>());
+			mockComputer.Setup(c => c.Hardware).Returns(new[] { mockCpu.Object });
+
+			var mockWmi = new Mock<IWmiThermalFallback>();
+			mockWmi.Setup(w => w.GetCpuTemperatureCelsius())
+				.Callback(() => callOrder.Add("Wmi"))
+				.Returns((double?)null);
+
+			var mockDell = new Mock<IDellOemTelemetry>();
+			mockDell.Setup(d => d.TryGetDellOemTelemetry())
+				.Callback(() => callOrder.Add("Dell"))
+				.Returns((DellOemDto?)null);
+
+			var provider = CreateProvider(mockComputer, mockWmi, mockDell);
+			await provider.GetThermalDataAsync();
+
+			Assert.Equal(new[] { "Wmi", "Dell" }, callOrder);
+		}
+
+		[Fact]
+		public async Task GetThermalData_WhenLhmProvidesCpuAndFans_SkipsDellOem()
+		{
+			if (!_isWindows) return;
+
+			var mockCpu = CreateMockHardware(HardwareType.Cpu, new List<ISensor>
+			{
+				CreateMockSensor(SensorType.Temperature, "CPU Package", 55.0f)
+			});
+
+			var mockSubHw = new Mock<IHardware>();
+			mockSubHw.Setup(h => h.Sensors).Returns(new[] { CreateMockSensor(SensorType.Fan, "CPU Fan", 2100f) });
+			mockSubHw.Setup(h => h.SubHardware).Returns(Array.Empty<IHardware>());
+
+			var mockMobo = new Mock<IHardware>();
+			mockMobo.Setup(h => h.HardwareType).Returns(HardwareType.Motherboard);
+			mockMobo.Setup(h => h.Sensors).Returns(Array.Empty<ISensor>());
+			mockMobo.Setup(h => h.SubHardware).Returns(new[] { mockSubHw.Object });
+
+			var mockComputer = new Mock<IComputerEngine>();
+			mockComputer.Setup(c => c.Hardware).Returns(new[] { mockCpu.Object, mockMobo.Object });
+
+			var mockWmi = new Mock<IWmiThermalFallback>();
+			var mockDell = new Mock<IDellOemTelemetry>();
+
+			var provider = CreateProvider(mockComputer, mockWmi, mockDell);
+			var result = await provider.GetThermalDataAsync();
+
+			Assert.Equal(55.0, result.CpuPackageCelsius);
+			Assert.Equal(2100, result.CpuFanRpm);
+			mockWmi.Verify(w => w.GetCpuTemperatureCelsius(), Times.Never);
+			mockDell.Verify(d => d.TryGetDellOemTelemetry(), Times.Never);
+		}
+
 #endif
 
 		//  PLATFORM SUPPORT TEST
