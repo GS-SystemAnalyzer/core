@@ -12,11 +12,11 @@ namespace GSSystemAnalyzer.Services.Oem.Dell
 	/// </summary>
 	public sealed class DellOemTelemetry : IDellOemTelemetry
 	{
-		private static ManagementScope? _scope;
 		private static DellOemDto? _cachedReading = null;
 		private static DateTime _lastPollTime = DateTime.MinValue;
 		private static readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(3);
 		private readonly ILogger<DellOemTelemetry> _logger;
+		private bool _isAvailable = true;
 
 		public DellOemTelemetry(ILogger<DellOemTelemetry> logger)
 		{
@@ -25,6 +25,11 @@ namespace GSSystemAnalyzer.Services.Oem.Dell
 
 		public DellOemDto? TryGetDellOemTelemetry()
 		{
+			if (!_isAvailable)
+			{
+				return null;
+			}
+
 			if (DateTime.UtcNow - _lastPollTime < _cacheDuration && _cachedReading != null)
 			{
 				return _cachedReading;
@@ -90,9 +95,26 @@ namespace GSSystemAnalyzer.Services.Oem.Dell
 				}
 				return null;
 			}
+			catch (ManagementException mex)
+			{
+				if (mex.ErrorCode == ManagementStatus.AccessDenied ||
+				    mex.ErrorCode == ManagementStatus.InvalidClass ||
+				    mex.ErrorCode == ManagementStatus.InvalidNamespace ||
+				    mex.ErrorCode == ManagementStatus.NotFound)
+				{
+					_isAvailable = false;
+					_logger.LogDebug("Dell OEM telemetry unavailable ({Message}); disabling for session.", mex.Message);
+				}
+				else
+				{
+					_logger.LogWarning("Dell OEM telemetry query encountered non-fatal error: {Message}", mex.Message);
+				}
+				return null;
+			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Dell OEM telemetry query failed");
+				_isAvailable = false;
+				_logger.LogDebug("Dell OEM telemetry failed ({Message}); disabling for session.", ex.Message);
 				return null;
 			}
 		}
