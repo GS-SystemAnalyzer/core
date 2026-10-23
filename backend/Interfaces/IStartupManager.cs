@@ -7,7 +7,7 @@ namespace GSSystemAnalyzer.Interfaces
     public interface IStartupManager
     {
         Task<IEnumerable<StartupProgramDto>> GetStartupEntriesAsync();
-        Task ToggleStartupEntryAsync(string id, bool enable);
+        Task ToggleStartupEntryAsync(string id, bool enable, string? scope = null);
         Task DeleteStartupEntryAsync(string id);
     }
 }
