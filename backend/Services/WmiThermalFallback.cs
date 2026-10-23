@@ -41,7 +41,8 @@ namespace GSSystemAnalyzer.Services
 				if (mex.ErrorCode == System.Management.ManagementStatus.AccessDenied ||
 				    mex.ErrorCode == System.Management.ManagementStatus.InvalidClass ||
 				    mex.ErrorCode == System.Management.ManagementStatus.InvalidNamespace ||
-				    mex.ErrorCode == System.Management.ManagementStatus.NotFound)
+				    mex.ErrorCode == System.Management.ManagementStatus.NotFound ||
+				    mex.ErrorCode == System.Management.ManagementStatus.NotSupported)
 				{
 					_isAvailable = false;
 					_logger.LogDebug("WMI thermal fallback unavailable ({Message}); disabling for session.", mex.Message);

@@ -100,7 +100,8 @@ namespace GSSystemAnalyzer.Services.Oem.Dell
 				if (mex.ErrorCode == ManagementStatus.AccessDenied ||
 				    mex.ErrorCode == ManagementStatus.InvalidClass ||
 				    mex.ErrorCode == ManagementStatus.InvalidNamespace ||
-				    mex.ErrorCode == ManagementStatus.NotFound)
+				    mex.ErrorCode == ManagementStatus.NotFound ||
+				    mex.ErrorCode == ManagementStatus.NotSupported)
 				{
 					_isAvailable = false;
 					_logger.LogDebug("Dell OEM telemetry unavailable ({Message}); disabling for session.", mex.Message);
