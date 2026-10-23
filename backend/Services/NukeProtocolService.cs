@@ -21,6 +21,7 @@ public class NukeProtocolService : INukeProtocolService
 	private readonly IDiskScannerEngine _scanner;
 	private readonly IHubContext<SystemHub> _hubContext;
 	private readonly ILogger<NukeProtocolService> _logger;
+	private readonly IRecycleBinProvider _recycleBinProvider;
 
 	// Session-scoped undo stack — max 5 entries, not persisted across restarts.
 	private readonly Stack<NukeOperation> _undoStack = new();
@@ -187,7 +188,7 @@ public class NukeProtocolService : INukeProtocolService
 
 					if (useRecycleBin)
 					{
-						MoveToStaging(path, operationId, isDirectory: false);
+						_recycleBinProvider.SendFileToRecycleBin(path);
 					}
 					else
 					{
@@ -215,7 +216,7 @@ public class NukeProtocolService : INukeProtocolService
 
 					if (useRecycleBin)
 					{
-						MoveToStaging(path, operationId, isDirectory: true);
+						_recycleBinProvider.SendDirectoryToRecycleBin(path);
 					}
 					else
 					{
@@ -363,6 +364,12 @@ public class NukeProtocolService : INukeProtocolService
 		{
 			try
 			{
+				if (_recycleBinProvider.TryRestore(originalPath))
+				{
+					restored++;
+					continue;
+				}
+
 				var driveRoot = StagingBaseResolver(originalPath);
 				var stagingDir = Path.Combine(driveRoot, ".gsanalyzer_trash", operation.OperationId);
 
@@ -680,50 +687,8 @@ public class NukeProtocolService : INukeProtocolService
 
 	private void CleanupOrphanedStagingDirs()
 	{
-		long totalFreed = 0;
-
-		// 1. Clean up old StagingRoot (AppData) if it exists
-		try
-		{
-			var oldStagingRoot = Path.Combine(
-				Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-				"GSAnalyzer", "nuke_trash");
-
-			if (Directory.Exists(oldStagingRoot))
-			{
-				totalFreed += GetDirectorySize(oldStagingRoot);
-				Directory.Delete(oldStagingRoot, true);
-			}
-		}
-		catch (Exception ex)
-		{
-			_logger.LogWarning(ex, "Failed to clean old staging root on startup");
-		}
-
-		// 2. Clean up per-volume .gsanalyzer_trash
-		foreach (var drive in DriveInfo.GetDrives())
-		{
-			if (!drive.IsReady) continue;
-
-			try
-			{
-				var stagingDir = Path.Combine(drive.RootDirectory.FullName, ".gsanalyzer_trash");
-				if (Directory.Exists(stagingDir))
-				{
-					totalFreed += GetDirectorySize(stagingDir);
-					Directory.Delete(stagingDir, true);
-				}
-			}
-			catch (Exception ex)
-			{
-				_logger.LogWarning(ex, "Failed to clean staging dir on {DriveName} during startup", drive.Name);
-			}
-		}
-
-		if (totalFreed > 0)
-		{
-			_logger.LogInformation("Startup cleanup completed: freed {FreedSize} of orphaned nuke trash", FormatSize(totalFreed));
-		}
+		// Startup must never silently permanently delete files users expect to recover.
+		// Automatic per-volume .gsanalyzer_trash deletion is removed to guarantee recoverability.
 	}
 
 	private long GetDirectorySize(string path)
@@ -747,11 +712,14 @@ public class NukeProtocolService : INukeProtocolService
 	public Func<string, string> StagingBaseResolver { get; set; } = p => Path.GetPathRoot(p) ?? "C:\\";
 
 	public NukeProtocolService(IDiskScannerEngine scanner, IHubContext<SystemHub> hubContext,
-		ILogger<NukeProtocolService> logger, bool runStartupCleanup = true)
+		ILogger<NukeProtocolService> logger, IRecycleBinProvider? recycleBinProvider = null, bool runStartupCleanup = false)
 	{
 		_scanner = scanner;
 		_hubContext = hubContext;
 		_logger = logger;
+		_recycleBinProvider = recycleBinProvider ?? (OperatingSystem.IsWindows()
+			? new WindowsRecycleBinProvider()
+			: new LinuxRecycleBinProvider());
 		if (runStartupCleanup) Task.Run(() => CleanupOrphanedStagingDirs());
 	}
 }

@@ -83,6 +83,19 @@ else
     throw new PlatformNotSupportedException("OS not supported for startup management");
 }
 
+if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+{
+    builder.Services.AddSingleton<IRecycleBinProvider, WindowsRecycleBinProvider>();
+}
+else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+{
+    builder.Services.AddSingleton<IRecycleBinProvider, LinuxRecycleBinProvider>();
+}
+else
+{
+    throw new PlatformNotSupportedException("OS not supported for recycle bin operations");
+}
+
 // Platform-specific thermal provider
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
