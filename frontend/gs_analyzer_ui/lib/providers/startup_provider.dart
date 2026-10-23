@@ -29,7 +29,11 @@ class StartupNotifier extends StateNotifier<AsyncValue<List<StartupProgram>>> {
     final target = !program.isEnabled;
     _patch(program.id, program.copyWith(isEnabled: target));
     try {
-      await _api.setStartupEnabled(program.id, target);
+      await _api.setStartupEnabled(
+        program.id,
+        target,
+        scope: program.scope,
+      );
     } catch (e) {
       _patch(program.id, program.copyWith(isEnabled: program.isEnabled));
       rethrow;

@@ -637,9 +637,16 @@ class ApiService {
     );
   }
 
-  Future<void> setStartupEnabled(String id, bool enable) async {
+  Future<void> setStartupEnabled(
+    String id,
+    bool enable, {
+    String? scope,
+  }) async {
     final action = enable ? 'enable' : 'disable';
-    final uri = Uri.parse('$startupUrl/${Uri.encodeComponent(id)}/$action');
+    final query =
+        scope != null ? '?scope=${Uri.encodeQueryComponent(scope)}' : '';
+    final uri =
+        Uri.parse('$startupUrl/${Uri.encodeComponent(id)}/$action$query');
     appLogger.i('STARTUP BRIDGE: ${action.toUpperCase()} -> $uri');
     final response = await _client.post(uri);
     _ensureStartupSuccess(response);
