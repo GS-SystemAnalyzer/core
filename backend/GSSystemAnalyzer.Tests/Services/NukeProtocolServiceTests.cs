@@ -37,7 +37,62 @@ public class NukeProtocolServiceTests : IDisposable
 			try { if (Directory.Exists(d)) Directory.Delete(d, true); } catch { /* ignore */ }
 	}
 
-	private NukeProtocolService CreateService(ILogger<NukeProtocolService>? logger = null)
+	private class TestRecycleBinProvider : IRecycleBinProvider
+	{
+		private readonly string _testTrashDir;
+		public TestRecycleBinProvider(string testTrashDir)
+		{
+			_testTrashDir = testTrashDir;
+			Directory.CreateDirectory(_testTrashDir);
+		}
+
+		public void SendFileToRecycleBin(string path)
+		{
+			var dest = Path.Combine(_testTrashDir, Path.GetFileName(path));
+			if (File.Exists(dest)) File.Delete(dest);
+			File.Move(path, dest);
+		}
+
+		public void SendDirectoryToRecycleBin(string path)
+		{
+			var dest = Path.Combine(_testTrashDir, Path.GetFileName(path));
+			if (Directory.Exists(dest)) Directory.Delete(dest, true);
+			Directory.Move(path, dest);
+		}
+
+		public bool TryRestore(string originalPath)
+		{
+			var dest = Path.Combine(_testTrashDir, Path.GetFileName(originalPath));
+			if (File.Exists(dest))
+			{
+				var target = originalPath;
+				if (File.Exists(target))
+				{
+					var dir = Path.GetDirectoryName(target)!;
+					var name = Path.GetFileNameWithoutExtension(target);
+					var ext = Path.GetExtension(target);
+					target = Path.Combine(dir, $"{name}_Restored_1{ext}");
+				}
+				File.Move(dest, target);
+				return true;
+			}
+			else if (Directory.Exists(dest))
+			{
+				var target = originalPath;
+				if (Directory.Exists(target))
+				{
+					var dir = Path.GetDirectoryName(target)!;
+					var name = Path.GetFileName(target);
+					target = Path.Combine(dir, $"{name}_Restored_1");
+				}
+				Directory.Move(dest, target);
+				return true;
+			}
+			return false;
+		}
+	}
+
+	private NukeProtocolService CreateService(ILogger<NukeProtocolService>? logger = null, IRecycleBinProvider? provider = null)
 	{
 		var hub = new Mock<IHubContext<SystemHub>>();
 		var clients = new Mock<IHubClients>();
@@ -47,7 +102,8 @@ public class NukeProtocolServiceTests : IDisposable
 		proxy.Setup(p => p.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
 			 .Returns(Task.CompletedTask);
 
-		return new NukeProtocolService(_scanner.Object, hub.Object, logger ?? NullLogger<NukeProtocolService>.Instance, runStartupCleanup: false)
+		var recycleProvider = provider ?? new TestRecycleBinProvider(Path.Combine(_stagingBase, "test_recycle"));
+		return new NukeProtocolService(_scanner.Object, hub.Object, logger ?? NullLogger<NukeProtocolService>.Instance, recycleProvider, runStartupCleanup: false)
 		{
 			StagingBaseResolver = _ => _stagingBase
 		};
@@ -292,5 +348,69 @@ public class NukeProtocolServiceTests : IDisposable
 
 		Assert.Equal(5, svc.GetUndoHistory().Count);
 		Assert.False(Directory.Exists(Path.Combine(_stagingBase, ".gsanalyzer_trash", oldestOpId!)));
+	}
+
+	[Fact]
+	public async Task SoftDelete_DoesNotUseCustomStagingFolder()
+	{
+		var svc = CreateService();
+		var file = NewFile("payload");
+		var token = await TokenFor(svc, file);
+
+		var result = await svc.ObliterateNodeAsync(new() { file }, token, useRecycleBin: true);
+
+		Assert.False(File.Exists(file));
+		Assert.True(result.RecycleBinUsed);
+		Assert.False(Directory.Exists(Path.Combine(_stagingBase, ".gsanalyzer_trash")));
+	}
+
+	[Fact]
+	public async Task Startup_DoesNotSilentlyDeleteStagedOrRecoverableFiles()
+	{
+		var fakeTrashRoot = Path.Combine(_stagingBase, ".gsanalyzer_trash", "op_previous");
+		Directory.CreateDirectory(fakeTrashRoot);
+		var userFile = Path.Combine(fakeTrashRoot, "user_doc.txt");
+		File.WriteAllText(userFile, "precious content");
+
+		var hub = new Mock<IHubContext<SystemHub>>();
+		var clients = new Mock<IHubClients>();
+		var proxy = new Mock<IClientProxy>();
+		clients.Setup(c => c.All).Returns(proxy.Object);
+		hub.Setup(h => h.Clients).Returns(clients.Object);
+
+		var svc = new NukeProtocolService(_scanner.Object, hub.Object, NullLogger<NukeProtocolService>.Instance, runStartupCleanup: true)
+		{
+			StagingBaseResolver = _ => _stagingBase
+		};
+
+		await Task.Delay(200);
+
+		Assert.True(File.Exists(userFile));
+	}
+
+	[Fact]
+	public void LinuxRecycleBinProvider_CreatesTrashInfo_AndRestores()
+	{
+		var provider = new LinuxRecycleBinProvider();
+		var file = NewFile("linux test");
+		provider.SendFileToRecycleBin(file);
+
+		Assert.False(File.Exists(file));
+		bool restored = provider.TryRestore(file);
+		Assert.True(restored);
+		Assert.True(File.Exists(file));
+		Assert.Equal("linux test", File.ReadAllText(file));
+	}
+
+	[Fact]
+	public void WindowsRecycleBinProvider_DeletesToRecycleBin_WhenOnWindows()
+	{
+		if (!OperatingSystem.IsWindows()) return;
+
+		var provider = new WindowsRecycleBinProvider();
+		var file = NewFile("win recycle test");
+		provider.SendFileToRecycleBin(file);
+
+		Assert.False(File.Exists(file));
 	}
 }
