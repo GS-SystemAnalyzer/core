@@ -99,15 +99,17 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 	private readonly ILogger<DiskScannerEngine> _logger;
 	private readonly IScanCacheService? _cacheService;
 	private readonly IWatcherEventLogService? _watcherLog;
+	private readonly IFileSystemIndexer? _indexer;
 	private int _scannedFilesCount = 0;
 
-	public DiskScannerEngine(IHubContext<SystemHub> hub, ISettingService settings, ILogger<DiskScannerEngine> logger, IScanCacheService? cacheService = null, IWatcherEventLogService? watcherLog = null)
+	public DiskScannerEngine(IHubContext<SystemHub> hub, ISettingService settings, ILogger<DiskScannerEngine> logger, IScanCacheService? cacheService = null, IWatcherEventLogService? watcherLog = null, IFileSystemIndexer? indexer = null)
 	{
 		_hub = hub;
 		_settings = settings;
 		_logger = logger;
 		_cacheService = cacheService;
 		_watcherLog = watcherLog;
+		_indexer = indexer;
 		if (File.Exists(_cacheFilePath))
 		{
 			try
@@ -305,6 +307,21 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 				// Retrieve the specific session's token
 				var scanToken = _activeSessions.TryGetValue(scanId, out var session) ? session.Cts.Token : CancellationToken.None;
 
+				if (_indexer != null && !string.IsNullOrWhiteSpace(scanRoot))
+				{
+					if (!_indexer.TryGetIndex(scanRoot, out _))
+					{
+						try
+						{
+							await _indexer.IndexRootAsync(scanRoot, scanId, scanToken);
+						}
+						catch (OperationCanceledException)
+						{
+							return;
+						}
+					}
+				}
+
 				await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "INITIALIZING", completed = 0, total = totalNodes, count = 0, currentTarget = "Walking up the Engine...." });
 
 				// Do not pass the token to Parallel.ForEachAsync: the framework then throws
@@ -405,6 +422,11 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 	{
 		// Return early on cancellation instead of throwing on this hot, deeply recursive path.
 		if (token.IsCancellationRequested) return 0;
+
+		if (_indexer != null && _indexer.TryGetIndex(scanRoot, out var index))
+		{
+			return GetDirectorySizeFromIndex(dir, token, scanRoot, index, currentDepth);
+		}
 
 		var config = _settings.Current.Scan;
 
@@ -542,6 +564,126 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 		catch (Exception) { /* access denied, or a stray cancellation mid-walk — skip silently */ }
 
 		// Skip persisting a partial entry when the walk was cancelled.
+		if (!token.IsCancellationRequested)
+		{
+			DirectorySizeCache[dir.FullName] = new CacheEntry
+			{
+				Size = size,
+				LastUpdated = dir.LastWriteTimeUtc,
+				CachedAtUtc = DateTime.UtcNow,
+				ScanRoot = scanRoot,
+				Extensions = extMap
+			};
+		}
+
+		return size;
+	}
+
+	private long GetDirectorySizeFromIndex(
+		DirectoryInfo dir,
+		CancellationToken token,
+		string scanRoot,
+		IReadOnlyDictionary<string, IndexEntry> index,
+		int currentDepth = 1)
+	{
+		if (token.IsCancellationRequested) return 0;
+
+		var config = _settings.Current.Scan;
+		if (currentDepth > config.Depth) return 0;
+
+		var normalizedPath = dir.FullName.Replace("\\", "/");
+		if (config.ExcludedPaths.Any(p =>
+				normalizedPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+			return 0;
+
+		if (DirectorySizeCache.TryGetValue(dir.FullName, out var entry))
+		{
+			if (dir.LastWriteTimeUtc <= entry.LastUpdated)
+			{
+				if (_cacheService != null && !_cacheService.TryGetNode(dir.FullName, out _))
+				{
+					var cachedNode = new CachedDirNode(
+						Path: dir.FullName,
+						ChildDirectoryPaths: Array.Empty<string>(),
+						Files: Array.Empty<CachedFileEntry>(),
+						OwnBytes: entry.Size,
+						RecursiveBytes: entry.Size,
+						CachedAt: entry.CachedAtUtc != default ? entry.CachedAtUtc : DateTimeOffset.UtcNow,
+						RecursiveBytesStale: false
+					);
+					_cacheService.SetNode(cachedNode, scanRoot);
+				}
+				return entry.Size;
+			}
+		}
+
+		long ownBytes = 0;
+		long size = 0;
+		var extMap = new Dictionary<string, FileTypeEntry>(StringComparer.OrdinalIgnoreCase);
+		List<CachedFileEntry>? fileEntries = _cacheService != null ? new List<CachedFileEntry>() : null;
+		var childPaths = new List<string>();
+
+		foreach (var kvp in index)
+		{
+			if (token.IsCancellationRequested) break;
+
+			var item = kvp.Value;
+			if (!string.Equals(item.ParentPath, dir.FullName, StringComparison.OrdinalIgnoreCase))
+				continue;
+
+			if (item.IsDirectory)
+			{
+				childPaths.Add(item.Path);
+				var subDir = new DirectoryInfo(item.Path);
+				size += GetDirectorySizeFromIndex(subDir, token, scanRoot, index, currentDepth + 1);
+			}
+			else
+			{
+				var length = item.SizeBytes;
+				ownBytes += length;
+
+				var ext = Path.GetExtension(item.Path).ToLowerInvariant();
+				if (string.IsNullOrEmpty(ext)) ext = "no extension";
+
+				if (!extMap.TryGetValue(ext, out var fte))
+				{
+					fte = new FileTypeEntry { Count = 0, Bytes = 0, LargestFileBytes = 0, LargestFileName = string.Empty };
+					extMap[ext] = fte;
+				}
+				fte.Count++;
+				fte.Bytes += length;
+
+				if (length > fte.LargestFileBytes)
+				{
+					fte.LargestFileBytes = length;
+					fte.LargestFileName = Path.GetFileName(item.Path);
+				}
+
+				fileEntries?.Add(new CachedFileEntry(
+					Path.GetFileName(item.Path),
+					string.IsNullOrEmpty(ext) ? "(none)" : ext,
+					length,
+					item.LastWriteUtc
+				));
+			}
+		}
+
+		size += ownBytes;
+
+		if (_cacheService != null && fileEntries != null)
+		{
+			var dirNode = new CachedDirNode(
+				Path: dir.FullName,
+				ChildDirectoryPaths: childPaths,
+				Files: fileEntries,
+				OwnBytes: ownBytes,
+				RecursiveBytes: size,
+				CachedAt: DateTimeOffset.UtcNow,
+				RecursiveBytesStale: false
+			);
+			_cacheService.SetNode(dirNode, scanRoot);
+		}
+
 		if (!token.IsCancellationRequested)
 		{
 			DirectorySizeCache[dir.FullName] = new CacheEntry
@@ -946,6 +1088,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 	{
 		DirectorySizeCache.Clear();
 		_cacheService?.Clear();
+		_indexer?.Invalidate();
 
 		// Without this the analyzer snapshots sit in the shared IMemoryCache for their full
 		// 15-minute TTL, still holding the extension dictionaries — the "never returns to idle" bug.
@@ -1014,6 +1157,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 		}
 
 		_cacheService?.InvalidatePaths(paths);
+		_indexer?.Invalidate();
 		SaveMemoryToDisk();
 	}
 }

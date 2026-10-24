@@ -26,6 +26,7 @@ builder.Services.AddMemoryCache();
 
 // Cache infrastructure
 builder.Services.AddSingleton<IScanCacheService, ScanCacheService>();
+builder.Services.AddSingleton<IFileSystemIndexer, FileSystemIndexer>();
 
 // Engine singletons
 builder.Services.AddSingleton<DiskScannerEngine>();
