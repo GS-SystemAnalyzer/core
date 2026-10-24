@@ -199,5 +199,47 @@ void main() {
 
       expect(find.text('NO STARTUP ENTRIES FOUND'), findsOneWidget);
     });
+
+    testWidgets('Test 7: Displays Startup Folder and AppModel items correctly', (tester) async {
+      final fakePrograms = [
+        const StartupProgram(
+          id: 'folder|user|Ollama.lnk',
+          name: 'Ollama',
+          executablePath: 'C:\\Users\\User\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Ollama.lnk',
+          isEnabled: true,
+          scope: 'user',
+          platform: 'windows',
+        ),
+        const StartupProgram(
+          id: 'appmodel|Claude_pzs8sxrjxfjjc|ClaudeStartup',
+          name: 'Claude',
+          executablePath: 'Claude_pzs8sxrjxfjjc',
+          isEnabled: false,
+          scope: 'user',
+          platform: 'windows',
+        ),
+      ];
+
+      when(() => mockApi.getStartupPrograms()).thenAnswer((_) async => fakePrograms);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            startupProvider.overrideWith((ref) => StartupNotifier(mockApi)..load()),
+          ],
+          child: MaterialApp(
+            theme: HudTheme.darkTheme(HudColor.darkAccentCyan),
+            home: const Scaffold(
+              body: StartupManagerScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ollama'), findsOneWidget);
+      expect(find.text('Claude'), findsOneWidget);
+      expect(find.text('USER'), findsNWidgets(2));
+    });
   });
 }
