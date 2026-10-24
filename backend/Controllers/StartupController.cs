@@ -1,4 +1,5 @@
 using System;
+using System.Security;
 using Microsoft.AspNetCore.Mvc;
 using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Services;
@@ -25,14 +26,14 @@ public class StartupController : ControllerBase
     }
 
     [HttpPost("{id}/enable")]
-    public async Task<IActionResult> EnableStartup([FromRoute] string id)
+    public async Task<IActionResult> EnableStartup([FromRoute] string id, [FromQuery] string? scope = null)
     {
         try
         {
-            await _startupManager.ToggleStartupEntryAsync(id, enable: true);
+            await _startupManager.ToggleStartupEntryAsync(id, enable: true, scope: scope);
             return Ok(new { message = $"Successfully enabled startup entry: {id}" });
         }
-        catch (UnauthorizedAccessException ex)
+        catch (Exception ex) when (ex is UnauthorizedAccessException || ex is SecurityException)
         {
             return StatusCode(403, new { error = ex.Message });
         }
@@ -43,14 +44,14 @@ public class StartupController : ControllerBase
     }
 
     [HttpPost("{id}/disable")]
-    public async Task<IActionResult> DisableStartup([FromRoute] string id)
+    public async Task<IActionResult> DisableStartup([FromRoute] string id, [FromQuery] string? scope = null)
     {
         try
         {
-            await _startupManager.ToggleStartupEntryAsync(id, enable: false);
+            await _startupManager.ToggleStartupEntryAsync(id, enable: false, scope: scope);
             return Ok(new { message = $"Successfully disabled startup entry: {id}" });
         }
-        catch (UnauthorizedAccessException ex)
+        catch (Exception ex) when (ex is UnauthorizedAccessException || ex is SecurityException)
         {
             return StatusCode(403, new { error = ex.Message });
         }
@@ -68,7 +69,7 @@ public class StartupController : ControllerBase
             await _startupManager.DeleteStartupEntryAsync(id);
             return Ok(new { message = $"Successfully deleted startup entry: {id}" });
         }
-        catch (UnauthorizedAccessException ex)
+        catch (Exception ex) when (ex is UnauthorizedAccessException || ex is SecurityException)
         {
             return StatusCode(403, new { error = ex.Message });
         }

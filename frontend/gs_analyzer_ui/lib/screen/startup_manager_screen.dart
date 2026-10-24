@@ -12,7 +12,7 @@ class StartupManagerScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(startupProvider);
-    final hud = context.HudTheme;
+    final hud = context.hudTheme;
 
     return Container(
       color: hud.base,
@@ -63,7 +63,7 @@ class StartupManagerScreen extends ConsumerWidget {
                   if (programs.isEmpty) {
                     return Center(
                       child: Text(
-                        'NO STARTUP ENTRIES DETECTED',
+                        'NO STARTUP ENTRIES FOUND',
                         style: hud.label,
                       ),
                     );
@@ -93,7 +93,7 @@ class _StartupRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(startupProvider.notifier);
-    final hud = context.HudTheme;
+    final hud = context.hudTheme;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
@@ -140,10 +140,13 @@ class _StartupRow extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Switch(
-            value: program.isEnabled,
-            activeThumbColor: hud.accentCyan,
-            onChanged: (_) => _guard(context, () => notifier.toggle(program)),
+          Tooltip(
+            message: program.isSystemScope ? 'Toggle (requires admin)' : 'Toggle',
+            child: Switch(
+              value: program.isEnabled,
+              activeThumbColor: hud.accentCyan,
+              onChanged: (_) => _guard(context, () => notifier.toggle(program)),
+            ),
           ),
           IconButton(
             icon: Icon(
@@ -165,7 +168,7 @@ class _StartupRow extends ConsumerWidget {
     BuildContext context,
     StartupNotifier notifier,
   ) async {
-    final hud = context.HudTheme;
+    final hud = context.hudTheme;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -202,9 +205,9 @@ class _StartupRow extends ConsumerWidget {
     try {
       await action();
     } on StartupAdminRequiredException catch (e) {
-      _snack(context, e.message, context.HudTheme.accentAmber);
+      _snack(context, e.message, context.hudTheme.accentAmber);
     } catch (e) {
-      _snack(context, e.toString(), context.HudTheme.accentRed);
+      _snack(context, e.toString(), context.hudTheme.accentRed);
     }
   }
 
@@ -212,10 +215,10 @@ class _StartupRow extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: context.HudTheme.panel,
+        backgroundColor: context.hudTheme.panel,
         content: Text(
           msg,
-          style: context.HudTheme.body.copyWith(color: color),
+          style: context.hudTheme.body.copyWith(color: color),
         ),
       ),
     );
@@ -229,23 +232,83 @@ class _ScopeTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hud = context.HudTheme;
+    final hud = context.hudTheme;
     final isSystem = scope.toLowerCase() == 'system';
     final color = isSystem ? hud.accentAmber : hud.textDim;
-    return Container(
+
+    final tagContent = Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         border: Border.all(color: color.withValues(alpha: 0.5)),
         borderRadius: BorderRadius.circular(3),
       ),
-      child: Text(
-        scope.toUpperCase(),
-        style: TextStyle(
-          fontFamily: HudTheme.fontCore,
-          color: color,
-          fontSize: 9,
-          letterSpacing: 1,
+      child: isSystem
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.lock_outline,
+                  size: 10,
+                  color: color,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'ADMIN REQUIRED',
+                  style: TextStyle(
+                    fontFamily: HudTheme.fontCore,
+                    color: color,
+                    fontSize: 9,
+                    letterSpacing: 1,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            )
+          : Text(
+              scope.toUpperCase(),
+              style: TextStyle(
+                fontFamily: HudTheme.fontCore,
+                color: color,
+                fontSize: 9,
+                letterSpacing: 1,
+              ),
+            ),
+    );
+
+    if (!isSystem) {
+      return tagContent;
+    }
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(3),
+      onTap: () => _showElevationDialog(context),
+      child: tagContent,
+    );
+  }
+
+  void _showElevationDialog(BuildContext context) {
+    final hud = context.hudTheme;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: hud.panel,
+        title: Text(
+          'ADMINISTRATOR PRIVILEGES REQUIRED',
+          style: hud.header.copyWith(color: hud.accentAmber),
         ),
+        content: Text(
+          'This application is configured at the system level (HKLM) and applies to all users on this machine.\n\nModifying, disabling, or removing it requires running GS SystemAnalyzer as Administrator.',
+          style: hud.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(
+              'OK',
+              style: TextStyle(color: hud.accentCyan),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -259,7 +322,7 @@ class _ErrorPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hud = context.HudTheme;
+    final hud = context.hudTheme;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,

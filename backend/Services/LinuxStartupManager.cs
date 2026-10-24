@@ -73,7 +73,7 @@ namespace GSSystemAnalyzer.Services
             return entries;
         }
 
-        public async Task ToggleStartupEntryAsync(string id, bool enable)
+        public async Task ToggleStartupEntryAsync(string id, bool enable, string? scope = null)
         {
             var filePath = Path.Combine(_autostartDir, id);
             if (!File.Exists(filePath)) return;

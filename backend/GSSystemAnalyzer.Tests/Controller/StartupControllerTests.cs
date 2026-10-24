@@ -66,6 +66,48 @@ namespace GSSystemAnalyzer.Tests.Controllers
         }
 
         [Fact]
+        public async Task EnableStartup_WhenSecurityExceptionOccurs_Returns403Forbidden()
+        {
+            _mockManager.Setup(m => m.ToggleStartupEntryAsync("SystemApp", true))
+                        .Throws(new System.Security.SecurityException("Requested registry access is not allowed."));
+
+            var result = await _controller.EnableStartup("SystemApp");
+
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(403, objectResult.StatusCode);
+            var jsonResponse = JsonSerializer.Serialize(objectResult.Value);
+            Assert.Contains("Requested registry access is not allowed.", jsonResponse);
+        }
+
+        [Fact]
+        public async Task DisableStartup_WhenSecurityExceptionOccurs_Returns403Forbidden()
+        {
+            _mockManager.Setup(m => m.ToggleStartupEntryAsync("SystemApp", false))
+                        .Throws(new System.Security.SecurityException("Requested registry access is not allowed."));
+
+            var result = await _controller.DisableStartup("SystemApp");
+
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(403, objectResult.StatusCode);
+            var jsonResponse = JsonSerializer.Serialize(objectResult.Value);
+            Assert.Contains("Requested registry access is not allowed.", jsonResponse);
+        }
+
+        [Fact]
+        public async Task DeleteStartup_WhenSecurityExceptionOccurs_Returns403Forbidden()
+        {
+            _mockManager.Setup(m => m.DeleteStartupEntryAsync("SystemApp"))
+                        .Throws(new System.Security.SecurityException("Requested registry access is not allowed."));
+
+            var result = await _controller.DeleteStartup("SystemApp");
+
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(403, objectResult.StatusCode);
+            var jsonResponse = JsonSerializer.Serialize(objectResult.Value);
+            Assert.Contains("Requested registry access is not allowed.", jsonResponse);
+        }
+
+        [Fact]
         public async Task EnableStartup_WhenRandomExceptionOccurs_Returns500InternalServerError()
         {
             _mockManager.Setup(m => m.ToggleStartupEntryAsync("BrokenApp", true))
