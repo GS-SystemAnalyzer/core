@@ -22,11 +22,6 @@ public class LargeFileHunterService : ILargeFileHunterService
 		_logger = logger;
 	}
 
-	public LargeFileHunterService(ISettingService settings, ILogger<LargeFileHunterService> logger)
-		: this(new FileSystemIndexer(settings, NullLogger<FileSystemIndexer>.Instance), logger)
-	{
-	}
-
 	public async Task<List<LargeFile>> GetTopLargeFilesAsync(string rootPath, int topN, CancellationToken cancellationToken = default)
 	{
 		var stopwatch = System.Diagnostics.Stopwatch.StartNew();

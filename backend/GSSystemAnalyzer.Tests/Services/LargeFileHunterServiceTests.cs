@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Engine;
 using GSSystemAnalyzer.Models.SettingDtos;
 using Xunit;
 using GSSystemAnalyzer.Services;
@@ -24,7 +25,8 @@ public class LargeFileHunterServiceTests : IDisposable
 		mockSettings.Setup(s => s.Current)
 			.Returns(AppSettingDto.GetFactoryDefaults());
 
-		_hunterService = new LargeFileHunterService(mockSettings.Object, NullLogger<LargeFileHunterService>.Instance);
+		var indexer = new FileSystemIndexer(mockSettings.Object, NullLogger<FileSystemIndexer>.Instance);
+		_hunterService = new LargeFileHunterService(indexer, NullLogger<LargeFileHunterService>.Instance);
 	}
 
 	[Fact]
