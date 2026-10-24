@@ -1,107 +1,87 @@
 using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Interfaces;
-using System.Runtime.CompilerServices;
+using GSSystemAnalyzer.Engine;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GSSystemAnalyzer.Services;
 
 public class LargeFileHunterService : ILargeFileHunterService
 {
-	private readonly ISettingService _settings;
+	private readonly IFileSystemIndexer _indexer;
 	private readonly ILogger<LargeFileHunterService> _logger;
 
-	public LargeFileHunterService(ISettingService settings, ILogger<LargeFileHunterService> logger)
+	public LargeFileHunterService(IFileSystemIndexer indexer, ILogger<LargeFileHunterService> logger)
 	{
-		_settings = settings;
+		_indexer = indexer;
 		_logger = logger;
+	}
+
+	public LargeFileHunterService(ISettingService settings, ILogger<LargeFileHunterService> logger)
+		: this(new FileSystemIndexer(settings, NullLogger<FileSystemIndexer>.Instance), logger)
+	{
 	}
 
 	public async Task<List<LargeFile>> GetTopLargeFilesAsync(string rootPath, int topN, CancellationToken cancellationToken = default)
 	{
-		var config = _settings.Current.Scan;
 		var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-		// To offload the heavy hardrive I/O to a background thread
-		return await Task.Run(() =>
+
+		if (!_indexer.TryGetIndex(rootPath, out var index))
 		{
-			// The Min-Heap. 'long' is the priority (the file size)
-			var topFiles = new PriorityQueue<LargeFile, long>();
+			index = await _indexer.IndexRootAsync(rootPath, Guid.NewGuid(), cancellationToken);
+		}
 
-			var options = new EnumerationOptions
+		var topFiles = new PriorityQueue<LargeFile, long>();
+
+		foreach (var entry in index.Values)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+
+			if (entry.IsDirectory || entry.SizeBytes <= 0) continue;
+
+			long size = entry.SizeBytes;
+
+			if (topFiles.Count < topN)
 			{
-				IgnoreInaccessible = true, // This silently skips locked system folders
-				RecurseSubdirectories = true,
-				ReturnSpecialDirectories = false,
-				AttributesToSkip = 0
-			};
-
-			if (config.SkipHiddenFiles) options.AttributesToSkip |= FileAttributes.Hidden;
-			if (config.SkipSystemFiles) options.AttributesToSkip |= FileAttributes.System;
-
-			// needs normalization of path to support linux 
-			var directory = new DirectoryInfo(rootPath);
-
-			foreach (var fileInfo in directory.EnumerateFiles("*", options))
-			{
-				cancellationToken.ThrowIfCancellationRequested();
-				try
-				{
-
-					long size = fileInfo.Length;
-
-					if (topFiles.Count < topN)
-					{
-						// We haven't reached the limit yet, so add it
-						topFiles.Enqueue(new LargeFile { Path = fileInfo.FullName, SizeBytes = size }, size);
-					}
-					else if (size > topFiles.Peek().SizeBytes)
-					{
-						// Means the queue is full. Kick out the smallest file, and add the new bigger one
-						topFiles.EnqueueDequeue(new LargeFile { Path = fileInfo.FullName, SizeBytes = size }, size);
-					}
-				}
-				catch
-				{
-					// just in case
-					continue;
-				}
+				topFiles.Enqueue(new LargeFile { Path = entry.Path, SizeBytes = size }, size);
 			}
-
-			// To extract the files from the queue into a list
-			var result = new List<LargeFile>(topFiles.Count);
-			while (topFiles.Count > 0)
+			else if (size > topFiles.Peek().SizeBytes)
 			{
-				result.Add(topFiles.Dequeue());
+				topFiles.EnqueueDequeue(new LargeFile { Path = entry.Path, SizeBytes = size }, size);
 			}
+		}
 
-			// A min-heap pops the smallest files files first, so we reverse it so the largest is at index 0
-			result.Reverse();
+		var result = new List<LargeFile>(topFiles.Count);
+		while (topFiles.Count > 0)
+		{
+			result.Add(topFiles.Dequeue());
+		}
 
-			// To format the raw bytes into human-readable strings
-			foreach (var file in result)
-			{
-				file.SizeFormatted = FormatSize(file.SizeBytes);
-			}
+		result.Reverse();
 
-			stopwatch.Stop();
-			_logger.LogDebug("Large file scan completed in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
+		foreach (var file in result)
+		{
+			file.SizeFormatted = FormatSize(file.SizeBytes);
+		}
 
-			return result;
+		stopwatch.Stop();
+		_logger.LogDebug("Large file scan completed in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
 
-		}, cancellationToken);
-
+		return result;
 	}
 
-	private string FormatSize(long bytes)
+	private static string FormatSize(long bytes)
 	{
 		string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
 		int counter = 0;
 		decimal number = bytes;
 
-		while (Math.Round(number / 1024) >= 1)
+		while (Math.Round(number / 1024) >= 1 && counter < suffixes.Length - 1)
 		{
 			number /= 1024;
 			counter++;

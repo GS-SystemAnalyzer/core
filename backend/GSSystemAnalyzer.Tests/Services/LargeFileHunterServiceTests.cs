@@ -53,8 +53,29 @@ public class LargeFileHunterServiceTests : IDisposable
 
 		Assert.Equal(500, results[2].SizeBytes);
 		Assert.EndsWith("file_medium.txt", results[2].Path);
+	}
 
+	[Fact]
+	public async Task GetTopLargeFilesAsync_UsesPreWarmedIndex_WithoutDiskEnumeration()
+	{
+		var mockIndexer = new Mock<IFileSystemIndexer>();
+		var fakeIndex = new Dictionary<string, GSSystemAnalyzer.Models.IndexEntry>
+		{
+			["C:/fake/tiny.txt"] = new GSSystemAnalyzer.Models.IndexEntry("C:/fake/tiny.txt", "C:/fake", false, 10, DateTime.UtcNow, FileAttributes.Normal),
+			["C:/fake/giant.bin"] = new GSSystemAnalyzer.Models.IndexEntry("C:/fake/giant.bin", "C:/fake", false, 999999, DateTime.UtcNow, FileAttributes.Normal),
+			["C:/fake/folder"] = new GSSystemAnalyzer.Models.IndexEntry("C:/fake/folder", "C:/fake", true, 0, DateTime.UtcNow, FileAttributes.Directory)
+		};
 
+		IReadOnlyDictionary<string, GSSystemAnalyzer.Models.IndexEntry> outDict = fakeIndex;
+		mockIndexer.Setup(i => i.TryGetIndex("C:/fake", out outDict)).Returns(true);
+
+		var service = new LargeFileHunterService(mockIndexer.Object, NullLogger<LargeFileHunterService>.Instance);
+		var results = await service.GetTopLargeFilesAsync("C:/fake", 1);
+
+		Assert.Single(results);
+		Assert.Equal(999999, results[0].SizeBytes);
+		Assert.Equal("C:/fake/giant.bin", results[0].Path);
+		mockIndexer.Verify(i => i.IndexRootAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	public void Dispose()

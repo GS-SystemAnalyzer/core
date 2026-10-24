@@ -147,9 +147,57 @@ namespace GSSystemAnalyzer.Tests.Services
 
 			var detector = new DuplicateFileDetector(mockSettings.Object, mockScanner.Object);
 
-			await Assert.ThrowsAsync<OperationCanceledException>(
-				async () => await detector.FindDuplicatesAsync(_testBaseDir, scanId)
-			);
+			await Assert.ThrowsAsync<OperationCanceledException>(async () => await detector.FindDuplicatesAsync(_testBaseDir, scanId));
+		}
+
+		[Fact]
+		public async Task Detector_StagedHashing_DistinguishesFilesWithSameSizeDifferentContent()
+		{
+			// Two files with identical length (5000 bytes) but different content
+			byte[] dataA = new byte[5000];
+			Array.Fill(dataA, (byte)'A');
+			byte[] dataB = new byte[5000];
+			Array.Fill(dataB, (byte)'B');
+
+			File.WriteAllBytes(Path.Combine(_testBaseDir, "fileA.bin"), dataA);
+			File.WriteAllBytes(Path.Combine(_testBaseDir, "fileB.bin"), dataB);
+
+			var results = await _detector.FindDuplicatesAsync(_testBaseDir, Guid.NewGuid());
+			Assert.Empty(results);
+		}
+
+		[Fact]
+		public async Task Detector_ConsumesPreWarmedIndexer_WithoutDiskEnumeration()
+		{
+			var mockScanner = new Mock<IDiskScannerEngine>();
+			mockScanner.Setup(s => s.GetScanToken(It.IsAny<Guid>())).Returns(CancellationToken.None);
+
+			var mockSettings = new Mock<ISettingService>();
+			mockSettings.Setup(s => s.Current).Returns(AppSettingDto.GetFactoryDefaults());
+
+			var mockIndexer = new Mock<IFileSystemIndexer>();
+			string dup1 = Path.Combine(_testBaseDir, "dup1.txt");
+			string dup2 = Path.Combine(_testBaseDir, "dup2.txt");
+			File.WriteAllText(dup1, "DUPLICATE_PAYLOAD");
+			File.WriteAllText(dup2, "DUPLICATE_PAYLOAD");
+
+			long size = new FileInfo(dup1).Length;
+			var fakeIndex = new Dictionary<string, GSSystemAnalyzer.Models.IndexEntry>
+			{
+				[dup1] = new GSSystemAnalyzer.Models.IndexEntry(dup1, _testBaseDir, false, size, DateTime.UtcNow, FileAttributes.Normal),
+				[dup2] = new GSSystemAnalyzer.Models.IndexEntry(dup2, _testBaseDir, false, size, DateTime.UtcNow, FileAttributes.Normal)
+			};
+
+			IReadOnlyDictionary<string, GSSystemAnalyzer.Models.IndexEntry> outDict = fakeIndex;
+			mockIndexer.Setup(i => i.TryGetIndex(_testBaseDir, out outDict)).Returns(true);
+
+			var detector = new DuplicateFileDetector(mockSettings.Object, mockScanner.Object, mockIndexer.Object);
+			var results = await detector.FindDuplicatesAsync(_testBaseDir, Guid.NewGuid());
+
+			Assert.Single(results);
+			Assert.Equal(2, results[0].FilePaths.Count);
+			Assert.Equal(size, results[0].FileSizeBytes);
+			mockIndexer.Verify(i => i.IndexRootAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
 		}
 	}
 }
