@@ -81,6 +81,7 @@ class RamNotifier extends StateNotifier<RamState> {
   }
 
   void clearError() {
+    snackbarKey.currentState?.hideCurrentSnackBar();
     state = state.copyWith(clearError: true);
   }
 
@@ -152,42 +153,38 @@ class RamNotifier extends StateNotifier<RamState> {
   }
 
   Future<void> killProcess(int pid) async {
-    final previousGroups = state.groupedProcesses;
-
-    state = state.copyWith(
-      groupedProcesses: state.groupedProcesses
-          .map((group) {
-            return ProcessGroup(
-              name: group.name,
-              processes: group.processes
-                  .where((process) => process.pid != pid)
-                  .toList(),
-            );
-          })
-          .where((group) => group.processes.isNotEmpty)
-          .toList(),
-      clearError: true,
-    );
+    state = state.copyWith(clearError: true);
 
     try {
       await _apiService.killRamProcesses([pid]);
+
+      state = state.copyWith(
+        groupedProcesses: state.groupedProcesses
+            .map((group) {
+              return ProcessGroup(
+                name: group.name,
+                processes: group.processes
+                    .where((process) => process.pid != pid)
+                    .toList(),
+              );
+            })
+            .where((group) => group.processes.isNotEmpty)
+            .toList(),
+      );
+
       appLogger.i('EXECUTE ORDER 66 ON PID: $pid - SUCCESS');
     } catch (e) {
       final msg = _formatErrorMessage(
         e,
         fallback: 'Failed to terminate process (PID: $pid)',
       );
-      state = state.copyWith(
-        groupedProcesses: previousGroups,
-        errorMessage: msg,
-      );
+      state = state.copyWith(errorMessage: msg);
       appLogger.e('Failed to kill process $pid: $e');
       _showErrorSnackBar(msg);
     }
   }
 
   Future<void> killProcessGroup(String groupName) async {
-    final previousGroups = state.groupedProcesses;
     final targetGroup = state.groupedProcesses
         .where((g) => g.name == groupName)
         .firstOrNull;
@@ -197,25 +194,24 @@ class RamNotifier extends StateNotifier<RamState> {
     final pidsToKill = targetGroup.processes.map((p) => p.pid).toList();
     if (pidsToKill.isEmpty) return;
 
-    state = state.copyWith(
-      groupedProcesses: state.groupedProcesses
-          .where((g) => g.name != groupName)
-          .toList(),
-      clearError: true,
-    );
+    state = state.copyWith(clearError: true);
 
     try {
       await _apiService.killRamProcesses(pidsToKill);
+
+      state = state.copyWith(
+        groupedProcesses: state.groupedProcesses
+            .where((g) => g.name != groupName)
+            .toList(),
+      );
+
       appLogger.i('EXECUTE ORDER 66 ON GROUP: $groupName - SUCCESS');
     } catch (e) {
       final msg = _formatErrorMessage(
         e,
         fallback: 'Failed to terminate process group "$groupName"',
       );
-      state = state.copyWith(
-        groupedProcesses: previousGroups,
-        errorMessage: msg,
-      );
+      state = state.copyWith(errorMessage: msg);
       appLogger.e('Failed to kill process group "$groupName": $e');
       _showErrorSnackBar(msg);
     }
@@ -234,7 +230,23 @@ class RamNotifier extends StateNotifier<RamState> {
       return 'Access Denied: Run as Administrator to kill this process';
     }
 
+    if (lower.contains('socketexception') ||
+        lower.contains('refused') ||
+        lower.contains('connection refused') ||
+        lower.contains('network connection') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('clientexception')) {
+      return 'Backend offline: Unable to connect to Analyzer service (localhost:5200)';
+    }
+
+    if (lower.contains('timeout') || lower.contains('timed out')) {
+      return 'Connection timed out: Backend did not respond';
+    }
+
     if (clean.trim().isNotEmpty) {
+      if (clean.length > 120) {
+        return fallback;
+      }
       return clean.trim();
     }
     return fallback;
@@ -249,15 +261,27 @@ class RamNotifier extends StateNotifier<RamState> {
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: TextStyle(
-            fontFamily: HudTheme.fontCore,
-            fontWeight: FontWeight.bold,
-            color: hud?.textMain ?? Colors.white,
-          ),
+        content: Row(
+          children: [
+            Icon(
+              Icons.error_outline,
+              color: hud?.accentRed ?? const Color(0xFFEF4444),
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontFamily: HudTheme.fontCore,
+                  fontWeight: FontWeight.bold,
+                  color: hud?.accentRed ?? const Color(0xFFEF4444),
+                ),
+              ),
+            ),
+          ],
         ),
-        backgroundColor: hud?.accentRed ?? const Color(0xFFEF4444),
+        backgroundColor: hud?.panel ?? const Color(0xFF1E222A),
         duration: const Duration(seconds: 4),
         behavior: SnackBarBehavior.floating,
       ),

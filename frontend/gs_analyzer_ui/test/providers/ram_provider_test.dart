@@ -52,7 +52,7 @@ void main() {
   });
 
   group('RamNotifier killProcess & killProcessGroup tests', () {
-    test('killProcess removes process optimistically on success', () async {
+    test('killProcess removes process on success', () async {
       when(() => mockApi.killRamProcesses([1001])).thenAnswer((_) async => true);
 
       final container = ProviderContainer(
@@ -76,7 +76,7 @@ void main() {
       verify(() => mockApi.killRamProcesses([1001])).called(1);
     });
 
-    test('killProcess reverts state and sets errorMessage on backend failure', () async {
+    test('killProcess preserves state and sets errorMessage on backend failure', () async {
       when(() => mockApi.killRamProcesses([4])).thenThrow(
         Exception('Access Denied: Run as Administrator to kill this process'),
       );
@@ -95,7 +95,7 @@ void main() {
       await notifier.killProcess(4);
 
       final state = notifier.state;
-      // Process should be restored
+      // Process should remain in the list without ever disappearing
       expect(state.groupedProcesses.length, 1);
       expect(state.groupedProcesses.first.processes.first.pid, 4);
       expect(
@@ -105,7 +105,36 @@ void main() {
       verify(() => mockApi.killRamProcesses([4])).called(1);
     });
 
-    test('killProcessGroup removes group optimistically on success', () async {
+    test('killProcess formats friendly message on SocketException / network error', () async {
+      when(() => mockApi.killRamProcesses([4])).thenThrow(
+        Exception(
+          'ClientException with SocketException: The remote computer refused the network connection, errno = 1225',
+        ),
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          ramProvider.overrideWith((ref) => RamNotifier(ref, mockApi)),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(ramProvider.notifier);
+      final initialGroup = ProcessGroup(name: 'System', processes: [systemProc]);
+      notifier.debugSetGroupsForTest([initialGroup]);
+
+      await notifier.killProcess(4);
+
+      final state = notifier.state;
+      expect(state.groupedProcesses.length, 1);
+      expect(state.groupedProcesses.first.processes.first.pid, 4);
+      expect(
+        state.errorMessage,
+        'Backend offline: Unable to connect to Analyzer service (localhost:5200)',
+      );
+    });
+
+    test('killProcessGroup removes group on success', () async {
       when(() => mockApi.killRamProcesses([1001, 1002])).thenAnswer((_) async => true);
 
       final container = ProviderContainer(
@@ -129,7 +158,7 @@ void main() {
       verify(() => mockApi.killRamProcesses([1001, 1002])).called(1);
     });
 
-    test('killProcessGroup reverts state and sets errorMessage on failure', () async {
+    test('killProcessGroup preserves state and sets errorMessage on failure', () async {
       when(() => mockApi.killRamProcesses([1001, 1002])).thenThrow(
         Exception('Access Denied: Run as Administrator to kill this process'),
       );
@@ -158,7 +187,7 @@ void main() {
       verify(() => mockApi.killRamProcesses([1001, 1002])).called(1);
     });
 
-    test('clearError resets errorMessage to null', () {
+    test('clearError resets errorMessage to null and hides SnackBar', () {
       final container = ProviderContainer(
         overrides: [
           ramProvider.overrideWith((ref) => RamNotifier(ref, mockApi)),
