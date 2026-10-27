@@ -129,4 +129,62 @@ void main() {
       expect(hist.first.usedRecycleBin, isTrue);
     });
   });
+
+  group('ApiService.killRamProcesses', () {
+    test('returns true when processes are terminated successfully', () async {
+      late http.Request req;
+      final client = MockClient((r) async {
+        req = r;
+        return http.Response(
+          jsonEncode({'message': '1 PIDs Terminated'}),
+          200,
+        );
+      });
+
+      final result = await ApiService(client).killRamProcesses([1234]);
+      expect(result, isTrue);
+      expect(req.method, 'POST');
+      expect(req.url.path, endsWith('/api/Telemetry/ram/kill'));
+      expect(jsonDecode(req.body), [1234]);
+    });
+
+    test('throws Access Denied when 200 OK returns 0 PIDs Terminated', () async {
+      final client = MockClient((_) async => http.Response(
+            jsonEncode({'message': '0 PIDs Terminated'}),
+            200,
+          ));
+
+      expect(
+        () => ApiService(client).killRamProcesses([4]),
+        throwsA(predicate((e) =>
+            e is Exception &&
+            e.toString().contains('Access Denied: Run as Administrator'))),
+      );
+    });
+
+    test('throws Access Denied on 403 Forbidden', () async {
+      final client = MockClient((_) async => http.Response('Forbidden', 403));
+
+      expect(
+        () => ApiService(client).killRamProcesses([4]),
+        throwsA(predicate((e) =>
+            e is Exception &&
+            e.toString().contains('Access Denied: Run as Administrator'))),
+      );
+    });
+
+    test('throws with status code details on 500 error', () async {
+      final client = MockClient((_) async => http.Response(
+            jsonEncode({'error': 'Internal server failure'}),
+            500,
+          ));
+
+      expect(
+        () => ApiService(client).killRamProcesses([1234]),
+        throwsA(predicate((e) =>
+            e is Exception &&
+            e.toString().contains('Internal server failure'))),
+      );
+    });
+  });
 }

@@ -286,5 +286,35 @@ void main() {
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
     });
+
+    testWidgets('renders error banner when ramState has errorMessage', (tester) async {
+      final errorRamState = sampleRamState.copyWith(
+        errorMessage: 'Access Denied: Run as Administrator to kill this process',
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ramProvider.overrideWith((ref) => MockRamNotifier(errorRamState)),
+            cpuProvider.overrideWith((ref) => MockCpuNotifier(sampleCpuState)),
+            hudDensityProvider.overrideWithValue(testDensity),
+          ],
+          child: MaterialApp(
+            theme: HudTheme.darkTheme(HudColor.darkAccentCyan),
+            home: const Scaffold(
+              body: ProcessExplorerScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Access Denied: Run as Administrator to kill this process'),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.error_outline), findsOneWidget);
+      expect(find.byIcon(Icons.close), findsOneWidget);
+    });
   });
 }

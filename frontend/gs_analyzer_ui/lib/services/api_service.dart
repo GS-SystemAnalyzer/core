@@ -266,11 +266,50 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
+      try {
+        final jsonBody = jsonDecode(response.body);
+        final message =
+            (jsonBody['message'] ?? jsonBody['Message'] ?? '').toString();
+        final match = RegExp(
+          r'^(\d+)\s+PIDs\s+Terminated',
+          caseSensitive: false,
+        ).firstMatch(message.trim());
+        if (match != null) {
+          final count = int.tryParse(match.group(1) ?? '0') ?? 0;
+          if (count == 0 && pids.isNotEmpty) {
+            throw Exception(
+              'Access Denied: Run as Administrator to kill this process',
+            );
+          }
+        }
+        final killCount = jsonBody['killCount'] ?? jsonBody['KillCount'];
+        if (killCount is num && killCount == 0 && pids.isNotEmpty) {
+          throw Exception(
+            'Access Denied: Run as Administrator to kill this process',
+          );
+        }
+        if (jsonBody['success'] == false) {
+          throw Exception(
+            jsonBody['message'] ?? 'Failed to terminate process',
+          );
+        }
+      } on FormatException {
+        // Not JSON formatted response
+      }
       return true;
-    } else {
+    } else if (response.statusCode == 403 || response.statusCode == 401) {
       throw Exception(
-        'Failed to terminate PID Status: ${response.statusCode} - ${response.body}',
+        'Access Denied: Run as Administrator to kill this process',
       );
+    } else {
+      String errorMessage =
+          'Failed to terminate PID Status: ${response.statusCode}';
+      try {
+        final body = jsonDecode(response.body);
+        final err = body['error'] ?? body['message'] ?? body['Message'];
+        if (err != null) errorMessage = err.toString();
+      } catch (_) {}
+      throw Exception(errorMessage);
     }
   }
 

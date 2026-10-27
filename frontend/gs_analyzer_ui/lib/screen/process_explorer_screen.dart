@@ -29,6 +29,37 @@ class ProcessExplorerScreen extends ConsumerWidget {
         // System Load Summary
         _SystemLoadBar(ramState: ramState, cpuState: cpuState),
 
+        if (ramState.errorMessage != null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            color: context.HudTheme.accentRed.withValues(alpha: 0.2),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  color: context.HudTheme.accentRed,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    ramState.errorMessage!,
+                    style: context.HudTheme.actionRed,
+                  ),
+                ),
+                InkWell(
+                  onTap: () => ref.read(ramProvider.notifier).clearError(),
+                  child: Icon(
+                    Icons.close,
+                    color: context.HudTheme.accentRed,
+                    size: 18,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
         //  Toolbar
         _Toolbar(),
 
