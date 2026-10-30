@@ -59,7 +59,11 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
               tooltip: 'Toggle Data Tree',
               onPressed: () {
                 final notifier = ref.read(treeExpandedProvider.notifier);
-                notifier.state = !notifier.state;
+                final willExpand = !notifier.state;
+                notifier.state = willExpand;
+                if (willExpand && ref.read(treeSidebarWidthProvider) < 60.0) {
+                  ref.read(treeSidebarWidthProvider.notifier).state = 260.0;
+                }
               },
             ),
             const SizedBox(width: 8),
@@ -254,7 +258,7 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
           : Row(
               children: [
                 // LEFT PANEL: Persistent Tree
-                if (currentMode == StorageMode.diskAnalyzer)
+                if (currentMode == StorageMode.diskAnalyzer) ...[
                   SideBarTreeWidget(
                     onNuke: (name, path) => executeNukeProtocol(
                       context,
@@ -263,6 +267,8 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
                       filePath: path,
                     ),
                   ),
+                  const _TreeSplitterDivider(),
+                ],
                 // RIGHT PANEL: Directory Table
                 Expanded(
                   child: Column(
@@ -322,6 +328,12 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
 
     return Column(
       children: [
+        if (dirState.isLoading)
+          LinearProgressIndicator(
+            backgroundColor: hud.panel,
+            valueColor: AlwaysStoppedAnimation<Color>(hud.accentCyan),
+            minHeight: 2,
+          ),
         // Age Heatmap overlay (legend + summary) — shown when toggle is on
         if (isHeatmapOn) const AgeHeatmapOverlay(),
         DirectoryTableHeader(),
@@ -339,8 +351,10 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
               : ListView.builder(
                   itemCount: dirState.displayNodes.length,
                   itemBuilder: (context, index) {
+                    final node = dirState.displayNodes[index];
                     return DirectoryNodeWidget(
-                      node: dirState.displayNodes[index],
+                      key: ValueKey(node.path),
+                      node: node,
                       apiService: ApiService(),
                       onNuke: (name, path) => executeNukeProtocol(
                         context,
@@ -402,6 +416,121 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TreeSplitterDivider extends ConsumerStatefulWidget {
+  const _TreeSplitterDivider();
+
+  @override
+  ConsumerState<_TreeSplitterDivider> createState() => _TreeSplitterDividerState();
+}
+
+class _TreeSplitterDividerState extends ConsumerState<_TreeSplitterDivider> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final hud = context.hudTheme;
+    final isExpanded = ref.watch(treeExpandedProvider);
+    final isDragging = ref.watch(treeSidebarDraggingProvider);
+
+    if (!isExpanded) {
+      return MouseRegion(
+        cursor: SystemMouseCursors.resizeColumn,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            ref.read(treeExpandedProvider.notifier).state = true;
+            ref.read(treeSidebarWidthProvider.notifier).state = 260.0;
+          },
+          onHorizontalDragStart: (_) {
+            ref.read(treeSidebarDraggingProvider.notifier).state = true;
+            ref.read(treeExpandedProvider.notifier).state = true;
+            ref.read(treeSidebarWidthProvider.notifier).state = 120.0;
+          },
+          onHorizontalDragUpdate: (details) {
+            final currentWidth = ref.read(treeSidebarWidthProvider);
+            final newWidth = (currentWidth + details.delta.dx).clamp(0.0, 420.0);
+            ref.read(treeSidebarWidthProvider.notifier).state = newWidth;
+            if (newWidth < 50.0) {
+              ref.read(treeExpandedProvider.notifier).state = false;
+            }
+          },
+          onHorizontalDragEnd: (_) {
+            ref.read(treeSidebarDraggingProvider.notifier).state = false;
+            final width = ref.read(treeSidebarWidthProvider);
+            if (width < 60.0) {
+              ref.read(treeExpandedProvider.notifier).state = false;
+              ref.read(treeSidebarWidthProvider.notifier).state = 260.0;
+            }
+          },
+          child: Container(
+            width: 14,
+            decoration: BoxDecoration(
+              color: _isHovered ? hud.panel : hud.base,
+              border: Border(
+                right: BorderSide(
+                  color: _isHovered ? hud.accentCyan : hud.textMain.withValues(alpha: 0.15),
+                ),
+              ),
+            ),
+            child: Center(
+              child: Icon(
+                Icons.chevron_right,
+                size: 14,
+                color: _isHovered ? hud.accentCyan : hud.textDim,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragStart: (_) {
+          ref.read(treeSidebarDraggingProvider.notifier).state = true;
+        },
+        onHorizontalDragUpdate: (details) {
+          final currentWidth = ref.read(treeSidebarWidthProvider);
+          final newWidth = (currentWidth + details.delta.dx).clamp(0.0, 420.0);
+          ref.read(treeSidebarWidthProvider.notifier).state = newWidth;
+          if (newWidth < 50.0 && ref.read(treeExpandedProvider)) {
+            ref.read(treeExpandedProvider.notifier).state = false;
+          } else if (newWidth >= 50.0 && !ref.read(treeExpandedProvider)) {
+            ref.read(treeExpandedProvider.notifier).state = true;
+          }
+        },
+        onHorizontalDragEnd: (_) {
+          ref.read(treeSidebarDraggingProvider.notifier).state = false;
+          final width = ref.read(treeSidebarWidthProvider);
+          if (width < 60.0) {
+            ref.read(treeExpandedProvider.notifier).state = false;
+            ref.read(treeSidebarWidthProvider.notifier).state = 260.0;
+          }
+        },
+        child: Container(
+          width: 8,
+          color: Colors.transparent,
+          child: Center(
+            child: Container(
+              width: (_isHovered || isDragging) ? 3 : 1,
+              height: double.infinity,
+              color: (_isHovered || isDragging)
+                  ? hud.accentCyan
+                  : hud.textMain.withValues(alpha: 0.15),
+            ),
+          ),
         ),
       ),
     );

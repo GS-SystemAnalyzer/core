@@ -67,6 +67,13 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
 
   TelemetryService? get service => _telemetryService;
 
+  Future<void> ensureConnected({
+    Duration timeout = const Duration(seconds: 2),
+  }) async {
+    if (_telemetryService == null) return;
+    await _telemetryService!.ensureConnected(timeout: timeout);
+  }
+
   TelemetryNotifier(this.ref, {bool autoConnect = true})
       : super(const TelemetryState()) {
     if (autoConnect) _initRadio();
@@ -118,8 +125,22 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
           .receiveStreamChunk(scanId, path, chunk);
     };
 
-    _telemetryService?.onDirectoryStreamComplete = (scanId, path) {
-      ref.read(directoryProvider.notifier).finalizeStream(scanId, path);
+    _telemetryService?.onDirectoryStreamComplete = (
+      scanId,
+      path, {
+      parentPath,
+      ownBytes,
+      recursiveBytes,
+      recursiveBytesFinal,
+    }) {
+      ref.read(directoryProvider.notifier).finalizeStream(
+        scanId,
+        path,
+        parentPath: parentPath,
+        ownBytes: ownBytes,
+        recursiveBytes: recursiveBytes,
+        recursiveBytesFinal: recursiveBytesFinal ?? true,
+      );
       final drive = ref.read(currentDriveProvider);
       if (drive != null) {
         final completed = path.replaceAll('\\', '/').replaceAll('/', '').toLowerCase();

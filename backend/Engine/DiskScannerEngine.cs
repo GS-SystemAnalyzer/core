@@ -277,7 +277,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 		}
 	}
 
-	public async Task CalculateMissingSizesAsync(List<FileSystemInfo> items, Guid scanId)
+	public async Task CalculateMissingSizesAsync(List<FileSystemInfo> items, Guid scanId, Action<DirectoryInfo, long>? onSubtreeCompleted = null)
 	{
 		await _scanLock.WaitAsync();
 		try
@@ -336,6 +336,8 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 								ScanRoot = scanRoot,
 								Extensions = existingEntry?.Extensions
 							};
+
+							onSubtreeCompleted?.Invoke(dir, size);
 						}
 						catch (OperationCanceledException)
 						{
@@ -389,8 +391,8 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 			}
 			else
 			{
-				// A fully-cached rescan has nothing to scan; still emit a terminal COMPLETED
-				// so the UI leaves INITIALIZING and shows completion.
+				// Emit an initializing pulse so listeners bind the session before the terminal pulse.
+				await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "INITIALIZING", completed = 0, total = 0, currentTarget = "Scan completed" });
 				await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "COMPLETED", completed = 0, total = 0, currentTarget = "Scan completed" });
 			}
 		}

@@ -132,6 +132,16 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
         : base;
 
     if (widget.isTreeView) {
+      final sidebarWidth = ref.watch(treeSidebarWidthProvider);
+      final scaleFactor = ((sidebarWidth - 50.0) / (160.0 - 50.0)).clamp(0.0, 1.0);
+      final folderIconSize = (16.0 * (0.35 + 0.65 * scaleFactor)).clamp(4.0, 16.0);
+      final arrowWidth = 24.0 * scaleFactor;
+      final responsiveIndent = leftPadding * scaleFactor;
+
+      if (scaleFactor <= 0.0) {
+        return const SizedBox.shrink();
+      }
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -145,38 +155,46 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               child: Row(
                 children: [
-                  SizedBox(width: leftPadding),
+                  SizedBox(width: responsiveIndent),
                   SizedBox(
-                    width: 24,
-                    child: isDir
+                    width: arrowWidth,
+                    child: isDir && scaleFactor > 0.4
                         ? AnimatedRotation(
                             turns: _isExpanded ? 0.25 : 0.0,
                             duration: const Duration(milliseconds: 200),
                             child: Icon(
                               Icons.keyboard_arrow_right_outlined,
                               color: hud.accentCyan,
-                              size: 16,
+                              size: (16.0 * scaleFactor).clamp(8.0, 16.0),
                             ),
                           )
                         : const SizedBox(),
                   ),
-                  Icon(
-                    isDir
-                        ? Icons.folder_outlined
-                        : Icons.insert_drive_file_outlined,
-                    color: visColor(isDir ? hud.accentAmber : hud.accentGreen),
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      widget.node.name,
-                      style: applyVis
-                          ? hud.body.copyWith(color: visColor(hud.body.color ?? hud.textMain))
-                          : hud.body,
-                      overflow: TextOverflow.ellipsis,
+                  Opacity(
+                    opacity: scaleFactor.clamp(0.0, 1.0),
+                    child: Icon(
+                      isDir
+                          ? Icons.folder_outlined
+                          : Icons.insert_drive_file_outlined,
+                      color: visColor(isDir ? hud.accentAmber : hud.accentGreen),
+                      size: folderIconSize,
                     ),
                   ),
+                  if (scaleFactor > 0.3) ...[
+                    SizedBox(width: (8.0 * scaleFactor).clamp(2.0, 8.0)),
+                    Expanded(
+                      child: Opacity(
+                        opacity: ((scaleFactor - 0.3) / 0.7).clamp(0.0, 1.0),
+                        child: Text(
+                          widget.node.name,
+                          style: applyVis
+                              ? hud.body.copyWith(color: visColor(hud.body.color ?? hud.textMain))
+                              : hud.body,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -185,7 +203,7 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
             if (_isLoading)
               Padding(
                 padding: EdgeInsets.only(
-                  left: leftPadding + 32,
+                  left: responsiveIndent + (32 * scaleFactor),
                   top: 4,
                   bottom: 4,
                 ),
@@ -238,7 +256,7 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
         ? bucketColor(nodeBucket!, context)
         : null;
     final bool showReviewBadge =
-        nodeBucket == 'stale' && isDir && widget.node.sizeBytes > 1073741824;
+        nodeBucket == 'stale' && isDir && widget.node.isRecursiveFinal && widget.node.sizeBytes > 1073741824;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,9 +372,13 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                 Expanded(
                   flex: 2,
                   child: Text(
-                    formatBytes(widget.node.sizeBytes),
+                    !widget.node.isRecursiveFinal
+                        ? '~ ${formatBytes(widget.node.sizeBytes)}'
+                        : formatBytes(widget.node.sizeBytes),
                     style: hud.statGreen.copyWith(
-                      color: heatmapColor ?? hud.accentCyan,
+                      color: !widget.node.isRecursiveFinal
+                          ? hud.accentCyan.withValues(alpha: 0.7)
+                          : (heatmapColor ?? hud.accentCyan),
                     ),
                     textAlign: TextAlign.center,
                   ),

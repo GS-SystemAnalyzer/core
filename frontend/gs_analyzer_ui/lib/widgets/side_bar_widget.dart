@@ -19,17 +19,19 @@ class SideBarTreeWidget extends ConsumerWidget {
     final rootNodeAsync = ref.watch(rootTreeProvider);
     final dirNotifier = ref.read(directoryProvider.notifier);
     final isExpanded = ref.watch(treeExpandedProvider);
+    final width = ref.watch(treeSidebarWidthProvider);
+    final isDragging = ref.watch(treeSidebarDraggingProvider);
     final excludedPaths = ref.watch(
       settingsProvider.select(
         (s) => s.savedSettings?.scan.excludedPaths ?? <String>[],
       ),
     );
-    final hud = context.HudTheme;
+    final hud = context.hudTheme;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+      duration: isDragging ? Duration.zero : const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
-      width: isExpanded ? 300.0 : 0.0,
+      width: isExpanded ? width : 0.0,
       decoration: BoxDecoration(
         color: hud.base,
         border: Border(
@@ -38,11 +40,9 @@ class SideBarTreeWidget extends ConsumerWidget {
           ),
         ),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const NeverScrollableScrollPhysics(),
+      child: ClipRect(
         child: SizedBox(
-          width: 300.0,
+          width: width,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -56,10 +56,12 @@ class SideBarTreeWidget extends ConsumerWidget {
                   color: hud.panel,
                   border: Border(bottom: BorderSide(color: hud.textMain.withValues(alpha: 0.1))),
                 ),
-                child: const HudLabel(
-                  'DATA TREE',
-                  overflow: TextOverflow.visible,
-                ),
+                child: width >= 100.0
+                    ? const HudLabel(
+                        'DATA TREE',
+                        overflow: TextOverflow.visible,
+                      )
+                    : const SizedBox.shrink(),
               ),
               Expanded(
                 child: SingleChildScrollView(

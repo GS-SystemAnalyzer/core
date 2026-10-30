@@ -155,5 +155,67 @@ namespace GSSystemAnalyzer.Tests.Controllers
 			Assert.True(payload.Success);
 			disk.Verify(s => s.BeginScan(It.IsAny<Guid?>()), Times.Once); // token established before returning
 		}
+
+		[Fact]
+		public async Task StreamSector_InvokesStreamDirectoryAsync_AndEmitsEvents()
+		{
+			var disk = new Mock<IDiskOperationService>();
+			var id = Guid.NewGuid();
+			disk.Setup(s => s.BeginScan(It.IsAny<Guid?>())).Returns(id);
+
+			var hubMock = new Mock<IHubContext<SystemHub>>();
+			var clientsMock = new Mock<IHubClients>();
+			var proxyMock = new Mock<IClientProxy>();
+			hubMock.Setup(h => h.Clients).Returns(clientsMock.Object);
+			clientsMock.Setup(c => c.All).Returns(proxyMock.Object);
+
+			var emittedEvents = new List<(string Method, object? Payload)>();
+			proxyMock
+				.Setup(c => c.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+				.Callback<string, object?[], CancellationToken>((method, args, _) =>
+				{
+					lock (emittedEvents)
+					{
+						emittedEvents.Add((method, args.Length > 0 ? args[0] : null));
+					}
+				})
+				.Returns(Task.CompletedTask);
+
+			disk.Setup(s => s.StreamDirectoryAsync(It.IsAny<string>(), id, It.IsAny<Func<IReadOnlyList<StorageNode>, Task>>(), It.IsAny<CancellationToken>()))
+				.Returns<string, Guid, Func<IReadOnlyList<StorageNode>, Task>, CancellationToken>(async (path, scanId, onChunk, ct) =>
+				{
+					await onChunk(new List<StorageNode>
+					{
+						new() { Name = "file.txt", Path = Path.Combine(path, "file.txt"), SizeBytes = 100 }
+					});
+					return new DirectoryStreamSummary
+					{
+						Path = path,
+						ParentPath = Path.GetDirectoryName(path) ?? string.Empty,
+						OwnBytes = 100,
+						RecursiveBytes = 100,
+						RecursiveBytesFinal = true
+					};
+				});
+
+			var controller = BuildController(disk.Object, ScopeFactoryFor(disk.Object).Object);
+
+			var result = controller.StreamDirectorySection(
+				hubMock.Object,
+				DriveServiceWithReadyRoot().Object,
+				TempDir,
+				id);
+
+			Assert.IsType<OkObjectResult>(result);
+
+			// Give background task a moment to finish
+			await Task.Delay(200);
+
+			lock (emittedEvents)
+			{
+				Assert.Contains(emittedEvents, e => e.Method == "DirectoryChunk");
+				Assert.Contains(emittedEvents, e => e.Method == "DirectoryStreamComplete");
+			}
+		}
 	}
 }
