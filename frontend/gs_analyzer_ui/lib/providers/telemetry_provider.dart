@@ -67,6 +67,13 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
 
   TelemetryService? get service => _telemetryService;
 
+  Future<void> ensureConnected({
+    Duration timeout = const Duration(seconds: 2),
+  }) async {
+    if (_telemetryService == null) return;
+    await _telemetryService!.ensureConnected(timeout: timeout);
+  }
+
   TelemetryNotifier(this.ref, {bool autoConnect = true})
       : super(const TelemetryState()) {
     if (autoConnect) _initRadio();

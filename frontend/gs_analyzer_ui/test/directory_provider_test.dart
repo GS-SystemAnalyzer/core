@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
+import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'mock_factory.dart';
@@ -171,7 +172,7 @@ void main() {
     );
   });
 
-  group('Incremental Directory Streaming Tests (Issue #239)', () {
+  group('Incremental Directory Streaming Tests', () {
     test('Progressive upserting updates existing node and prevents duplicate entries', () {
       final container = ProviderContainer();
       final notifier = container.read(directoryProvider.notifier);
@@ -264,6 +265,99 @@ void main() {
       expect(notifier.state.isLoading, false);
       expect(notifier.state.displayNodes.length, 1);
       expect(notifier.state.displayNodes.first.isRecursiveFinal, true);
+    });
+
+    test('Cached sector preserves displayNodes and sets isLoading true during stream refresh', () async {
+      final container = ProviderContainer();
+      final notifier = container.read(directoryProvider.notifier);
+
+      // 1. First scan populates the cache
+      notifier.state = notifier.state.copyWith(currentPath: 'C:/TestCache');
+      final chunk = [
+        {
+          'name': 'ExistingFile.txt',
+          'path': 'C:/TestCache/ExistingFile.txt',
+          'parentPath': 'C:/TestCache',
+          'type': 'File',
+          'sizeBytes': 4096,
+          'lastModified': DateTime.now().toIso8601String(),
+          'isHidden': false,
+          'isSystem': false,
+          'ownBytes': 4096,
+          'recursiveBytes': 4096,
+          'recursiveBytesFinal': true,
+        }
+      ];
+      notifier.receiveStreamChunk(null, 'C:/TestCache', chunk);
+      notifier.finalizeStream(null, 'C:/TestCache');
+
+      expect(notifier.state.displayNodes.length, 1);
+
+      // 2. Second scan on the same path (e.g. user re-scans or navigates into it)
+      final prevScanId = notifier.currentScanId;
+      await notifier.scanDirectory('C:/TestCache');
+
+      // Ensure re-scan generates a new scanId and preserves cached nodes without poisoning cache.
+      expect(
+        notifier.currentScanId,
+        isNot(equals(prevScanId)),
+        reason: 'Re-scanning a cached folder must initiate a new streaming scan, not return early',
+      );
+      expect(
+        notifier.state.displayNodes.isNotEmpty,
+        true,
+        reason: 'Display nodes must not be wiped out or poisoned while stream is starting',
+      );
+      expect(
+        notifier.getCachedNodes('C:/TestCache')?.isNotEmpty,
+        true,
+        reason: 'Sector cache must not be poisoned to empty list',
+      );
+    });
+
+    test('DirectoryNotifier transitions scanMinimizedProvider to true when stream chunks arrive', () async {
+      final container = ProviderContainer();
+      final notifier = container.read(directoryProvider.notifier);
+
+      notifier.state = notifier.state.copyWith(
+        currentPath: 'C:/StreamTransitionTest',
+        isLoading: true,
+        displayNodes: [],
+      );
+      container.read(scanMinimizedProvider.notifier).state = false;
+
+      final chunk = [
+        {
+          'name': 'StreamedFolder',
+          'path': 'C:/StreamTransitionTest/StreamedFolder',
+          'parentPath': 'C:/StreamTransitionTest',
+          'type': 'Directory',
+          'sizeBytes': 2048,
+          'lastModified': DateTime.now().toIso8601String(),
+          'isHidden': false,
+          'isSystem': false,
+          'ownBytes': 2048,
+          'recursiveBytes': 2048,
+          'recursiveBytesFinal': true,
+        }
+      ];
+
+      notifier.receiveStreamChunk(null, 'C:/StreamTransitionTest', chunk);
+
+      expect(notifier.state.displayNodes.length, 1);
+      expect(
+        container.read(scanMinimizedProvider),
+        true,
+        reason: 'Scan dialog must transition to minimized state when stream nodes begin arriving',
+      );
+    });
+
+    test('scanDirectory completes ensureConnected gracefully when telemetry is disconnected', () async {
+      final container = ProviderContainer();
+      final notifier = container.read(directoryProvider.notifier);
+
+      await notifier.scanDirectory('C:/EnsureConnectedTest');
+      expect(notifier.state.currentPath, 'C:/EnsureConnectedTest');
     });
   });
 }

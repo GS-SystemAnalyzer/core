@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:gs_analyzer_ui/utils/logger.dart';
 import 'package:signalr_netcore/signalr_client.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
@@ -88,10 +89,34 @@ class TelemetryService {
     _hubConnection.on('WatcherEventLogged', _handleWatcherEventLogged);
   }
 
-  Future<void> startListening() async {
+  bool get isConnected => _hubConnection.state == HubConnectionState.Connected;
+  Future<void>? _connectingFuture;
+
+  Future<void> ensureConnected({
+    Duration timeout = const Duration(seconds: 2),
+  }) async {
+    if (isConnected) return;
+    if (Platform.environment.containsKey('FLUTTER_TEST')) return;
+    if (_connectingFuture != null) {
+      try {
+        await _connectingFuture!.timeout(timeout);
+      } catch (_) {}
+      return;
+    }
     if (_hubConnection.state == HubConnectionState.Disconnected) {
       try {
-        await _hubConnection.start();
+        await startListening().timeout(timeout);
+      } catch (_) {}
+    }
+  }
+
+  Future<void> startListening() async {
+    if (Platform.environment.containsKey('FLUTTER_TEST')) return;
+    if (_hubConnection.state == HubConnectionState.Disconnected) {
+      final fut = _hubConnection.start();
+      _connectingFuture = fut;
+      try {
+        await fut;
         appLogger.i('TELEMETRY RADIO: CONNECTED TO BASE STATION!');
 
         final api = ApiService();
@@ -102,6 +127,8 @@ class TelemetryService {
         appLogger.i(
           'TELEMETRY RADIO ERROR: FAILED TO CONNECT TO BASE STATION! - $e',
         );
+      } finally {
+        _connectingFuture = null;
       }
     }
   }

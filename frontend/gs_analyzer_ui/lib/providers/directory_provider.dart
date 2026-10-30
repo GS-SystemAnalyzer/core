@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/models/storage_node.dart';
+import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
 import 'package:gs_analyzer_ui/providers/settings_provider.dart';
+import 'package:gs_analyzer_ui/providers/telemetry_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 import 'dart:math';
 
@@ -83,6 +85,7 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
   final Map<String, StorageNode> _nodeIndex = {};
   Timer? _flushTimer;
   bool _hasPendingFlush = false;
+  bool _hasAutoMinimizedForCurrentScan = false;
   final Ref ref;
 
   DirectoryNotifier(this.ref) : super(const DirectoryState()) {
@@ -183,33 +186,12 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     bool forceRefresh = false,
   }) async {
     String safePath = targetPath.replaceAll('\\', '/');
+    if (safePath.endsWith('/') && safePath.length > 3) {
+      safePath = safePath.substring(0, safePath.length - 1);
+    }
     final scanId = generateUuid();
     _currentScanId = scanId;
 
-    if (!forceRefresh && _sectorCache.containsKey(safePath)) {
-      _applyFiltersAndSort(nodes: _sectorCache[safePath]);
-      state = state.copyWith(
-        currentPath: safePath,
-        isLoading: false,
-        errorMessage: null,
-      );
-
-      _apiService
-          .scanDirectory(safePath, scanId)
-          .then((freshNodes) {
-            _sectorCache[safePath] = freshNodes;
-            if (state.currentPath == safePath)
-              _applyFiltersAndSort(nodes: freshNodes);
-          })
-          .catchError((_) {});
-      return;
-    }
-
-    _sectorCache[safePath] = [];
-    _nodeIndex.clear();
-    _flushTimer?.cancel();
-    _flushTimer = null;
-    _hasPendingFlush = false;
     if (forceRefresh) {
       final keysToRemove = _sectorCache.keys
           .where((k) => k.toLowerCase().startsWith(safePath.toLowerCase()))
@@ -219,16 +201,41 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
       }
     }
 
-    state = state.copyWith(
-      currentPath: safePath,
-      isLoading: true,
-      searchQuery: '',
-      errorMessage: null,
-      allNodes: [],
-      displayNodes: [],
-    );
+    final cachedNodes = _sectorCache[safePath];
+    if (cachedNodes != null && cachedNodes.isNotEmpty && !forceRefresh) {
+      _nodeIndex.clear();
+      for (final n in cachedNodes) {
+        final key = n.path.replaceAll('\\', '/').toLowerCase();
+        _nodeIndex[key] = n;
+      }
+      _applyFiltersAndSort(nodes: cachedNodes);
+      state = state.copyWith(
+        currentPath: safePath,
+        isLoading: true,
+        errorMessage: null,
+      );
+      _hasAutoMinimizedForCurrentScan = true;
+      ref.read(scanMinimizedProvider.notifier).state = true;
+    } else {
+      _nodeIndex.clear();
+      state = state.copyWith(
+        currentPath: safePath,
+        isLoading: true,
+        searchQuery: '',
+        errorMessage: null,
+        allNodes: [],
+        displayNodes: [],
+      );
+      _hasAutoMinimizedForCurrentScan = false;
+      ref.read(scanMinimizedProvider.notifier).state = false;
+    }
+
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    _hasPendingFlush = false;
 
     try {
+      await ref.read(telemetryProvider.notifier).ensureConnected();
       await _apiService.requestDirectoryStream(safePath, scanId);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
@@ -276,6 +283,13 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     final activeNodes = _nodeIndex.values.toList();
     _sectorCache[state.currentPath] = activeNodes;
     _applyFiltersAndSort(nodes: activeNodes);
+
+    if (activeNodes.isNotEmpty && state.isLoading && !_hasAutoMinimizedForCurrentScan) {
+      _hasAutoMinimizedForCurrentScan = true;
+      if (!ref.read(scanMinimizedProvider)) {
+        ref.read(scanMinimizedProvider.notifier).state = true;
+      }
+    }
   }
 
   void finalizeStream(
@@ -393,6 +407,14 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     _sectorCache.remove(current);
     state = state.copyWith(allNodes: [], displayNodes: [], isLoading: false);
   }
+
+  List<StorageNode>? getCachedNodes(String path) {
+    String safe = path.replaceAll('\\', '/');
+    if (safe.endsWith('/') && safe.length > 3) {
+      safe = safe.substring(0, safe.length - 1);
+    }
+    return _sectorCache[safe];
+  }
 }
 
 final directoryProvider =
@@ -401,3 +423,5 @@ final directoryProvider =
     });
 
 final treeExpandedProvider = StateProvider<bool>((ref) => true);
+final treeSidebarWidthProvider = StateProvider<double>((ref) => 260.0);
+final treeSidebarDraggingProvider = StateProvider<bool>((ref) => false);
