@@ -35,26 +35,18 @@ namespace GSSystemAnalyzer.Controllers
 			{
 				using var scope = _scopeFactory.CreateScope();
 				var scopedDiskService = scope.ServiceProvider.GetRequiredService<IDiskOperationService>();
+				DirectoryStreamSummary? summary = null;
 				try
 				{
-					var allNodes = scopedDiskService.ScanDirectory(path, id).ToList();
-
-					var chunkSize = 100;
-					for (var i = 0; i < allNodes.Count; i += chunkSize)
+					summary = await scopedDiskService.StreamDirectoryAsync(path, id, async chunk =>
 					{
-						var engine = scope.ServiceProvider.GetRequiredService<GSSystemAnalyzer.Interfaces.IDiskScannerEngine>();
-						if (engine.GetScanToken(id).IsCancellationRequested) break;
-
-						var chunk = allNodes.Skip(i).Take(chunkSize).ToList();
 						await hubContext.Clients.All.SendAsync("DirectoryChunk", new
 						{
 							scanId = id,
 							path = path,
 							chunk = chunk
 						});
-
-						await Task.Delay(10);
-					}
+					});
 				}
 				catch (Exception ex)
 				{
@@ -63,7 +55,15 @@ namespace GSSystemAnalyzer.Controllers
 				}
 				finally
 				{
-					await hubContext.Clients.All.SendAsync("DirectoryStreamComplete", new { scanId = id, path = path });
+					await hubContext.Clients.All.SendAsync("DirectoryStreamComplete", new
+					{
+						scanId = id,
+						path = path,
+						parentPath = summary?.ParentPath ?? (Path.GetDirectoryName(path) ?? string.Empty),
+						ownBytes = summary?.OwnBytes ?? 0,
+						recursiveBytes = summary?.RecursiveBytes ?? 0,
+						recursiveBytesFinal = true
+					});
 				}
 			});
 

@@ -306,7 +306,7 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
       return const PermissionAuditPanel();
     }
     // Default: disk analyzer table.
-    if (dirState.isLoading && !ref.watch(scanMinimizedProvider)) {
+    if (dirState.isLoading && dirState.displayNodes.isEmpty && !ref.watch(scanMinimizedProvider)) {
       return const TelemetryHudWidget();
     }
     final hud = context.hudTheme;
@@ -322,6 +322,12 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
 
     return Column(
       children: [
+        if (dirState.isLoading)
+          LinearProgressIndicator(
+            backgroundColor: hud.panel,
+            valueColor: AlwaysStoppedAnimation<Color>(hud.accentCyan),
+            minHeight: 2,
+          ),
         // Age Heatmap overlay (legend + summary) — shown when toggle is on
         if (isHeatmapOn) const AgeHeatmapOverlay(),
         DirectoryTableHeader(),
@@ -339,8 +345,10 @@ class _AnalyzerDashboardState extends ConsumerState<AnalyzerDashboard> {
               : ListView.builder(
                   itemCount: dirState.displayNodes.length,
                   itemBuilder: (context, index) {
+                    final node = dirState.displayNodes[index];
                     return DirectoryNodeWidget(
-                      node: dirState.displayNodes[index],
+                      key: ValueKey(node.path),
+                      node: node,
                       apiService: ApiService(),
                       onNuke: (name, path) => executeNukeProtocol(
                         context,

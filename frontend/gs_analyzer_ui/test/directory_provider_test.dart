@@ -170,4 +170,100 @@ void main() {
       },
     );
   });
+
+  group('Incremental Directory Streaming Tests (Issue #239)', () {
+    test('Progressive upserting updates existing node and prevents duplicate entries', () {
+      final container = ProviderContainer();
+      final notifier = container.read(directoryProvider.notifier);
+
+      notifier.state = notifier.state.copyWith(currentPath: 'C:/Projects');
+
+      final chunk1 = [
+        {
+          'name': 'Core',
+          'path': 'C:/Projects/Core',
+          'parentPath': 'C:/Projects',
+          'type': 'Directory',
+          'sizeBytes': 0,
+          'lastModified': DateTime.now().toIso8601String(),
+          'isHidden': false,
+          'isSystem': false,
+          'ownBytes': 0,
+          'recursiveBytes': 0,
+          'recursiveBytesFinal': false,
+        },
+        {
+          'name': 'readme.txt',
+          'path': 'C:/Projects/readme.txt',
+          'parentPath': 'C:/Projects',
+          'type': 'File',
+          'sizeBytes': 512,
+          'lastModified': DateTime.now().toIso8601String(),
+          'isHidden': false,
+          'isSystem': false,
+          'ownBytes': 512,
+          'recursiveBytes': 512,
+          'recursiveBytesFinal': true,
+        }
+      ];
+
+      notifier.receiveStreamChunk(null, 'C:/Projects', chunk1);
+
+      final chunk2 = [
+        {
+          'name': 'Core',
+          'path': 'C:/Projects/Core',
+          'parentPath': 'C:/Projects',
+          'type': 'Directory',
+          'sizeBytes': 1048576,
+          'lastModified': DateTime.now().toIso8601String(),
+          'isHidden': false,
+          'isSystem': false,
+          'ownBytes': 4096,
+          'recursiveBytes': 1048576,
+          'recursiveBytesFinal': true,
+        }
+      ];
+
+      notifier.receiveStreamChunk(null, 'C:/Projects', chunk2);
+      notifier.finalizeStream(null, 'C:/Projects', recursiveBytesFinal: true);
+
+      final nodes = notifier.state.displayNodes;
+      expect(nodes.length, 2, reason: 'Duplicate nodes must not be created during streaming!');
+
+      final coreNode = nodes.firstWhere((n) => n.name == 'Core');
+      expect(coreNode.sizeBytes, 1048576);
+      expect(coreNode.isRecursiveFinal, true);
+    });
+
+    test('finalizeStream marks all nodes isRecursiveFinal and resets isLoading', () {
+      final container = ProviderContainer();
+      final notifier = container.read(directoryProvider.notifier);
+
+      notifier.state = notifier.state.copyWith(currentPath: 'C:/Work', isLoading: true);
+
+      final chunk = [
+        {
+          'name': 'PendingFolder',
+          'path': 'C:/Work/PendingFolder',
+          'parentPath': 'C:/Work',
+          'type': 'Directory',
+          'sizeBytes': 2048,
+          'lastModified': DateTime.now().toIso8601String(),
+          'isHidden': false,
+          'isSystem': false,
+          'ownBytes': 0,
+          'recursiveBytes': 2048,
+          'recursiveBytesFinal': false,
+        }
+      ];
+
+      notifier.receiveStreamChunk(null, 'C:/Work', chunk);
+      notifier.finalizeStream(null, 'C:/Work', recursiveBytesFinal: true);
+
+      expect(notifier.state.isLoading, false);
+      expect(notifier.state.displayNodes.length, 1);
+      expect(notifier.state.displayNodes.first.isRecursiveFinal, true);
+    });
+  });
 }

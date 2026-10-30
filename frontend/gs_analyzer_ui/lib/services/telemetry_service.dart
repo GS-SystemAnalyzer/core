@@ -20,7 +20,14 @@ class TelemetryService {
   Function()? onNukeAborted;
   Function(Map<String, dynamic>)? onRamUpdate;
   Function(String? scanId, String path, List<dynamic> chunk)? onDirectoryChunk;
-  Function(String? scanId, String path)? onDirectoryStreamComplete;
+  Function(
+    String? scanId,
+    String path, {
+    String? parentPath,
+    int? ownBytes,
+    int? recursiveBytes,
+    bool? recursiveBytesFinal,
+  })? onDirectoryStreamComplete;
   Function(Map<String, dynamic>)? onCpuUpdate;
   Function(List<dynamic>)? onDriveUpdate;
   Function(Map<String, dynamic>)? onAuditProgress;
@@ -213,6 +220,10 @@ class TelemetryService {
       onDirectoryStreamComplete?.call(
         data['scanId'] as String?,
         data['path'].toString(),
+        parentPath: data['parentPath'] as String?,
+        ownBytes: (data['ownBytes'] as num?)?.toInt(),
+        recursiveBytes: (data['recursiveBytes'] as num?)?.toInt(),
+        recursiveBytesFinal: data['recursiveBytesFinal'] as bool?,
       );
     }
   }

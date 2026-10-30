@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:gs_analyzer_ui/models/storage_node.dart';
@@ -79,6 +80,9 @@ class DirectoryState {
 class DirectoryNotifier extends StateNotifier<DirectoryState> {
   final ApiService _apiService = ApiService();
   final Map<String, List<StorageNode>> _sectorCache = {};
+  final Map<String, StorageNode> _nodeIndex = {};
+  Timer? _flushTimer;
+  bool _hasPendingFlush = false;
   final Ref ref;
 
   DirectoryNotifier(this.ref) : super(const DirectoryState()) {
@@ -171,8 +175,6 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     );
   }
 
-  DateTime? _scanStartTime;
-  bool _wasForceRefresh = false;
   String? _currentScanId;
   String? get currentScanId => _currentScanId;
 
@@ -204,6 +206,10 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     }
 
     _sectorCache[safePath] = [];
+    _nodeIndex.clear();
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    _hasPendingFlush = false;
     if (forceRefresh) {
       final keysToRemove = _sectorCache.keys
           .where((k) => k.toLowerCase().startsWith(safePath.toLowerCase()))
@@ -212,8 +218,6 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
         _sectorCache.remove(key);
       }
     }
-    _scanStartTime = DateTime.now();
-    _wasForceRefresh = forceRefresh;
 
     state = state.copyWith(
       currentPath: safePath,
@@ -248,21 +252,40 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     if (incomingPath != currentPath) return;
 
     final parsedChunk = chunkData
-        .map((json) => StorageNode.fromJson(json))
+        .map((json) => StorageNode.fromJson(json as Map<String, dynamic>))
         .toList();
 
-    if (!_sectorCache.containsKey(state.currentPath)) {
-      _sectorCache[state.currentPath] = [];
+    for (final node in parsedChunk) {
+      final key = node.path.replaceAll('\\', '/').toLowerCase();
+      _nodeIndex[key] = node;
     }
-    _sectorCache[state.currentPath]!.addAll(parsedChunk);
+    _hasPendingFlush = true;
 
-    final updatedList = List<StorageNode>.from(state.allNodes)
-      ..addAll(parsedChunk);
-
-    state = state.copyWith(allNodes: updatedList, displayNodes: updatedList);
+    if (state.displayNodes.isEmpty) {
+      _flushBufferedNodes();
+    } else {
+      _flushTimer ??= Timer(const Duration(milliseconds: 64), _flushBufferedNodes);
+    }
   }
 
-  void finalizeStream(String? scanId, String path) async {
+  void _flushBufferedNodes() {
+    _flushTimer = null;
+    if (!_hasPendingFlush) return;
+    _hasPendingFlush = false;
+
+    final activeNodes = _nodeIndex.values.toList();
+    _sectorCache[state.currentPath] = activeNodes;
+    _applyFiltersAndSort(nodes: activeNodes);
+  }
+
+  void finalizeStream(
+    String? scanId,
+    String path, {
+    String? parentPath,
+    int? ownBytes,
+    int? recursiveBytes,
+    bool recursiveBytesFinal = true,
+  }) async {
     if (scanId != null && scanId != _currentScanId) return;
 
     String incomingPath = path.replaceAll('\\', '/').toLowerCase();
@@ -274,19 +297,30 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
       currentPath = currentPath.substring(0, currentPath.length - 1);
 
     if (incomingPath == currentPath) {
-      _applyFiltersAndSort();
+      _flushTimer?.cancel();
+      _flushTimer = null;
+      _hasPendingFlush = false;
 
-      if (_wasForceRefresh && _scanStartTime != null) {
-        final elapsed = DateTime.now().difference(_scanStartTime!);
-        if (elapsed.inMilliseconds < 2500) {
-          await Future.delayed(
-            Duration(milliseconds: 2500 - elapsed.inMilliseconds),
-          );
+      if (recursiveBytesFinal) {
+        for (final entry in _nodeIndex.entries.toList()) {
+          if (!entry.value.isRecursiveFinal) {
+            _nodeIndex[entry.key] = entry.value.copyWith(isRecursiveFinal: true);
+          }
         }
       }
 
+      final activeNodes = _nodeIndex.values.toList();
+      _sectorCache[state.currentPath] = activeNodes;
+      _applyFiltersAndSort(nodes: activeNodes);
+
       state = state.copyWith(isLoading: false);
     }
+  }
+
+  @override
+  void dispose() {
+    _flushTimer?.cancel();
+    super.dispose();
   }
 
   Future<List<StorageNode>> fetchChildrenForTree(String path) async {

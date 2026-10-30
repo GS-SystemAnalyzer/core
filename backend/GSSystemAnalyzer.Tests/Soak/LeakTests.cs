@@ -4,9 +4,13 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using GSSystemAnalyzer.Engine;
+using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Models.SettingDtos;
 using GSSystemAnalyzer.Services;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -77,6 +81,45 @@ public class LeakTests : IDisposable
         var (baseMem, baseThreads) = Baseline(proc);
 
         for (int i = 0; i < 1000; i++) await svc.CleanAsync(new List<string> { _fakeTempDir });
+        AssertBounded(proc, baseMem, baseThreads);
+    }
+
+    [Fact]
+    public async Task StreamingScanLoop_DoesNotLeakMemoryOrThreads()
+    {
+        var hubMock = new Mock<IHubContext<SystemHub>>();
+        var clientsMock = new Mock<IHubClients>();
+        var proxyMock = new Mock<IClientProxy>();
+        hubMock.Setup(h => h.Clients).Returns(clientsMock.Object);
+        clientsMock.Setup(c => c.All).Returns(proxyMock.Object);
+        proxyMock
+            .Setup(c => c.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var settings = new Mock<ISettingService>();
+        var defaults = AppSettingDto.GetFactoryDefaults();
+        defaults.Scan.SkipHiddenFiles = false;
+        defaults.Scan.SkipSystemFiles = false;
+        settings.SetupGet(s => s.Current).Returns(defaults);
+
+        var engine = new DiskScannerEngine(hubMock.Object, settings.Object, NullLogger<DiskScannerEngine>.Instance);
+        var scanDiff = new Mock<IScanDiffService>();
+        var diskService = new DiskOperationsService(engine, hubMock.Object, NullLogger<DiskOperationsService>.Instance, scanDiff.Object);
+
+        var proc = Process.GetCurrentProcess();
+
+        for (int i = 0; i < 20; i++)
+        {
+            var id = diskService.BeginScan();
+            await diskService.StreamDirectoryAsync(_fakeTempDir, id, _ => Task.CompletedTask);
+        }
+        var (baseMem, baseThreads) = Baseline(proc);
+
+        for (int i = 0; i < 500; i++)
+        {
+            var id = diskService.BeginScan();
+            await diskService.StreamDirectoryAsync(_fakeTempDir, id, _ => Task.CompletedTask);
+        }
         AssertBounded(proc, baseMem, baseThreads);
     }
 

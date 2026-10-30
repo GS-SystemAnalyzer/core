@@ -238,7 +238,7 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
         ? bucketColor(nodeBucket!, context)
         : null;
     final bool showReviewBadge =
-        nodeBucket == 'stale' && isDir && widget.node.sizeBytes > 1073741824;
+        nodeBucket == 'stale' && isDir && widget.node.isRecursiveFinal && widget.node.sizeBytes > 1073741824;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,9 +354,13 @@ class _DirectoryNodeWidgetState extends ConsumerState<DirectoryNodeWidget> {
                 Expanded(
                   flex: 2,
                   child: Text(
-                    formatBytes(widget.node.sizeBytes),
+                    !widget.node.isRecursiveFinal
+                        ? '~ ${formatBytes(widget.node.sizeBytes)}'
+                        : formatBytes(widget.node.sizeBytes),
                     style: hud.statGreen.copyWith(
-                      color: heatmapColor ?? hud.accentCyan,
+                      color: !widget.node.isRecursiveFinal
+                          ? hud.accentCyan.withValues(alpha: 0.7)
+                          : (heatmapColor ?? hud.accentCyan),
                     ),
                     textAlign: TextAlign.center,
                   ),

@@ -277,7 +277,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 		}
 	}
 
-	public async Task CalculateMissingSizesAsync(List<FileSystemInfo> items, Guid scanId)
+	public async Task CalculateMissingSizesAsync(List<FileSystemInfo> items, Guid scanId, Action<DirectoryInfo, long>? onSubtreeCompleted = null)
 	{
 		await _scanLock.WaitAsync();
 		try
@@ -336,6 +336,8 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 								ScanRoot = scanRoot,
 								Extensions = existingEntry?.Extensions
 							};
+
+							onSubtreeCompleted?.Invoke(dir, size);
 						}
 						catch (OperationCanceledException)
 						{
