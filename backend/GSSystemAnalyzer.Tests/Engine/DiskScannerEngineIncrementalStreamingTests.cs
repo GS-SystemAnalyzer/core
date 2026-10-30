@@ -80,7 +80,10 @@ namespace GSSystemAnalyzer.Tests.Engine
 			}
 
 			// Allow consumer task to process
-			await Task.Delay(100);
+			for (int w = 0; w < 20 && batches.IsEmpty; w++)
+			{
+				await Task.Delay(50);
+			}
 
 			Assert.Single(batches);
 			Assert.Equal(5, batches.First().Count);
@@ -104,7 +107,10 @@ namespace GSSystemAnalyzer.Tests.Engine
 			channel.TryWrite("Item1");
 			channel.TryWrite("Item2");
 
-			await Task.Delay(150);
+			for (int w = 0; w < 20 && batches.IsEmpty; w++)
+			{
+				await Task.Delay(50);
+			}
 
 			Assert.Single(batches);
 			Assert.Equal(2, batches.First().Count);
@@ -171,6 +177,42 @@ namespace GSSystemAnalyzer.Tests.Engine
 			var allStreamedNodes = streamedChunks.SelectMany(c => c).ToList();
 			Assert.Contains(allStreamedNodes, n => n.Name == "root_file.txt" && n.Type == "File" && n.SizeBytes == 512);
 			Assert.Contains(allStreamedNodes, n => n.Name == "SubFolder" && n.Type == "Directory" && n.SizeBytes >= 4096);
+		}
+
+		[Fact]
+		public async Task StreamDirectoryAsync_StreamsUncachedDirectoriesInPhaseB_WhenScanCompletes()
+		{
+			var uncachedDir = Directory.CreateDirectory(Path.Combine(_root, "UncachedUsersFolder"));
+			File.WriteAllBytes(Path.Combine(uncachedDir.FullName, "large_file.dat"), new byte[8192]);
+
+			var scanDiffMock = new Mock<IScanDiffService>();
+			var service = new DiskOperationsService(
+				_engine,
+				_hubMock.Object,
+				NullLogger<DiskOperationsService>.Instance,
+				scanDiffMock.Object);
+
+			var scanId = service.BeginScan();
+			var streamedChunks = new List<IReadOnlyList<StorageNode>>();
+
+			await service.StreamDirectoryAsync(
+				_root,
+				scanId,
+				chunk =>
+				{
+					lock (streamedChunks)
+					{
+						streamedChunks.Add(chunk);
+					}
+					return Task.CompletedTask;
+				});
+
+			var allStreamedNodes = streamedChunks.SelectMany(c => c).ToList();
+			// Uncached folder must not appear provisionally with false recursive status
+			Assert.DoesNotContain(allStreamedNodes, n => n.Name == "UncachedUsersFolder" && !n.RecursiveBytesFinal);
+			// It must be emitted upon subtree scan completion with final recursive size
+			var finalNode = Assert.Single(allStreamedNodes.Where(n => n.Name == "UncachedUsersFolder"));
+			Assert.True(finalNode.RecursiveBytesFinal && finalNode.SizeBytes >= 8192);
 		}
 	}
 }

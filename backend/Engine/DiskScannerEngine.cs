@@ -391,8 +391,8 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 			}
 			else
 			{
-				// A fully-cached rescan has nothing to scan; still emit a terminal COMPLETED
-				// so the UI leaves INITIALIZING and shows completion.
+				// Emit an initializing pulse so listeners bind the session before the terminal pulse.
+				await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "INITIALIZING", completed = 0, total = 0, currentTarget = "Scan completed" });
 				await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "COMPLETED", completed = 0, total = 0, currentTarget = "Scan completed" });
 			}
 		}
