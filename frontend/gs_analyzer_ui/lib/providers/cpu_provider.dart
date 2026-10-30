@@ -8,16 +8,26 @@ import 'package:gs_analyzer_ui/services/api_service.dart';
 class CpuState {
   final CpuSnapshot? snapshot;
   final int cpuThresholdPercent;
+  final List<double> history;
 
-  const CpuState({this.snapshot, this.cpuThresholdPercent = 95});
+  const CpuState({
+    this.snapshot,
+    this.cpuThresholdPercent = 95,
+    this.history = const [],
+  });
 
   bool get isCritical =>
       snapshot != null && snapshot!.averageLoad >= cpuThresholdPercent;
 
-  CpuState copyWith({CpuSnapshot? snapshot, int? cpuThresholdPercent}) {
+  CpuState copyWith({
+    CpuSnapshot? snapshot,
+    int? cpuThresholdPercent,
+    List<double>? history,
+  }) {
     return CpuState(
       snapshot: snapshot ?? this.snapshot,
       cpuThresholdPercent: cpuThresholdPercent ?? this.cpuThresholdPercent,
+      history: history ?? this.history,
     );
   }
 }
@@ -43,7 +53,14 @@ class CpuNotifier extends StateNotifier<CpuState> {
   void updateCpu(Map<String, dynamic> payload) {
     try {
       final snapshot = CpuSnapshot.fromJson(payload);
-      state = state.copyWith(snapshot: snapshot);
+      final updatedHistory = List<double>.from(state.history)..add(snapshot.averageLoad);
+      if (updatedHistory.length > 30) {
+        updatedHistory.removeAt(0);
+      }
+      state = state.copyWith(
+        snapshot: snapshot,
+        history: updatedHistory,
+      );
     } catch (e) {
       appLogger.i('CPU PAYLOAD CRASH: $e');
     }
