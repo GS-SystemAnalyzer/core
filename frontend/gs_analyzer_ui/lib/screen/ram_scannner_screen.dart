@@ -43,6 +43,29 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
             ),
           ),
 
+        if (ramState.errorMessage != null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            color: theme.accentRed.withValues(alpha: 0.2),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: theme.accentRed, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    ramState.errorMessage!,
+                    style: theme.actionRed,
+                  ),
+                ),
+                InkWell(
+                  onTap: () => ref.read(ramProvider.notifier).clearError(),
+                  child: Icon(Icons.close, color: theme.accentRed, size: 18),
+                ),
+              ],
+            ),
+          ),
+
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
           child: Row(
