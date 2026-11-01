@@ -89,4 +89,34 @@ void main() {
       expect(out['networkPollIntervalMs'], 1200);
     });
   });
+
+  group('AlertSettings serialization', () {
+    test('defaults match specifications', () {
+      final alerts = AlertSettings.fromJson({});
+      expect(alerts.diskThresholdPercent, 90);
+      expect(alerts.ramThresholdPercent, 85);
+      expect(alerts.ramMinimumFreeMb, 1024);
+      expect(alerts.cpuThresholdPercent, 95);
+      expect(alerts.thermalThresholdCelsius, 85);
+      expect(alerts.enableDesktopNotifications, isTrue);
+    });
+
+    test('serializes and deserializes enableDesktopNotifications correctly', () {
+      final alerts = AlertSettings(enableDesktopNotifications: false);
+      final json = alerts.toJson();
+      expect(json['enableDesktopNotifications'], isFalse);
+
+      final roundtripped = AlertSettings.fromJson(json);
+      expect(roundtripped.enableDesktopNotifications, isFalse);
+    });
+
+    test('deserializes legacy misspelled enableDeskopNotifications as fallback', () {
+      final legacyJson = {
+        'diskThresholdPercent': 90,
+        'enableDeskopNotifications': false,
+      };
+      final alerts = AlertSettings.fromJson(legacyJson);
+      expect(alerts.enableDesktopNotifications, isFalse);
+    });
+  });
 }

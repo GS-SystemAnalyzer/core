@@ -3,6 +3,7 @@ using GSSystemAnalyzer.Models.SettingDtos;
 using GSSystemAnalyzer.Services;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -110,6 +111,49 @@ namespace GSSystemAnalyzer.Tests.Integration
 			var finalService = new SettingsServices(_tempFile);
 
 			Assert.True(finalService.Current.Scan.Depth > 0);
+		}
+
+		[Fact]
+		public async Task AlertSettings_EnableDesktopNotifications_PersistsFalse()
+		{
+			var service1 = new SettingsServices(_tempFile);
+			var settings = service1.Current;
+			settings.Alerts.EnableDesktopNotifications = false;
+			await service1.SaveAsync(settings);
+
+			var service2 = new SettingsServices(_tempFile);
+			Assert.False(service2.Current.Alerts.EnableDesktopNotifications);
+		}
+
+		[Fact]
+		public void AlertSettings_DeserializesLegacyMisspelledProperty()
+		{
+			string legacyJson = """
+			{
+			  "alerts": {
+			    "enableDeskopNotifications": false
+			  }
+			}
+			""";
+
+			var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+			var appSettings = JsonSerializer.Deserialize<AppSettingDto>(legacyJson, options);
+
+			Assert.NotNull(appSettings);
+			Assert.False(appSettings.Alerts.EnableDesktopNotifications);
+		}
+
+		[Fact]
+		public void AlertSettings_SerializesCorrectCamelCaseKey_AndSuppressesLegacyKey()
+		{
+			var settings = AppSettingDto.GetFactoryDefaults();
+			settings.Alerts.EnableDesktopNotifications = true;
+
+			var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+			var json = JsonSerializer.Serialize(settings, options);
+
+			Assert.Contains("\"enableDesktopNotifications\":true", json.Replace(" ", ""));
+			Assert.DoesNotContain("enableDeskopNotifications", json);
 		}
 	}
 }
