@@ -101,7 +101,10 @@ class AlertSettings {
         json['thermalThresholdCelsius'] ??
         json['thermalThresholdPercent'] ??
         85,
-    enableDesktopNotifications: json['enableDesktopNotifications'] ?? true,
+    enableDesktopNotifications:
+        json['enableDesktopNotifications'] ??
+        json['enableDeskopNotifications'] ??
+        true,
   );
   Map<String, dynamic> toJson() => {
     'diskThresholdPercent': diskThresholdPercent,
