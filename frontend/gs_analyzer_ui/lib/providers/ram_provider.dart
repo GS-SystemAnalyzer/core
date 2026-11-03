@@ -10,6 +10,8 @@ import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 import '../services/api_service.dart';
 
+const _keepPhysicalCapacity = Object();
+
 class RamState {
   final List<ProcessGroup> groupedProcesses;
   final bool isLoading;
@@ -21,6 +23,9 @@ class RamState {
   final List<double> usageHistory;
   final int ramThresholdPercent;
   final String? errorMessage;
+  final ProcessMemoryMetric selectedMemoryMetric;
+  final ProcessMemoryDisplayMode memoryDisplayMode;
+  final int? physicalTotalBytes;
 
   const RamState({
     this.groupedProcesses = const [],
@@ -33,6 +38,9 @@ class RamState {
     this.usageHistory = const [],
     this.ramThresholdPercent = 85,
     this.errorMessage,
+    this.selectedMemoryMetric = ProcessMemoryMetric.privateWorkingSet,
+    this.memoryDisplayMode = ProcessMemoryDisplayMode.value,
+    this.physicalTotalBytes,
   });
 
   double get usedPercentage => totalGb > 0 ? activeGb / totalGb : 0.0;
@@ -40,6 +48,20 @@ class RamState {
       '${activeGb.toStringAsFixed(2)} GB / ${totalGb.toStringAsFixed(2)} GB';
   bool get isCritical =>
       totalGb > 0 && (activeGb / totalGb) >= (ramThresholdPercent / 100.0);
+
+  List<ProcessGroup> get memorySortedProcesses {
+    final projected = List<ProcessGroup>.from(groupedProcesses);
+    final values = {for (final group in projected) group: group.memoryFor(selectedMemoryMetric).bytes};
+    projected.sort((a, b) {
+      final left = values[a];
+      final right = values[b];
+      if (left == null && right != null) return 1;
+      if (left != null && right == null) return -1;
+      final order = left != null && right != null ? right.compareTo(left) : 0;
+      return order != 0 ? order : a.name.compareTo(b.name);
+    });
+    return projected;
+  }
 
   RamState copyWith({
     List<ProcessGroup>? groupedProcesses,
@@ -53,6 +75,9 @@ class RamState {
     int? ramThresholdPercent,
     String? errorMessage,
     bool clearError = false,
+    ProcessMemoryMetric? selectedMemoryMetric,
+    ProcessMemoryDisplayMode? memoryDisplayMode,
+    Object? physicalTotalBytes = _keepPhysicalCapacity,
   }) {
     return RamState(
       groupedProcesses: groupedProcesses ?? this.groupedProcesses,
@@ -65,6 +90,10 @@ class RamState {
       usageHistory: usageHistory ?? this.usageHistory,
       ramThresholdPercent: ramThresholdPercent ?? this.ramThresholdPercent,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      selectedMemoryMetric: selectedMemoryMetric ?? this.selectedMemoryMetric,
+      memoryDisplayMode: memoryDisplayMode ?? this.memoryDisplayMode,
+      physicalTotalBytes: identical(physicalTotalBytes, _keepPhysicalCapacity)
+          ? this.physicalTotalBytes : physicalTotalBytes as int?,
     );
   }
 }
@@ -72,12 +101,30 @@ class RamState {
 class RamNotifier extends StateNotifier<RamState> {
   final ApiService _apiService;
   final Ref ref;
+  final Stopwatch _historyClock = Stopwatch()..start();
+  late final Duration Function() _elapsedNow;
+  Duration? _lastHistoryAt;
 
-  RamNotifier(this.ref, [ApiService? apiService])
+  RamNotifier(this.ref, [ApiService? apiService, Duration Function()? elapsedNow])
       : _apiService = apiService ?? ApiService(),
         super(const RamState()) {
+    _elapsedNow = elapsedNow ?? (() => _historyClock.elapsed);
     _apiService.startRamRadar();
     _listenToSettings();
+  }
+
+  void setMemoryMetric(ProcessMemoryMetric metric) {
+    if (metric != state.selectedMemoryMetric) state = state.copyWith(selectedMemoryMetric: metric);
+  }
+
+  void setMemoryDisplayMode(ProcessMemoryDisplayMode mode) {
+    if (mode != state.memoryDisplayMode) state = state.copyWith(memoryDisplayMode: mode);
+  }
+
+  @override
+  void dispose() {
+    _historyClock.stop();
+    super.dispose();
   }
 
   void clearError() {
@@ -107,9 +154,10 @@ class RamNotifier extends StateNotifier<RamState> {
     final totalGb = parseGb('totalGb', 'TotalGb', 16.0);
     final totalMb = totalGb * 1024.0;
 
-    final rawProcesses = payload['processes'] as List<dynamic>? ?? [];
+    final rawProcesses = (payload['processes'] ?? payload['Processes']) as List<dynamic>? ?? [];
+    final semantics = (payload['processMemorySemantics'] ?? payload['ProcessMemorySemantics']) as String?;
     final parsed = rawProcesses
-        .map((p) => ProcessTelemetry.fromJson(p, totalMb))
+        .map((p) => ProcessTelemetry.fromJson(Map<String, dynamic>.from(p), totalMb, semantics))
         .toList();
 
     final Map<String, List<ProcessTelemetry>> groupsMap = {};
@@ -128,11 +176,15 @@ class RamNotifier extends StateNotifier<RamState> {
       return b.totalRamMb.compareTo(a.totalRamMb);
     });
 
-    final parsedActiveGb = (global['activeGb'] ?? 0.0).toDouble();
+    final parsedActiveGb = parseGb('activeGb', 'ActiveGb', 0.0);
 
     final currentPercentage = totalGb > 0 ? parsedActiveGb / totalGb : 0.0;
-    final updatedHistory = List<double>.from(state.usageHistory)
-      ..add(currentPercentage);
+    final updatedHistory = List<double>.from(state.usageHistory);
+    final now = _elapsedNow();
+    if (_lastHistoryAt == null || now - _lastHistoryAt! >= const Duration(seconds: 2)) {
+      updatedHistory.add(currentPercentage);
+      _lastHistoryAt = now;
+    }
 
     if (updatedHistory.length > 20) {
       updatedHistory.removeAt(0);
@@ -149,28 +201,18 @@ class RamNotifier extends StateNotifier<RamState> {
               .toDouble(),
       totalGb: totalGb,
       usageHistory: updatedHistory,
+      physicalTotalBytes: _measuredCapacity(global['physicalTotalBytes'] ?? global['PhysicalTotalBytes']),
     );
   }
+
+  int? _measuredCapacity(Object? value) => value is num && value.isFinite && value > 0 && value == value.roundToDouble()
+      ? value.toInt() : null;
 
   Future<void> killProcess(int pid) async {
     state = state.copyWith(clearError: true);
 
     try {
       await _apiService.killRamProcesses([pid]);
-
-      state = state.copyWith(
-        groupedProcesses: state.groupedProcesses
-            .map((group) {
-              return ProcessGroup(
-                name: group.name,
-                processes: group.processes
-                    .where((process) => process.pid != pid)
-                    .toList(),
-              );
-            })
-            .where((group) => group.processes.isNotEmpty)
-            .toList(),
-      );
 
       appLogger.i('EXECUTE ORDER 66 ON PID: $pid - SUCCESS');
     } catch (e) {
@@ -198,12 +240,6 @@ class RamNotifier extends StateNotifier<RamState> {
 
     try {
       await _apiService.killRamProcesses(pidsToKill);
-
-      state = state.copyWith(
-        groupedProcesses: state.groupedProcesses
-            .where((g) => g.name != groupName)
-            .toList(),
-      );
 
       appLogger.i('EXECUTE ORDER 66 ON GROUP: $groupName - SUCCESS');
     } catch (e) {
@@ -257,6 +293,7 @@ class RamNotifier extends StateNotifier<RamState> {
     if (messenger == null) return;
 
     final hud = snackbarKey.currentContext?.hudTheme;
+    if (hud == null) return;
 
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
@@ -265,7 +302,7 @@ class RamNotifier extends StateNotifier<RamState> {
           children: [
             Icon(
               Icons.error_outline,
-              color: hud?.accentRed ?? const Color(0xFFEF4444),
+              color: hud.accentRed,
               size: 18,
             ),
             const SizedBox(width: 8),
@@ -275,13 +312,13 @@ class RamNotifier extends StateNotifier<RamState> {
                 style: TextStyle(
                   fontFamily: HudTheme.fontCore,
                   fontWeight: FontWeight.bold,
-                  color: hud?.accentRed ?? const Color(0xFFEF4444),
+                  color: hud.accentRed,
                 ),
               ),
             ),
           ],
         ),
-        backgroundColor: hud?.panel ?? const Color(0xFF1E222A),
+        backgroundColor: hud.panel,
         duration: const Duration(seconds: 4),
         behavior: SnackBarBehavior.floating,
       ),

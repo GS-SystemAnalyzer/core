@@ -21,6 +21,41 @@ ProcessTelemetry _proc({
 
 void main() {
   group('ProcessGroup computed properties', () {
+    test('each metric has an independent complete sum without changing identity', () {
+      final group = ProcessGroup(name: 'sample', processes: [
+        ProcessTelemetry.fromJson({'processId': 42, 'workingSetBytes': 1000, 'privateWorkingSetBytes': 100, 'commitBytes': 2000}, 100, 'windows-private-ws'),
+        ProcessTelemetry.fromJson({'processId': 43, 'workingSetBytes': 3000, 'privateWorkingSetBytes': 200, 'commitBytes': 5000}, 100, 'windows-private-ws'),
+      ]);
+      expect(group.memoryFor(ProcessMemoryMetric.privateWorkingSet).bytes, 300);
+      expect(group.memoryFor(ProcessMemoryMetric.totalWorkingSet).bytes, 4000);
+      expect(group.memoryFor(ProcessMemoryMetric.commitSize).bytes, 7000);
+      expect(group.primaryPid, 42);
+    });
+
+    test('one unavailable member makes the complete total unavailable', () {
+      final group = ProcessGroup(name: 'sample', processes: [
+        ProcessTelemetry.fromJson({'privateWorkingSetBytes': 100}, 100, 'windows-private-ws'),
+        ProcessTelemetry.fromJson({'privateWorkingSetBytes': null}, 100, 'windows-private-ws'),
+      ]);
+      final value = group.memoryFor(ProcessMemoryMetric.privateWorkingSet);
+      expect(value.bytes, isNull);
+      expect(value.availableMembers, 1);
+      expect(value.percentOfCapacity(1000), isNull);
+    });
+
+    test('mixed legacy sums disclose estimates and commit ratios are not clamped', () {
+      final group = ProcessGroup(name: 'sample', processes: [
+        ProcessTelemetry.fromJson({'workingSetBytes': 1000}, 100),
+        ProcessTelemetry.fromJson({'commitBytes': 2000}, 100, 'windows-private-ws'),
+      ]);
+      final value = group.memoryFor(ProcessMemoryMetric.commitSize);
+      expect(value.bytes, 3000);
+      expect(value.estimatedMembers, 1);
+      expect(value.provenance, MemoryProvenance.legacyEstimate);
+      expect(value.percentOfCapacity(1000), 300);
+      expect(value.percentOfCapacity(null), isNull);
+    });
+
     test('totalRamMb sums all processes', () {
       final g = ProcessGroup(
         name: 'test',

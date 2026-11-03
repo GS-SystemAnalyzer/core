@@ -3,6 +3,40 @@ import 'package:gs_analyzer_ui/models/process_telemetry.dart';
 
 void main() {
   group('ProcessTelemetry.fromJson', () {
+    test('distinct byte counters prefer exact working-set bytes and preserve measured zero', () {
+      final process = ProcessTelemetry.fromJson({
+        'processId': 42, 'name': 'sample', 'ramMb': 999,
+        'workingSetBytes': 1048576, 'privateWorkingSetBytes': 0, 'commitBytes': 3145728,
+      }, 100, 'windows-private-ws');
+      expect(process.memoryFor(ProcessMemoryMetric.totalWorkingSet).bytes, 1048576);
+      expect(process.memoryFor(ProcessMemoryMetric.privateWorkingSet).bytes, 0);
+      expect(process.memoryFor(ProcessMemoryMetric.privateWorkingSet).provenance, MemoryProvenance.measured);
+      expect(process.memoryFor(ProcessMemoryMetric.commitSize).bytes, 3145728);
+      expect(process.ramMb, 999);
+    });
+
+    test('omitted counters use labelled legacy evidence but explicit null is unavailable', () {
+      final omitted = ProcessTelemetry.fromJson({'workingSetBytes': 123}, 100);
+      final unavailable = ProcessTelemetry.fromJson({'workingSetBytes': 123, 'privateWorkingSetBytes': null}, 100);
+      expect(omitted.memoryFor(ProcessMemoryMetric.privateWorkingSet).bytes, 123);
+      expect(omitted.memoryFor(ProcessMemoryMetric.privateWorkingSet).provenance, MemoryProvenance.legacyEstimate);
+      expect(unavailable.memoryFor(ProcessMemoryMetric.privateWorkingSet).bytes, isNull);
+      expect(ProcessTelemetry.fromJson({}, 100).memoryFor(ProcessMemoryMetric.privateWorkingSet).bytes, isNull);
+    });
+
+    test('invalid modern counters never become plausible zero or aliases', () {
+      for (final value in [-1, 1.5, double.nan, '100']) {
+        final process = ProcessTelemetry.fromJson({'ramMb': 10, 'commitBytes': value}, 100, 'windows-private-ws');
+        expect(process.memoryFor(ProcessMemoryMetric.commitSize).bytes, isNull);
+      }
+    });
+
+    test('modern values without declared source retain unknown provenance', () {
+      final process = ProcessTelemetry.fromJson({'privateWorkingSetBytes': 123}, 100);
+      expect(process.memoryFor(ProcessMemoryMetric.privateWorkingSet).bytes, 123);
+      expect(process.memoryFor(ProcessMemoryMetric.privateWorkingSet).provenance, MemoryProvenance.unknownSource);
+    });
+
     test('parses all fields correctly', () {
       final json = {
         'processId': 1234,

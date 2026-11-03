@@ -1,13 +1,30 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gs_analyzer_ui/models/process_telemetry.dart';
 import 'package:gs_analyzer_ui/providers/process_explorer_provider.dart';
 import 'package:gs_analyzer_ui/providers/ram_provider.dart';
+import 'package:gs_analyzer_ui/providers/settings_provider.dart';
+import 'package:gs_analyzer_ui/services/api_service.dart';
+import 'package:mocktail/mocktail.dart';
+
+class ExplorerRamApi extends Mock implements ApiService {}
+
+class ExplorerSettings extends StateNotifier<SettingsState> implements SettingsNotifier {
+  ExplorerSettings() : super(const SettingsState(isLoading: false));
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 // Seeds the ramProvider with known groups, bypassing SignalR
 ProviderContainer _containerWith(List<ProcessGroup> groups) {
-  final container = ProviderContainer();
+  final api = ExplorerRamApi();
+  when(() => api.startRamRadar()).thenAnswer((_) async {});
+  final container = ProviderContainer(overrides: [
+    ramProvider.overrideWith((ref) => RamNotifier(ref, api)),
+    settingsProvider.overrideWith((ref) => ExplorerSettings()),
+  ]);
   addTearDown(container.dispose);
   // Force state before any reads so providers see the seeded data
   container.read(ramProvider.notifier).debugSetGroupsForTest(groups);
@@ -217,6 +234,75 @@ void main() {
       );
       c.read(showAllProcessesProvider.notifier).state = true;
       expect(c.read(filteredProcessesProvider).length, 150);
+    });
+  });
+
+  group('Shared memory metric', () {
+    ProcessGroup measured(String name, int pid, int working, int private, int? commit) => ProcessGroup(
+      name: name,
+      processes: [ProcessTelemetry(pid: pid, name: name, ramMb: working / 1048576,
+        percentMem: 0, cpuPercent: 10, status: 'RUNNING', user: 'SYSTEM',
+        workingSetBytes: working, privateWorkingSetBytes: private, commitBytes: commit,
+        memorySemantics: 'windows-private-ws')],
+    );
+
+    test('RAM ordering follows all three selections without changing identities', () {
+      final c = _containerWith([
+        measured('a', 1, 300, 100, 200),
+        measured('b', 2, 100, 300, 100),
+        measured('c', 3, 200, 200, 300),
+      ]);
+      final base = c.read(ramProvider).groupedProcesses;
+      final members = base.map((g) => g.processes).toList();
+      c.read(processSortModeProvider.notifier).state = ProcessSortMode.ram;
+      c.read(selectedProcessPidProvider.notifier).state = 2;
+      expect(c.read(filteredProcessesProvider).map((g) => g.name), ['b', 'c', 'a']);
+      c.read(ramProvider.notifier).setMemoryMetric(ProcessMemoryMetric.totalWorkingSet);
+      expect(c.read(filteredProcessesProvider).map((g) => g.name), ['a', 'c', 'b']);
+      c.read(ramProvider.notifier).setMemoryMetric(ProcessMemoryMetric.commitSize);
+      expect(c.read(filteredProcessesProvider).map((g) => g.name), ['c', 'a', 'b']);
+      expect(identical(c.read(ramProvider).groupedProcesses, base), isTrue);
+      for (var i = 0; i < base.length; i++) {
+        expect(identical(base[i].processes, members[i]), isTrue);
+        expect(base[i].primaryPid, i + 1);
+      }
+      expect(c.read(selectedProcessPidProvider), 2);
+      expect(c.read(processSortModeProvider), ProcessSortMode.ram);
+    });
+
+    test('CPU ties use the selected memory metric while CPU remains primary', () {
+      final c = _containerWith([
+        measured('a', 1, 300, 100, 200),
+        measured('b', 2, 100, 300, 100),
+        measured('c', 3, 200, 200, 300),
+      ]);
+      c.read(ramProvider.notifier).setMemoryMetric(ProcessMemoryMetric.commitSize);
+      expect(c.read(filteredProcessesProvider).map((g) => g.name), ['c', 'a', 'b']);
+      expect(c.read(processSortModeProvider), ProcessSortMode.cpu);
+    });
+
+    test('selected metric ranking happens before the Explorer display cap', () {
+      final c = _containerWith([
+        for (var i = 0; i < 101; i++) measured('normal$i', i + 1, 100, 1, 1),
+        measured('commit-outlier', 9999, 1, 1, 100000),
+      ]);
+      c.read(processSortModeProvider.notifier).state = ProcessSortMode.ram;
+      c.read(ramProvider.notifier).setMemoryMetric(ProcessMemoryMetric.commitSize);
+      final result = c.read(filteredProcessesProvider);
+      expect(result.length, 100);
+      expect(result.first.name, 'commit-outlier');
+      expect(c.read(ramProvider).groupedProcesses.length, 102);
+    });
+
+    test('unavailable totals sort after measured zero and positive values', () {
+      final c = _containerWith([
+        measured('unavailable', 1, 999, 1, null),
+        measured('zero', 2, 1, 1, 0),
+        measured('positive', 3, 1, 1, 10),
+      ]);
+      c.read(processSortModeProvider.notifier).state = ProcessSortMode.ram;
+      c.read(ramProvider.notifier).setMemoryMetric(ProcessMemoryMetric.commitSize);
+      expect(c.read(filteredProcessesProvider).map((g) => g.name), ['positive', 'zero', 'unavailable']);
     });
   });
 

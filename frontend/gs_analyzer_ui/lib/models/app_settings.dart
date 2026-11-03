@@ -117,6 +117,10 @@ class AlertSettings {
 }
 
 class MonitoringSettings {
+  static const minRamPollIntervalMs = 200;
+  static const maxRamPollIntervalMs = 5000;
+  static const defaultRamPollIntervalMs = 1000;
+
   int cpuPollIntervalMs,
       ramPollIntervalMs,
       thermalPollIntervalMs,
@@ -128,7 +132,7 @@ class MonitoringSettings {
 
   MonitoringSettings({
     this.cpuPollIntervalMs = 1000,
-    this.ramPollIntervalMs = 2000,
+    this.ramPollIntervalMs = defaultRamPollIntervalMs,
     this.thermalPollIntervalMs = 2000,
     this.networkPollIntervalMs = 1000,
     this.diskIoPollIntervalMs = 1000,
@@ -139,7 +143,7 @@ class MonitoringSettings {
   factory MonitoringSettings.fromJson(Map<String, dynamic> json) =>
       MonitoringSettings(
         cpuPollIntervalMs: json['cpuPollIntervalMs'] ?? 1000,
-        ramPollIntervalMs: json['ramPollIntervalMs'] ?? 2000,
+        ramPollIntervalMs: json['ramPollIntervalMs'] ?? defaultRamPollIntervalMs,
         thermalPollIntervalMs: json['thermalPollIntervalMs'] ?? 2000,
         networkPollIntervalMs: json['networkPollIntervalMs'] ?? 1000,
         diskIoPollIntervalMs: json['diskIoPollIntervalMs'] ?? 1000,
