@@ -10,24 +10,42 @@ namespace GSSystemAnalyzer.Tests.Engine
 		private readonly string _mockProcDir;
 		private readonly string _mockStatPath;
 		private readonly string _mockSysDir;
+		private readonly string _ownedTempRoot;
 
-		public LinuxCpuProviderTest()
+		public LinuxCpuProviderTest() : this(Path.GetTempPath())
 		{
-			string root = Path.GetPathRoot(Directory.GetCurrentDirectory()) ?? "/";
-			_mockProcDir = Path.Combine(root, "proc");
+		}
+
+		internal LinuxCpuProviderTest(string tempBasePath)
+		{
+			var temp = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath()));
+			var basePath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(tempBasePath));
+			if (!string.Equals(basePath, temp, PathComparison) && !IsUnder(temp, basePath))
+				throw new ArgumentException("Fixture base must be within the temporary directory.", nameof(tempBasePath));
+
+			_ownedTempRoot = Path.Combine(basePath, "gs_linux_cpu_" + Guid.NewGuid().ToString("N"));
+			_mockProcDir = Path.Combine(_ownedTempRoot, "proc");
 			_mockStatPath = Path.Combine(_mockProcDir, "stat");
-			_mockSysDir = Path.Combine(root, "sys");
+			_mockSysDir = Path.Combine(_ownedTempRoot, "sys");
 		}
 
 		public void Dispose()
 		{
-			if (File.Exists(_mockStatPath)) File.Delete(_mockStatPath);
-			if (Directory.Exists(_mockProcDir)) Directory.Delete(_mockProcDir, true);
+			var temp = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath()));
+			var owned = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_ownedTempRoot));
+			if (!IsUnder(temp, owned) || !Path.GetFileName(owned).StartsWith("gs_linux_cpu_", StringComparison.Ordinal))
+				throw new InvalidOperationException("Fixture cleanup must target its owned temporary root.");
+			if (Directory.Exists(owned)) Directory.Delete(owned, true);
+		}
 
-			if (Directory.Exists(_mockSysDir))
-			{
-				Directory.Delete(_mockSysDir, true);
-			}
+		private static StringComparison PathComparison =>
+			OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
+		private static bool IsUnder(string parent, string path)
+		{
+			var relative = Path.GetRelativePath(parent, path);
+			return !Path.IsPathRooted(relative) && relative != "." && relative != ".." &&
+				!relative.StartsWith(".." + Path.DirectorySeparatorChar, PathComparison);
 		}
 
 		private void WriteMockProcStat(string content)
@@ -46,7 +64,7 @@ namespace GSSystemAnalyzer.Tests.Engine
                 "cpu0 1000 0 200 5000 0 0 0 0\n" +
                 "cpu1 1000 0 200 5000 0 0 0 0\n";
             WriteMockProcStat(baselineTicks);
-            var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance);
+            var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance, _mockProcDir, _mockSysDir);
 
             string activeTicks =
                 "cpu0 1200 0 250 5100 0 0 0 0\n" +
@@ -64,7 +82,7 @@ namespace GSSystemAnalyzer.Tests.Engine
         public async Task LinuxProvider_Delta_IsAccurateAndCalculatedCorrectly()
         {
             WriteMockProcStat("cpu0 1000 0 100 5000 0 0 0 0\n");
-            var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance);
+            var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance, _mockProcDir, _mockSysDir);
 
             WriteMockProcStat("cpu0 1100 0 110 5050 0 0 0 0\n");
             var sample1 = await provider.GetNextSampleAsync();
@@ -88,7 +106,7 @@ namespace GSSystemAnalyzer.Tests.Engine
             }
 
             WriteMockProcStat(baseline);
-            var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance);
+            var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance, _mockProcDir, _mockSysDir);
             WriteMockProcStat(active);
 
             var result = await provider.GetNextSampleAsync();
@@ -104,7 +122,7 @@ namespace GSSystemAnalyzer.Tests.Engine
         public async Task LinuxProvider_SingleCoreMachine_DoesNotCrashAndGroupsCorrectly()
         {
             WriteMockProcStat("cpu0 1000 0 100 5000 0 0 0 0\n");
-            var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance);
+            var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance, _mockProcDir, _mockSysDir);
             WriteMockProcStat("cpu0 1100 0 150 5050 0 0 0 0\n");
 
             var exception = await Record.ExceptionAsync(async () => await provider.GetNextSampleAsync());
@@ -120,23 +138,21 @@ namespace GSSystemAnalyzer.Tests.Engine
         {
             WriteMockProcStat("cpu0 1000 0 100 5000 0 0 0 0\n");
 
-            string root = Path.GetPathRoot(Directory.GetCurrentDirectory()) ?? "/";
-
             // Mock Live Frequency (2450000 kHz = 2.45 GHz)
-            string sysCpuDir = Path.Combine(root, "sys", "devices", "system", "cpu", "cpu0", "cpufreq");
+            string sysCpuDir = Path.Combine(_mockSysDir, "devices", "system", "cpu", "cpu0", "cpufreq");
             Directory.CreateDirectory(sysCpuDir);
             File.WriteAllText(Path.Combine(sysCpuDir, "scaling_cur_freq"), "2450000\n");
 
             // Mock File Handles (Linux format: allocated \t unused \t max)
-            string fsDir = Path.Combine(root, "proc", "sys", "fs");
+            string fsDir = Path.Combine(_mockProcDir, "sys", "fs");
             Directory.CreateDirectory(fsDir);
             File.WriteAllText(Path.Combine(fsDir, "file-nr"), "12500\t0\t9223372036854775807\n");
 
             // Mock Active Threads (Inside the loadavg file)
-            File.WriteAllText(Path.Combine(root, "proc", "loadavg"), "0.10 0.15 0.12 2/850 12345\n");
+            File.WriteAllText(Path.Combine(_mockProcDir, "loadavg"), "0.10 0.15 0.12 2/850 12345\n");
 
             // Mock L1, L2, L3 Caches
-            string cacheDir = Path.Combine(root, "sys", "devices", "system", "cpu", "cpu0", "cache");
+            string cacheDir = Path.Combine(_mockSysDir, "devices", "system", "cpu", "cpu0", "cache");
             Directory.CreateDirectory(Path.Combine(cacheDir, "index0"));
             Directory.CreateDirectory(Path.Combine(cacheDir, "index2"));
             Directory.CreateDirectory(Path.Combine(cacheDir, "index3"));
@@ -145,19 +161,19 @@ namespace GSSystemAnalyzer.Tests.Engine
             File.WriteAllText(Path.Combine(cacheDir, "index3", "size"), "16M\n");
 
             // Mock Running Processes (Linux uses numbered folders for Process IDs)
-            Directory.CreateDirectory(Path.Combine(root, "proc", "101")); // Process 1
-            Directory.CreateDirectory(Path.Combine(root, "proc", "102")); // Process 2
-            Directory.CreateDirectory(Path.Combine(root, "proc", "not_a_process")); // Engine should ignore this
+            Directory.CreateDirectory(Path.Combine(_mockProcDir, "101")); // Process 1
+            Directory.CreateDirectory(Path.Combine(_mockProcDir, "102")); // Process 2
+            Directory.CreateDirectory(Path.Combine(_mockProcDir, "not_a_process")); // Engine should ignore this
 
             // Act: Fire up the engine!
-            var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance);
+            var provider = new LinuxCpuProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GSSystemAnalyzer.Services.LinuxCpuProvider>.Instance, _mockProcDir, _mockSysDir);
             var result = await provider.GetNextSampleAsync();
 
             // Assert: Verify the engine extracted everything from the raw text files
             Assert.Equal(2.45, result.CurrentFrequencyGhz);
             Assert.Equal(12500, result.TotalHandles);
             Assert.Equal(850, result.TotalThreads);
-            Assert.True(result.TotalProcesses >= 2);
+            Assert.Equal(2, result.TotalProcesses);
             Assert.Equal("64K", result.L1Cache);
             Assert.Equal("512K", result.L2Cache);
             Assert.Equal("16M", result.L3Cache);

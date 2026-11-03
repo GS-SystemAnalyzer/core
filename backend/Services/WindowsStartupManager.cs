@@ -33,12 +33,31 @@ namespace GSSystemAnalyzer.Services
             { "Claude", "Claude" },
         };
 
+        private readonly Func<RegistryHive, string, bool, RegistryKey?> _openKey;
+        private readonly Func<RegistryHive, string, RegistryKey?> _createKey;
+        private readonly Func<Environment.SpecialFolder, string> _folderPath;
+
+        public WindowsStartupManager() : this(
+            (hive, path, writable) => (hive == RegistryHive.CurrentUser ? Registry.CurrentUser : Registry.LocalMachine).OpenSubKey(path, writable),
+            (hive, path) => (hive == RegistryHive.CurrentUser ? Registry.CurrentUser : Registry.LocalMachine).CreateSubKey(path),
+            Environment.GetFolderPath)
+        {
+        }
+
+        internal WindowsStartupManager(Func<RegistryHive, string, bool, RegistryKey?> openKey,
+            Func<RegistryHive, string, RegistryKey?> createKey, Func<Environment.SpecialFolder, string> folderPath)
+        {
+            _openKey = openKey;
+            _createKey = createKey;
+            _folderPath = folderPath;
+        }
+
         public Task<IEnumerable<StartupProgramDto>> GetStartupEntriesAsync()
         {
             var entries = new List<StartupProgramDto>();
             var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            using (var userKey = Registry.CurrentUser.OpenSubKey(RunKeyPath))
+            using (var userKey = _openKey(RegistryHive.CurrentUser, RunKeyPath, false))
             {
                 if (userKey != null)
                 {
@@ -62,7 +81,7 @@ namespace GSSystemAnalyzer.Services
                 }
             }
 
-            using (var systemKey = Registry.LocalMachine.OpenSubKey(RunKeyPath))
+            using (var systemKey = _openKey(RegistryHive.LocalMachine, RunKeyPath, false))
             {
                 if (systemKey != null)
                 {
@@ -86,7 +105,7 @@ namespace GSSystemAnalyzer.Services
                 }
             }
 
-            using (var wowKey = Registry.LocalMachine.OpenSubKey(Wow64RunKeyPath))
+            using (var wowKey = _openKey(RegistryHive.LocalMachine, Wow64RunKeyPath, false))
             {
                 if (wowKey != null)
                 {
@@ -120,12 +139,12 @@ namespace GSSystemAnalyzer.Services
             return Task.FromResult<IEnumerable<StartupProgramDto>>(entries);
         }
 
-        private static void EnumerateStartupFolder(Environment.SpecialFolder folder, bool isSystem, List<StartupProgramDto> entries)
+        private void EnumerateStartupFolder(Environment.SpecialFolder folder, bool isSystem, List<StartupProgramDto> entries)
         {
             string folderPath;
             try
             {
-                folderPath = Environment.GetFolderPath(folder);
+                folderPath = _folderPath(folder);
                 if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
                     return;
             }
@@ -171,11 +190,11 @@ namespace GSSystemAnalyzer.Services
             }
         }
 
-        private static void EnumerateAppModelEntries(List<StartupProgramDto> entries)
+        private void EnumerateAppModelEntries(List<StartupProgramDto> entries)
         {
             try
             {
-                using var appModelRoot = Registry.CurrentUser.OpenSubKey(AppModelPath);
+                using var appModelRoot = _openKey(RegistryHive.CurrentUser, AppModelPath, false);
                 if (appModelRoot == null) return;
 
                 foreach (var packageSubKeyName in appModelRoot.GetSubKeyNames())
@@ -223,8 +242,8 @@ namespace GSSystemAnalyzer.Services
                     string task = parts[2];
                     string taskPath = $@"{AppModelPath}\{pkg}\{task}";
 
-                    using var taskKey = Registry.CurrentUser.OpenSubKey(taskPath, writable: true)
-                        ?? Registry.CurrentUser.CreateSubKey(taskPath);
+                    using var taskKey = _openKey(RegistryHive.CurrentUser, taskPath, true)
+                        ?? _createKey(RegistryHive.CurrentUser, taskPath);
                     if (taskKey != null)
                     {
                         taskKey.SetValue("State", enable ? 2 : 1, RegistryValueKind.DWord);
@@ -246,8 +265,8 @@ namespace GSSystemAnalyzer.Services
                     {
                         try
                         {
-                            using var shadowKey = Registry.LocalMachine.OpenSubKey(ShadowStartupFolderKeyPath, writable: true)
-                                ?? Registry.LocalMachine.CreateSubKey(ShadowStartupFolderKeyPath);
+                            using var shadowKey = _openKey(RegistryHive.LocalMachine, ShadowStartupFolderKeyPath, true)
+                                ?? _createKey(RegistryHive.LocalMachine, ShadowStartupFolderKeyPath);
                             if (shadowKey != null)
                             {
                                 ApplyShadowValue(shadowKey, fileName, enable);
@@ -260,8 +279,8 @@ namespace GSSystemAnalyzer.Services
                     }
                     else
                     {
-                        using var shadowKey = Registry.CurrentUser.OpenSubKey(ShadowStartupFolderKeyPath, writable: true)
-                            ?? Registry.CurrentUser.CreateSubKey(ShadowStartupFolderKeyPath);
+                        using var shadowKey = _openKey(RegistryHive.CurrentUser, ShadowStartupFolderKeyPath, true)
+                            ?? _createKey(RegistryHive.CurrentUser, ShadowStartupFolderKeyPath);
                         if (shadowKey != null)
                         {
                             ApplyShadowValue(shadowKey, fileName, enable);
@@ -276,8 +295,8 @@ namespace GSSystemAnalyzer.Services
                 string valueName = id["wow64|".Length..];
                 try
                 {
-                    using var shadowKey = Registry.LocalMachine.OpenSubKey(ShadowRun32KeyPath, writable: true)
-                        ?? Registry.LocalMachine.CreateSubKey(ShadowRun32KeyPath);
+                    using var shadowKey = _openKey(RegistryHive.LocalMachine, ShadowRun32KeyPath, true)
+                        ?? _createKey(RegistryHive.LocalMachine, ShadowRun32KeyPath);
                     if (shadowKey != null)
                     {
                         ApplyShadowValue(shadowKey, valueName, enable);
@@ -301,14 +320,14 @@ namespace GSSystemAnalyzer.Services
             }
             else
             {
-                using var userKey = Registry.CurrentUser.OpenSubKey(RunKeyPath);
+                using var userKey = _openKey(RegistryHive.CurrentUser, RunKeyPath, false);
                 if (userKey?.GetValue(id) != null)
                 {
                     isSys = false;
                 }
                 else
                 {
-                    using var sysKey = Registry.LocalMachine.OpenSubKey(RunKeyPath);
+                    using var sysKey = _openKey(RegistryHive.LocalMachine, RunKeyPath, false);
                     isSys = sysKey?.GetValue(id) != null;
                 }
             }
@@ -317,8 +336,8 @@ namespace GSSystemAnalyzer.Services
             {
                 try
                 {
-                    using var shadowKey = Registry.LocalMachine.OpenSubKey(ShadowRunKeyPath, writable: true)
-                        ?? Registry.LocalMachine.CreateSubKey(ShadowRunKeyPath);
+                    using var shadowKey = _openKey(RegistryHive.LocalMachine, ShadowRunKeyPath, true)
+                        ?? _createKey(RegistryHive.LocalMachine, ShadowRunKeyPath);
                     if (shadowKey != null)
                     {
                         ApplyShadowValue(shadowKey, id, enable);
@@ -331,8 +350,8 @@ namespace GSSystemAnalyzer.Services
             }
             else
             {
-                using var shadowKey = Registry.CurrentUser.OpenSubKey(ShadowRunKeyPath, writable: true)
-                    ?? Registry.CurrentUser.CreateSubKey(ShadowRunKeyPath);
+                using var shadowKey = _openKey(RegistryHive.CurrentUser, ShadowRunKeyPath, true)
+                    ?? _createKey(RegistryHive.CurrentUser, ShadowRunKeyPath);
                 if (shadowKey != null)
                 {
                     ApplyShadowValue(shadowKey, id, enable);
@@ -367,7 +386,7 @@ namespace GSSystemAnalyzer.Services
                     string task = parts[2];
                     string taskPath = $@"{AppModelPath}\{pkg}\{task}";
 
-                    using var taskKey = Registry.CurrentUser.OpenSubKey(taskPath, writable: true);
+                    using var taskKey = _openKey(RegistryHive.CurrentUser, taskPath, true);
                     taskKey?.SetValue("State", 1, RegistryValueKind.DWord);
                 }
                 return Task.CompletedTask;
@@ -381,7 +400,7 @@ namespace GSSystemAnalyzer.Services
                     bool isSystem = string.Equals(parts[1], "system", StringComparison.OrdinalIgnoreCase);
                     string fileName = parts[2];
                     var folder = isSystem ? Environment.SpecialFolder.CommonStartup : Environment.SpecialFolder.Startup;
-                    string folderPath = Environment.GetFolderPath(folder);
+                    string folderPath = _folderPath(folder);
                     string filePath = Path.Combine(folderPath, fileName);
 
                     try
@@ -392,8 +411,8 @@ namespace GSSystemAnalyzer.Services
                         }
 
                         using var shadowKey = isSystem
-                            ? Registry.LocalMachine.OpenSubKey(ShadowStartupFolderKeyPath, writable: true)
-                            : Registry.CurrentUser.OpenSubKey(ShadowStartupFolderKeyPath, writable: true);
+                            ? _openKey(RegistryHive.LocalMachine, ShadowStartupFolderKeyPath, true)
+                            : _openKey(RegistryHive.CurrentUser, ShadowStartupFolderKeyPath, true);
                         shadowKey?.DeleteValue(fileName, throwOnMissingValue: false);
                     }
                     catch (Exception ex) when (ex is UnauthorizedAccessException || ex is SecurityException)
@@ -409,7 +428,7 @@ namespace GSSystemAnalyzer.Services
                 string valueName = id["wow64|".Length..];
                 try
                 {
-                    using var wowKey = Registry.LocalMachine.OpenSubKey(Wow64RunKeyPath, writable: true);
+                    using var wowKey = _openKey(RegistryHive.LocalMachine, Wow64RunKeyPath, true);
                     wowKey?.DeleteValue(valueName, throwOnMissingValue: false);
                 }
                 catch (Exception ex) when (ex is UnauthorizedAccessException || ex is SecurityException)
@@ -419,7 +438,7 @@ namespace GSSystemAnalyzer.Services
                 return Task.CompletedTask;
             }
 
-            using (var userKey = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true))
+            using (var userKey = _openKey(RegistryHive.CurrentUser, RunKeyPath, true))
             {
                 if (userKey?.GetValue(id) != null)
                 {
@@ -427,13 +446,13 @@ namespace GSSystemAnalyzer.Services
                 }
             }
 
-            using (var systemKeyRead = Registry.LocalMachine.OpenSubKey(RunKeyPath, writable: false))
+            using (var systemKeyRead = _openKey(RegistryHive.LocalMachine, RunKeyPath, false))
             {
                 if (systemKeyRead?.GetValue(id) != null)
                 {
                     try
                     {
-                        using var systemKeyWrite = Registry.LocalMachine.OpenSubKey(RunKeyPath, writable: true);
+                        using var systemKeyWrite = _openKey(RegistryHive.LocalMachine, RunKeyPath, true);
                         systemKeyWrite?.DeleteValue(id, throwOnMissingValue: false);
                     }
                     catch (Exception ex) when (ex is UnauthorizedAccessException || ex is SecurityException)
@@ -460,20 +479,20 @@ namespace GSSystemAnalyzer.Services
         internal bool CheckIfEnabled(string id, bool isSystem)
         {
             using var shadowKey = isSystem
-                ? Registry.LocalMachine.OpenSubKey(ShadowRunKeyPath)
-                : Registry.CurrentUser.OpenSubKey(ShadowRunKeyPath);
+                ? _openKey(RegistryHive.LocalMachine, ShadowRunKeyPath, false)
+                : _openKey(RegistryHive.CurrentUser, ShadowRunKeyPath, false);
             var bytes = shadowKey?.GetValue(id) as byte[];
 
             return IsStartupApprovedBytesEnabled(bytes);
         }
 
-        internal static bool CheckIfFolderEnabled(string fileName, bool isSystem)
+        internal bool CheckIfFolderEnabled(string fileName, bool isSystem)
         {
             try
             {
                 using var shadowKey = isSystem
-                    ? Registry.LocalMachine.OpenSubKey(ShadowStartupFolderKeyPath)
-                    : Registry.CurrentUser.OpenSubKey(ShadowStartupFolderKeyPath);
+                    ? _openKey(RegistryHive.LocalMachine, ShadowStartupFolderKeyPath, false)
+                    : _openKey(RegistryHive.CurrentUser, ShadowStartupFolderKeyPath, false);
                 var bytes = shadowKey?.GetValue(fileName) as byte[];
                 return IsStartupApprovedBytesEnabled(bytes);
             }
@@ -483,11 +502,11 @@ namespace GSSystemAnalyzer.Services
             }
         }
 
-        internal static bool CheckIfWow64Enabled(string valueName)
+        internal bool CheckIfWow64Enabled(string valueName)
         {
             try
             {
-                using var shadowKey = Registry.LocalMachine.OpenSubKey(ShadowRun32KeyPath);
+                using var shadowKey = _openKey(RegistryHive.LocalMachine, ShadowRun32KeyPath, false);
                 var bytes = shadowKey?.GetValue(valueName) as byte[];
                 return IsStartupApprovedBytesEnabled(bytes);
             }

@@ -10,6 +10,21 @@ namespace GSSystemAnalyzer.Services
 	[SupportedOSPlatform("windows")]
 	public class WindowsRecycleBinProvider : IRecycleBinProvider
 	{
+		private readonly Action<string> _recycleFile;
+		private readonly Action<string> _recycleDirectory;
+
+		public WindowsRecycleBinProvider() : this(
+			path => FileSystem.DeleteFile(path, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin, UICancelOption.ThrowException),
+			path => FileSystem.DeleteDirectory(path, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin, UICancelOption.ThrowException))
+		{
+		}
+
+		internal WindowsRecycleBinProvider(Action<string> recycleFile, Action<string> recycleDirectory)
+		{
+			_recycleFile = recycleFile;
+			_recycleDirectory = recycleDirectory;
+		}
+
 		public void SendFileToRecycleBin(string path)
 		{
 			if (!OperatingSystem.IsWindows())
@@ -23,7 +38,7 @@ namespace GSSystemAnalyzer.Services
 				File.SetAttributes(path, attributes & ~FileAttributes.ReadOnly);
 			}
 
-			FileSystem.DeleteFile(path, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin, UICancelOption.ThrowException);
+			_recycleFile(path);
 		}
 
 		public void SendDirectoryToRecycleBin(string path)
@@ -46,7 +61,7 @@ namespace GSSystemAnalyzer.Services
 				dir.Attributes &= ~FileAttributes.ReadOnly;
 			}
 
-			FileSystem.DeleteDirectory(path, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin, UICancelOption.ThrowException);
+			_recycleDirectory(path);
 		}
 
 		public bool TryRestore(string originalPath)

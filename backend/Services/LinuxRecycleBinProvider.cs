@@ -21,6 +21,12 @@ namespace GSSystemAnalyzer.Services
 			_trashInfoDir = Path.Combine(trashBase, "info");
 		}
 
+		internal LinuxRecycleBinProvider(string trashRoot)
+		{
+			_trashFilesDir = Path.Combine(trashRoot, "files");
+			_trashInfoDir = Path.Combine(trashRoot, "info");
+		}
+
 		public void SendFileToRecycleBin(string path)
 		{
 			MoveToTrash(path, isDirectory: false);
