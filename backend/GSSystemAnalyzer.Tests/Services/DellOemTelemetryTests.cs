@@ -1,6 +1,9 @@
+using System.Management;
+using System.Runtime.Versioning;
 using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Services;
 using GSSystemAnalyzer.Services.Oem.Dell;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -89,38 +92,134 @@ namespace GSSystemAnalyzer.Tests.Services
 			Assert.True(dellData == null);
 		}
 
-		[Fact]
-		public void TryGetDellOemTelemetry_OnManagementException_LogsDebugOnceAndDisablesForSession()
+		[Theory]
+		[SupportedOSPlatform("windows")]
+		[InlineData(ManagementStatus.AccessDenied)]
+		[InlineData(ManagementStatus.InvalidClass)]
+		[InlineData(ManagementStatus.InvalidNamespace)]
+		[InlineData(ManagementStatus.NotFound)]
+		[InlineData(ManagementStatus.NotSupported)]
+		public void TryGetDellOemTelemetry_OnPermanentError_LogsDebugOnceAndDisables(ManagementStatus status)
 		{
-			if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
-				return;
+			if (!OperatingSystem.IsWindows()) return;
+			var error = ManagementExceptionFactory.Create(status);
+			var logger = new Mock<ILogger<DellOemTelemetry>>();
+			var calls = 0;
+			var telemetry = new DellOemTelemetry(logger.Object, () => { calls++; throw error; }, new ManualTimeProvider());
 
-			var mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<DellOemTelemetry>>();
-			var telemetry = new DellOemTelemetry(mockLogger.Object);
+			Assert.Null(telemetry.TryGetDellOemTelemetry());
+			Assert.Null(telemetry.TryGetDellOemTelemetry());
+			Assert.Equal(1, calls);
+			Assert.Equal(LogLevel.Debug, Assert.Single(logger.Invocations).Arguments[0]);
+		}
 
-			var first = telemetry.TryGetDellOemTelemetry();
-			var second = telemetry.TryGetDellOemTelemetry();
+		[Fact]
+		public void TryGetDellOemTelemetry_OnRetryableError_LogsWarningAndRetries()
+		{
+			if (!OperatingSystem.IsWindows()) return;
+			var error = ManagementExceptionFactory.Create(ManagementStatus.Failed);
+			var logger = new Mock<ILogger<DellOemTelemetry>>();
+			var value = new DellOemDto { CpuTempCelsius = 65.5 };
+			var calls = 0;
+			var telemetry = new DellOemTelemetry(logger.Object,
+				() => ++calls == 1 ? throw error : value, new ManualTimeProvider());
 
-			Assert.Null(first);
-			Assert.Null(second);
+			Assert.Null(telemetry.TryGetDellOemTelemetry());
+			Assert.Same(value, telemetry.TryGetDellOemTelemetry());
+			Assert.Equal(2, calls);
+			Assert.Equal(LogLevel.Warning, Assert.Single(logger.Invocations).Arguments[0]);
+		}
 
-			mockLogger.Verify(
-				x => x.Log(
-					Microsoft.Extensions.Logging.LogLevel.Error,
-					It.IsAny<Microsoft.Extensions.Logging.EventId>(),
-					It.IsAny<It.IsAnyType>(),
-					It.IsAny<System.Exception>(),
-					It.IsAny<System.Func<It.IsAnyType, System.Exception?, string>>()),
-				Times.Never);
+		[Fact]
+		public void TryGetDellOemTelemetry_OnGeneralError_LogsDebugOnceAndDisables()
+		{
+			var logger = new Mock<ILogger<DellOemTelemetry>>();
+			var calls = 0;
+			var telemetry = new DellOemTelemetry(logger.Object,
+				() => { calls++; throw new InvalidOperationException("controlled"); }, new ManualTimeProvider());
 
-			mockLogger.Verify(
-				x => x.Log(
-					Microsoft.Extensions.Logging.LogLevel.Debug,
-					It.IsAny<Microsoft.Extensions.Logging.EventId>(),
-					It.IsAny<It.IsAnyType>(),
-					It.IsAny<System.Exception>(),
-					It.IsAny<System.Func<It.IsAnyType, System.Exception?, string>>()),
-				Times.Once);
+			Assert.Null(telemetry.TryGetDellOemTelemetry());
+			Assert.Null(telemetry.TryGetDellOemTelemetry());
+			Assert.Equal(1, calls);
+			Assert.Equal(LogLevel.Debug, Assert.Single(logger.Invocations).Arguments[0]);
+		}
+
+		[Fact]
+		public void TryGetDellOemTelemetry_AfterEmptyResult_Retries()
+		{
+			var logger = new Mock<ILogger<DellOemTelemetry>>();
+			var value = new DellOemDto { CpuTempCelsius = 65.5 };
+			var calls = 0;
+			var telemetry = new DellOemTelemetry(logger.Object,
+				() => ++calls == 1 ? null : value, new ManualTimeProvider());
+
+			Assert.Null(telemetry.TryGetDellOemTelemetry());
+			Assert.Same(value, telemetry.TryGetDellOemTelemetry());
+			Assert.Equal(2, calls);
+			Assert.Empty(logger.Invocations);
+		}
+
+		[Fact]
+		public void TryGetDellOemTelemetry_CachesUntilExactlyThreeSeconds()
+		{
+			var logger = new Mock<ILogger<DellOemTelemetry>>();
+			var clock = new ManualTimeProvider();
+			var calls = 0;
+			var telemetry = new DellOemTelemetry(logger.Object,
+				() => new DellOemDto { CpuTempCelsius = 50 + ++calls }, clock);
+
+			var first = Assert.IsType<DellOemDto>(telemetry.TryGetDellOemTelemetry());
+			Assert.Equal(51, first.CpuTempCelsius);
+			clock.Now += TimeSpan.FromSeconds(3) - TimeSpan.FromTicks(1);
+			Assert.Same(first, telemetry.TryGetDellOemTelemetry());
+			Assert.Equal(1, calls);
+			clock.Now += TimeSpan.FromTicks(1);
+			var refreshed = Assert.IsType<DellOemDto>(telemetry.TryGetDellOemTelemetry());
+			Assert.Equal(52, refreshed.CpuTempCelsius);
+			Assert.NotSame(first, refreshed);
+			Assert.Equal(2, calls);
+			Assert.Empty(logger.Invocations);
+		}
+
+		[Fact]
+		public void TryGetDellOemTelemetry_InstancesDoNotShareCachedReadings()
+		{
+			var clock = new ManualTimeProvider();
+			var logger = new Mock<ILogger<DellOemTelemetry>>();
+			var firstValue = new DellOemDto { CpuTempCelsius = 55 };
+			var secondValue = new DellOemDto { CpuTempCelsius = 75 };
+			var first = new DellOemTelemetry(logger.Object, () => firstValue, clock);
+			var secondCalls = 0;
+			var second = new DellOemTelemetry(logger.Object, () => { secondCalls++; return secondValue; }, clock);
+
+			Assert.Same(firstValue, first.TryGetDellOemTelemetry());
+			Assert.Same(secondValue, second.TryGetDellOemTelemetry());
+			Assert.Equal(1, secondCalls);
+		}
+
+		[Fact]
+		public void TryGetDellOemTelemetry_SuccessDoesNotHideIndependentReaderFailure()
+		{
+			var logger = new Mock<ILogger<DellOemTelemetry>>();
+			var clock = new ManualTimeProvider();
+			var value = new DellOemDto { CpuTempCelsius = 55 };
+			var first = new DellOemTelemetry(logger.Object, () => value, clock);
+			var calls = 0;
+			var second = new DellOemTelemetry(logger.Object,
+				() => { calls++; throw new InvalidOperationException("controlled"); }, clock);
+
+			Assert.Same(value, first.TryGetDellOemTelemetry());
+			Assert.Null(second.TryGetDellOemTelemetry());
+			Assert.Null(second.TryGetDellOemTelemetry());
+			Assert.Same(value, first.TryGetDellOemTelemetry());
+			Assert.Equal(1, calls);
+			Assert.Equal(LogLevel.Debug, Assert.Single(logger.Invocations).Arguments[0]);
+		}
+
+		private sealed class ManualTimeProvider : TimeProvider
+		{
+			public DateTimeOffset Now { get; set; } = new(2050, 1, 1, 0, 0, 0, TimeSpan.Zero);
+			public override DateTimeOffset GetUtcNow() => Now;
 		}
 	}
 }

@@ -6,11 +6,18 @@ namespace GSSystemAnalyzer.Services
 	public class WmiThermalFallback : IWmiThermalFallback
 	{
 		private readonly ILogger<WmiThermalFallback> _logger;
+		private readonly Func<double?> _readTemperature;
 		private bool _isAvailable = true;
 
 		public WmiThermalFallback(ILogger<WmiThermalFallback> logger)
+			: this(logger, ReadTemperature)
+		{
+		}
+
+		internal WmiThermalFallback(ILogger<WmiThermalFallback> logger, Func<double?> readTemperature)
 		{
 			_logger = logger;
+			_readTemperature = readTemperature;
 		}
 
 		public double? GetCpuTemperatureCelsius()
@@ -22,19 +29,7 @@ namespace GSSystemAnalyzer.Services
 
 			try
 			{
-#pragma warning disable CA1416
-				using var searcher = new System.Management.ManagementObjectSearcher("root\\wmi", "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
-				foreach (System.Management.ManagementObject obj in searcher.Get())
-				{
-					var tempK = Convert.ToDouble(obj["CurrentTemperature"]);
-					var validTemp = ConvertKelvinToCelsius(tempK);
-
-					if (validTemp.HasValue)
-					{
-						return validTemp;
-					}
-				}
-#pragma warning restore CA1416
+				return _readTemperature();
 			}
 			catch (System.Management.ManagementException mex)
 			{
@@ -58,6 +53,24 @@ namespace GSSystemAnalyzer.Services
 				_logger.LogDebug("WMI thermal fallback failed ({Message}); disabling for session.", ex.Message);
 			}
 
+			return null;
+		}
+
+		private static double? ReadTemperature()
+		{
+#pragma warning disable CA1416
+			using var searcher = new System.Management.ManagementObjectSearcher("root\\wmi", "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
+			foreach (System.Management.ManagementObject obj in searcher.Get())
+			{
+				var tempK = Convert.ToDouble(obj["CurrentTemperature"]);
+				var validTemp = ConvertKelvinToCelsius(tempK);
+
+				if (validTemp.HasValue)
+				{
+					return validTemp;
+				}
+			}
+#pragma warning restore CA1416
 			return null;
 		}
 
