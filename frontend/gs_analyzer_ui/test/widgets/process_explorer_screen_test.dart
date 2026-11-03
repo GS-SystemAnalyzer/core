@@ -7,6 +7,7 @@ import 'package:gs_analyzer_ui/models/process_telemetry.dart';
 import 'package:gs_analyzer_ui/providers/cpu_provider.dart';
 import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
 import 'package:gs_analyzer_ui/providers/ram_provider.dart';
+import 'package:gs_analyzer_ui/providers/process_explorer_provider.dart';
 import 'package:gs_analyzer_ui/screen/process_explorer_screen.dart';
 import 'package:gs_analyzer_ui/utils/theme/hud_color.dart';
 import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
@@ -62,6 +63,7 @@ void main() {
     isLoading: false,
     activeGb: 8.0,
     totalGb: 16.0,
+    physicalTotalBytes: 17179869184,
     groupedProcesses: [sampleGroup],
   );
 
@@ -76,8 +78,49 @@ void main() {
     isMax: false,
   );
 
+  void unmountOnTearDown(WidgetTester tester) => addTearDown(() async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  for (final (metric, percentage, size, header) in [
+    (ProcessMemoryMetric.privateWorkingSet, '3.1%', '128.0 MIB', '%PRIVATE WS'),
+    (ProcessMemoryMetric.totalWorkingSet, '12.5%', '512.0 MIB', '%TOTAL WS'),
+    (ProcessMemoryMetric.commitSize, '25.0%', '1024.0 MIB', '%COMMIT'),
+  ]) {
+    testWidgets('Explorer memory column and drawer follow ${metric.name}', (tester) async {
+      unmountOnTearDown(tester);
+      final process = ProcessTelemetry(pid: 42, name: 'memory-app', ramMb: 512,
+        percentMem: 1, status: 'RUNNING', cpuPercent: 0, user: 'SYSTEM',
+        workingSetBytes: 536870912, privateWorkingSetBytes: 134217728,
+        commitBytes: 1073741824, memorySemantics: 'windows-private-ws');
+      final state = RamState(isLoading: false, totalGb: 4, activeGb: 2,
+        physicalTotalBytes: 4294967296, selectedMemoryMetric: metric,
+        groupedProcesses: [ProcessGroup(name: process.name, processes: [process])]);
+      await tester.binding.setSurfaceSize(const Size(1280, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(ProviderScope(overrides: [
+        ramProvider.overrideWith((ref) => MockRamNotifier(state)),
+        processSortModeProvider.overrideWith((ref) => ProcessSortMode.ram),
+        cpuProvider.overrideWith((ref) => MockCpuNotifier(const CpuState())),
+        hudDensityProvider.overrideWithValue(testDensity),
+      ], child: MaterialApp(theme: HudTheme.darkTheme(HudColor.darkAccentCyan),
+        home: const Scaffold(body: ProcessExplorerScreen()))));
+      await tester.pumpAndSettle();
+      expect(find.text(percentage), findsOneWidget);
+      expect(find.text(header), findsOneWidget);
+      expect(find.text('SORT: $header'), findsOneWidget);
+      await tester.tap(find.text('memory-app'));
+      await tester.pumpAndSettle();
+      expect(find.text(metric.label), findsOneWidget);
+      expect(find.text(size), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   group('ProcessExplorerScreen Theme & Widget Tests', () {
     testWidgets('renders loading state when ram is loading and no processes', (tester) async {
+      unmountOnTearDown(tester);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -102,6 +145,7 @@ void main() {
     });
 
     testWidgets('adapts system load bar, toolbar, headers, rows, drawer and footer between Light and Dark themes', (tester) async {
+      unmountOnTearDown(tester);
       tester.view.physicalSize = const Size(1280, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -188,7 +232,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final lightDrawer = tester.widget<AnimatedContainer>(
-        find.ancestor(of: find.text('WORKING SET'), matching: find.byType(AnimatedContainer)).first,
+        find.ancestor(of: find.text('PRIVATE WORKING SET'), matching: find.byType(AnimatedContainer)).first,
       );
       final lightDrawerDec = lightDrawer.decoration as BoxDecoration;
       expect((lightDrawerDec.border as Border).bottom.color, equals(HudColor.lightTextMain.withValues(alpha: 0.1)));
@@ -278,7 +322,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final darkDrawer = tester.widget<AnimatedContainer>(
-        find.ancestor(of: find.text('WORKING SET'), matching: find.byType(AnimatedContainer)).first,
+        find.ancestor(of: find.text('PRIVATE WORKING SET'), matching: find.byType(AnimatedContainer)).first,
       );
       final darkDrawerDec = darkDrawer.decoration as BoxDecoration;
       expect((darkDrawerDec.border as Border).bottom.color, equals(HudColor.darkTextMain.withValues(alpha: 0.1)));
@@ -288,6 +332,7 @@ void main() {
     });
 
     testWidgets('renders error banner when ramState has errorMessage', (tester) async {
+      unmountOnTearDown(tester);
       final errorRamState = sampleRamState.copyWith(
         errorMessage: 'Access Denied: Run as Administrator to kill this process',
       );

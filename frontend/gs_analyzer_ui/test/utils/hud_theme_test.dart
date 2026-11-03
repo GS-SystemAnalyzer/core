@@ -63,6 +63,20 @@ void main() {
   });
 
   group('HudThemeExtension', () {
+    test('onAccent stays readable across every supported light and dark accent', () {
+      for (final brightness in [Brightness.light, Brightness.dark]) {
+        for (final key in ['cyan', 'green', 'amber', 'red', 'purple', 'blue']) {
+          final accent = HudColor.resolveAccent(key, brightness);
+          final theme = brightness == Brightness.light ? HudTheme.lightTheme(accent) : HudTheme.darkTheme(accent);
+          final hud = theme.extension<HudThemeExtension>()!;
+          final a = accent.computeLuminance();
+          final b = hud.onAccent.computeLuminance();
+          final ratio = a > b ? (a + 0.05) / (b + 0.05) : (b + 0.05) / (a + 0.05);
+          expect(ratio, greaterThanOrEqualTo(4.5), reason: '${brightness.name} $key');
+        }
+      }
+    });
+
     test('copyWith copies all properties or preserves existing', () {
       final ext = HudTheme.darkTheme(Colors.cyan).extension<HudThemeExtension>()!;
 
