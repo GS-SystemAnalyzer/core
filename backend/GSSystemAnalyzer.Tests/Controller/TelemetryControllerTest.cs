@@ -2,16 +2,24 @@ using GSSystemAnalyzer.Controllers;
 using GSSystemAnalyzer.Engine;
 using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
+using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Models.SettingDtos;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using GSSystemAnalyzer.Tests.Engine;
 
 namespace GSSystemAnalyzer.Tests.Controller;
 
-public class TelemetryControllerTests
+public class TelemetryControllerTests : IAsyncLifetime
 {
+	private readonly List<RamMonitoringEngine> _engines = new();
+	public Task InitializeAsync() => Task.CompletedTask;
+	public async Task DisposeAsync()
+	{
+		foreach (var engine in _engines) await engine.DisposeAsync();
+	}
 	private TelemetryController CreateController()
 	{
 		var mockCpuProvider = new Mock<ICpuMetricsProvider>();
@@ -25,6 +33,8 @@ public class TelemetryControllerTests
 		var mockClient = new Mock<IClientProxy>();
 		mockHub.Setup(h => h.Clients).Returns(mockClients.Object);
 		mockClients.Setup(c => c.All).Returns(mockClient.Object);
+		mockClient.Setup(c => c.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+			.Returns(Task.CompletedTask);
 
 		var mockSettings = new Mock<ISettingService>();
 		mockSettings.Setup(s => s.Current).Returns(new AppSettingDto
@@ -37,7 +47,11 @@ public class TelemetryControllerTests
 
 		var mockHistoryBuffer = new Mock<ITelemetryHistoryBuffer>();
 
-		return new RamMonitoringEngine(mockHub.Object, mockSettings.Object, mockResolver.Object, mockHistoryBuffer.Object, NullLogger<RamMonitoringEngine>.Instance);
+		var engine = new RamMonitoringEngine(mockHub.Object, mockSettings.Object, mockResolver.Object,
+			mockHistoryBuffer.Object, NullLogger<RamMonitoringEngine>.Instance,
+			() => Array.Empty<ProcessMemorySample>(), () => null, new ManualRamTimeProvider());
+		_engines.Add(engine);
+		return engine;
 	}
 
 
@@ -72,7 +86,7 @@ public class TelemetryControllerTests
 	{
 		var controller = CreateController();
 		var result = controller.KillProcess(CreateEngine(),
-			new List<int> { int.MaxValue }) as OkObjectResult;
+			new List<int> { -1 }) as OkObjectResult;
 		Assert.NotNull(result);
 		var json = System.Text.Json.JsonSerializer.Serialize(result!.Value);
 		Assert.Contains("0 PIDs Terminated", json);

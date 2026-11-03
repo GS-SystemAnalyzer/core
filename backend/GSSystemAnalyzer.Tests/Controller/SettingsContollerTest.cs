@@ -43,7 +43,60 @@ namespace GSSystemAnalyzer.Tests.Controller
 			var result = await controller.SaveSettings(validSettings);
 
 			Assert.IsType<OkObjectResult>(result);
-			mockService.Verify(s => s.SaveAsync(validSettings), Times.Once);
+			mockService.Verify(s => s.SaveAsync(It.Is<AppSettingDto>(s =>
+				s.Monitoring.RamPollIntervalMs == validSettings.Monitoring.RamPollIntervalMs && !ReferenceEquals(s, validSettings))), Times.Once);
+		}
+
+		[Theory]
+		[InlineData(199, false)]
+		[InlineData(200, true)]
+		[InlineData(1000, true)]
+		[InlineData(5000, true)]
+		[InlineData(5001, false)]
+		public async Task RamPollingBoundary_ReturnsTheExpectedStatus(int period, bool accepted)
+		{
+			var service = new Mock<ISettingService>();
+			service.Setup(s => s.SaveAsync(It.IsAny<AppSettingDto>())).Returns(Task.CompletedTask);
+			var request = AppSettingDto.GetFactoryDefaults();
+			request.Monitoring.RamPollIntervalMs = period;
+			var result = await MakeController(service).SaveSettings(request);
+			Assert.Equal(accepted, result is OkObjectResult);
+			service.Verify(s => s.SaveAsync(It.IsAny<AppSettingDto>()), accepted ? Times.Once() : Times.Never());
+		}
+
+		[Fact]
+		public async Task InterleavedSaves_AcknowledgeTheirOwnDetachedRequests()
+		{
+			var service = new Mock<ISettingService>();
+			var current = AppSettingDto.GetFactoryDefaults();
+			var releaseFirst = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+			service.SetupGet(s => s.Current).Returns(() => current);
+			service.Setup(s => s.SaveAsync(It.IsAny<AppSettingDto>())).Returns<AppSettingDto>(snapshot =>
+			{
+				current = snapshot;
+				return snapshot.Monitoring.RamPollIntervalMs == 1500 ? releaseFirst.Task : Task.CompletedTask;
+			});
+			var controller = MakeController(service);
+			var firstRequest = AppSettingDto.GetFactoryDefaults();
+			firstRequest.Monitoring.RamPollIntervalMs = 1500;
+			var secondRequest = AppSettingDto.GetFactoryDefaults();
+			secondRequest.Monitoring.RamPollIntervalMs = 200;
+			var firstSave = controller.SaveSettings(firstRequest);
+			firstRequest.Monitoring.RamPollIntervalMs = 1000;
+			try
+			{
+				var second = Assert.IsType<OkObjectResult>(await controller.SaveSettings(secondRequest));
+				var data = (AppSettingDto)second.Value!.GetType().GetProperty("data")!.GetValue(second.Value)!;
+				Assert.Equal(200, data.Monitoring.RamPollIntervalMs);
+			}
+			finally
+			{
+				releaseFirst.TrySetResult();
+				await firstSave;
+			}
+			var first = Assert.IsType<OkObjectResult>(await firstSave);
+			var firstData = (AppSettingDto)first.Value!.GetType().GetProperty("data")!.GetValue(first.Value)!;
+			Assert.Equal(1500, firstData.Monitoring.RamPollIntervalMs);
 		}
 
 		[Fact]

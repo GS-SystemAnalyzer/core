@@ -32,6 +32,7 @@ builder.Services.AddSingleton<DiskScannerEngine>();
 builder.Services.AddSingleton<IDiskScannerEngine>(sp =>
 	sp.GetRequiredService<DiskScannerEngine>());
 builder.Services.AddSingleton<RamMonitoringEngine>();
+if (OperatingSystem.IsWindows()) builder.Services.AddSingleton<WindowsProcessMetricsProvider>();
 builder.Services.AddSingleton<NetworkSamplerEngine>();
 builder.Services.AddSingleton<INetworkEngine>(sp =>
 	sp.GetRequiredService<NetworkSamplerEngine>());

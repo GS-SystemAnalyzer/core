@@ -17,7 +17,8 @@ namespace GSSystemAnalyzer.Models.SettingDtos
 
 			if (Scan.Depth < 1 || Scan.Depth > 50) errors.Add("Scan Depth must be between 1 and 50.");
 			if (Monitoring.CpuPollIntervalMs < 500 || Monitoring.CpuPollIntervalMs > 60000) errors.Add("CPU Poll Interval must be between 500ms and 60000ms.");
-			if (Monitoring.RamPollIntervalMs < 500 || Monitoring.RamPollIntervalMs > 60000) errors.Add("RAM Poll Interval must be between 500ms and 60000ms.");
+			if (Monitoring.RamPollIntervalMs < MonitoringSettingDto.MinimumRamPollIntervalMs || Monitoring.RamPollIntervalMs > MonitoringSettingDto.MaximumRamPollIntervalMs)
+				errors.Add($"RAM Poll Interval must be between {MonitoringSettingDto.MinimumRamPollIntervalMs}ms and {MonitoringSettingDto.MaximumRamPollIntervalMs}ms.");
 			if (Monitoring.ThermalPollIntervalMs < 500 || Monitoring.ThermalPollIntervalMs > 60000) errors.Add("Thermal Poll Interval must be between 500ms and 60000ms.");
 			if (Monitoring.NetworkPollIntervalMs < 500 || Monitoring.NetworkPollIntervalMs > 60000) errors.Add("Network Poll Interval must be between 500ms and 60000ms.");
 			if (Monitoring.DiskIoPollIntervalMs < 500 || Monitoring.DiskIoPollIntervalMs > 60000) errors.Add("Disk I/O Poll Interval must be between 500ms and 60000ms.");

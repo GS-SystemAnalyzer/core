@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.Security.Cryptography.X509Certificates;
 
 namespace GSSystemAnalyzer.Models
 {
@@ -26,6 +25,8 @@ namespace GSSystemAnalyzer.Models
 			public double SwapGb { get; set; }
 			public double TotalSwapGb { get; set; }
 			public double TotalGb { get; set; }
+			public long? PhysicalTotalBytes { get; set; }
+			internal long? AvailablePhysicalBytes { get; set; }
 		}
 
 		[DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -33,9 +34,16 @@ namespace GSSystemAnalyzer.Models
 
 		public static GlobalMemoryMetrics? GetLiveMetrics()
 		{
+			if (!OperatingSystem.IsWindows()) return null;
 			var memStatus = new MEMORYSTATUSEX();
 			memStatus.dwLength = (uint)Marshal.SizeOf(typeof(MEMORYSTATUSEX));
-			if (GlobalMemoryStatusEx(ref memStatus))
+			return GlobalMemoryStatusEx(ref memStatus) ? FromNativeStatus(memStatus) : null;
+		}
+
+		internal static GlobalMemoryMetrics? FromNativeStatus(MEMORYSTATUSEX memStatus)
+		{
+			if (memStatus.ullTotalPhys > 0 && memStatus.ullTotalPhys <= long.MaxValue &&
+				memStatus.ullAvailPhys <= memStatus.ullTotalPhys && memStatus.ulAvailPagePhys <= memStatus.ulTotalPagePhys)
 			{
 				double totalRamGb = memStatus.ullTotalPhys / (1024.0 * 1024.0 * 1024.0);
 				double availRamGb = memStatus.ullAvailPhys / (1024.0 * 1024.0 * 1024.0);
@@ -57,7 +65,9 @@ namespace GSSystemAnalyzer.Models
 					CacheGb = Math.Round(availRamGb, 2),
 					SwapGb = Math.Round(swapGb, 2),
 					TotalSwapGb = Math.Round(totalSwapGb, 2),
-					TotalGb = Math.Round(totalRamGb, 2)
+					TotalGb = Math.Round(totalRamGb, 2),
+					PhysicalTotalBytes = (long)memStatus.ullTotalPhys,
+					AvailablePhysicalBytes = (long)memStatus.ullAvailPhys
 				};
 			}
 

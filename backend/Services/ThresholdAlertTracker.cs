@@ -6,7 +6,7 @@ namespace GSSystemAnalyzer.Services;
 ///   • Hysteresis band to prevent flapping on recovery
 ///   • Cooldown interval + progression re-fire while alerting
 ///
-/// Used by DriveMonitorService (N=1) and RamMonitoringEngine (N=5).
+/// Callers can qualify elapsed pressure before requesting a threshold transition.
 /// Thread-safety is the caller's responsibility — the tracker itself is single-threaded.
 /// </summary>
 public class ThresholdAlertTracker
