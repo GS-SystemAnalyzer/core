@@ -14,6 +14,9 @@ namespace GSSystemAnalyzer.Tests.Services;
 public class ScanDiffServiceTests : IDisposable
 {
 	private readonly string _tempDir;
+	private readonly ScannerCacheTestScope _cacheScope = new();
+	private readonly List<DiskScannerEngine> _engines = new();
+	private readonly List<IMemoryCache> _caches = new();
 
 	public ScanDiffServiceTests()
 	{
@@ -23,6 +26,9 @@ public class ScanDiffServiceTests : IDisposable
 
 	public void Dispose()
 	{
+		foreach (var cache in _caches) cache.Dispose();
+		foreach (var engine in _engines) engine.Dispose();
+		_cacheScope.Dispose();
 		try { Directory.Delete(_tempDir, recursive: true); } catch { /* best effort */ }
 	}
 
@@ -31,7 +37,7 @@ public class ScanDiffServiceTests : IDisposable
 	private static string Sub(string rel) =>
 		OperatingSystem.IsWindows() ? $@"C:\{rel.Replace('/', '\\')}" : "/" + rel;
 
-	private static DiskScannerEngine CreateEngine()
+	private DiskScannerEngine CreateEngine()
 	{
 		var mockClients = new Mock<IHubClients>();
 		mockClients.Setup(c => c.All).Returns(new Mock<IClientProxy>().Object);
@@ -41,8 +47,9 @@ public class ScanDiffServiceTests : IDisposable
 		var mockSettings = new Mock<ISettingService>();
 		mockSettings.Setup(s => s.Current).Returns(new AppSettingDto());
 
-		var engine = new DiskScannerEngine(mockHub.Object, mockSettings.Object, NullLogger<DiskScannerEngine>.Instance);
-		engine.DirectorySizeCache.Clear();
+		var engine = new DiskScannerEngine(mockHub.Object, mockSettings.Object, NullLogger<DiskScannerEngine>.Instance,
+			cacheFilePath: _cacheScope.CreateCachePath());
+		_engines.Add(engine);
 		return engine;
 	}
 
@@ -51,11 +58,13 @@ public class ScanDiffServiceTests : IDisposable
 		var store = new ScanSnapshotStore(testDir: _tempDir);
 		var settings = new Mock<ISettingService>();
 		settings.Setup(s => s.Current).Returns(new AppSettingDto());
+		cache ??= new MemoryCache(new MemoryCacheOptions());
+		if (!_caches.Contains(cache)) _caches.Add(cache);
 		return new ScanDiffService(
 			engine,
 			store,
 			settings.Object,
-			cache ?? new MemoryCache(new MemoryCacheOptions()),
+			cache,
 			NullLogger<ScanDiffService>.Instance);
 	}
 

@@ -4,6 +4,8 @@ using GSSystemAnalyzer.Engine;
 using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Tests.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -22,6 +24,7 @@ public sealed class DiskScannerEngineWatcherTests : IDisposable
 		Path.GetTempPath(),
 		$"gs-radar-{Guid.NewGuid():N}");
 	private readonly List<Harness> _harnesses = new();
+	private readonly ScannerCacheTestScope _cacheScope = new();
 
 	public DiskScannerEngineWatcherTests() => Directory.CreateDirectory(_tempRoot);
 
@@ -366,6 +369,7 @@ public sealed class DiskScannerEngineWatcherTests : IDisposable
 		var cache = new Mock<IScanCacheService>();
 		var watcherLog = new Mock<IWatcherEventLogService>();
 		var settings = new Mock<ISettingService>();
+		settings.SetupGet(s => s.Current).Returns(AppSettingDto.GetFactoryDefaults());
 
 		var harness = new Harness(
 			new DiskScannerEngine(
@@ -373,7 +377,8 @@ public sealed class DiskScannerEngineWatcherTests : IDisposable
 				settings.Object,
 				NullLogger<DiskScannerEngine>.Instance,
 				cache.Object,
-				watcherLog.Object),
+				watcherLog.Object,
+				cacheFilePath: _cacheScope.CreateCachePath()),
 			cache,
 			watcherLog);
 
@@ -475,6 +480,7 @@ public sealed class DiskScannerEngineWatcherTests : IDisposable
 		}
 		catch (DirectoryNotFoundException) { }
 		catch (IOException) { }
+		_cacheScope.Dispose();
 	}
 
 	private sealed class Harness

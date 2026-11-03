@@ -3,6 +3,7 @@ using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Tests.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -10,10 +11,13 @@ using Moq;
 
 namespace GSSystemAnalyzer.Tests.Engine;
 
-public class FileTypeScannerTests
+public class FileTypeScannerTests : IDisposable
 {
+	private readonly ScannerCacheTestScope _cacheScope = new();
+	private readonly List<DiskScannerEngine> _engines = new();
+	private readonly List<IMemoryCache> _caches = new();
 
-	private static DiskScannerEngine CreateEngine()
+	private DiskScannerEngine CreateEngine()
 	{
 		var mockClients = new Mock<IHubClients>();
 		var mockClient = new Mock<IClientProxy>();
@@ -25,19 +29,30 @@ public class FileTypeScannerTests
 		var mockSettings = new Mock<ISettingService>();
 		mockSettings.Setup(s => s.Current).Returns(new AppSettingDto());
 
-		var engine = new DiskScannerEngine(mockHub.Object, mockSettings.Object, NullLogger<DiskScannerEngine>.Instance);
-		// Clear the cache to prevent tests from reading the user's actual saved memory from disk
-		engine.DirectorySizeCache.Clear();
+		var engine = new DiskScannerEngine(mockHub.Object, mockSettings.Object, NullLogger<DiskScannerEngine>.Instance,
+			cacheFilePath: _cacheScope.CreateCachePath());
+		_engines.Add(engine);
 		return engine;
 	}
 
-	private static IMemoryCache CreateCache() =>
-		new MemoryCache(new MemoryCacheOptions());
+	private IMemoryCache CreateCache()
+	{
+		var cache = new MemoryCache(new MemoryCacheOptions());
+		_caches.Add(cache);
+		return cache;
+	}
 
-	private static FileTypeScanner CreateScanner(
+	private FileTypeScanner CreateScanner(
 		DiskScannerEngine? engine = null,
 		IMemoryCache? cache = null) =>
 		new(engine ?? CreateEngine(), cache ?? CreateCache());
+
+	public void Dispose()
+	{
+		foreach (var cache in _caches) cache.Dispose();
+		foreach (var engine in _engines) engine.Dispose();
+		_cacheScope.Dispose();
+	}
 
 	/// Seeds a CacheEntry with extension data onto DirectorySizeCache.
 	private static void SeedCache(

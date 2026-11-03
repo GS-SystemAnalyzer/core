@@ -3,13 +3,13 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using GSSystemAnalyzer.Engine;
 using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Tests.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -25,6 +25,8 @@ namespace GSSystemAnalyzer.Tests.Engine
 		private readonly ConcurrentQueue<(string Method, object? Payload)> _sends = new();
 		private readonly string _root;
 		private readonly string _tempCacheFile;
+		private readonly ScannerCacheTestScope _cacheScope = new();
+		private readonly List<Guid> _scanIds = new();
 
 		public DiskScannerEngineScanProgressTests()
 		{
@@ -42,18 +44,19 @@ namespace GSSystemAnalyzer.Tests.Engine
 			var settings = new Mock<ISettingService>();
 			settings.SetupGet(s => s.Current).Returns(AppSettingDto.GetFactoryDefaults());
 
-			_engine = new DiskScannerEngine(hubMock.Object, settings.Object, NullLogger<DiskScannerEngine>.Instance);
-			_engine.DirectorySizeCache.Clear();
-
-			// Redirect the on-disk cache so SaveMemoryToDisk() during a scan never touches the
-			// real %APPDATA%/GSAnalyzer/scanner_memory.json. The field is private readonly.
-			_tempCacheFile = Path.Combine(Path.GetTempPath(), "gsa_206_" + Guid.NewGuid().ToString("N") + ".json");
-			typeof(DiskScannerEngine)
-				.GetField("_cacheFilePath", BindingFlags.Instance | BindingFlags.NonPublic)!
-				.SetValue(_engine, _tempCacheFile);
+			_tempCacheFile = _cacheScope.CreateCachePath();
+			_engine = new DiskScannerEngine(hubMock.Object, settings.Object, NullLogger<DiskScannerEngine>.Instance,
+				cacheFilePath: _tempCacheFile);
 
 			_root = Path.Combine(Path.GetTempPath(), "gsa_206_root_" + Guid.NewGuid().ToString("N"));
 			Directory.CreateDirectory(_root);
+		}
+
+		private Guid BeginScan()
+		{
+			var id = _engine.BeginScanSession();
+			_scanIds.Add(id);
+			return id;
 		}
 
 		// Two uncached subdirectories, each with a file: totalNodes == 2, so progress is emitted.
@@ -83,7 +86,7 @@ namespace GSSystemAnalyzer.Tests.Engine
 		[Fact]
 		public async Task PerDirectoryProgress_UsesPercentCompleteKey_NotPercentageComplete()
 		{
-			var scanId = _engine.BeginScanSession();
+			var scanId = BeginScan();
 			await _engine.CalculateMissingSizesAsync(SeedTree(), scanId);
 
 			var payloads = ScanProgressPayloads();
@@ -95,7 +98,7 @@ namespace GSSystemAnalyzer.Tests.Engine
 		[Fact]
 		public async Task PerDirectoryProgress_CarriesStatus_SoUiLeavesInitializing()
 		{
-			var scanId = _engine.BeginScanSession();
+			var scanId = BeginScan();
 			await _engine.CalculateMissingSizesAsync(SeedTree(), scanId);
 
 			// 2a: the per-directory payload (the one carrying `completed`) must also carry a
@@ -108,7 +111,7 @@ namespace GSSystemAnalyzer.Tests.Engine
 		[Fact]
 		public async Task EmittedStatuses_StayWithinKnownVocabulary()
 		{
-			var scanId = _engine.BeginScanSession();
+			var scanId = BeginScan();
 			await _engine.CalculateMissingSizesAsync(SeedTree(), scanId);
 
 			// Contract guard: the backend must only emit statuses the frontend knows about.
@@ -133,7 +136,7 @@ namespace GSSystemAnalyzer.Tests.Engine
 				};
 			}
 
-			var scanId = _engine.BeginScanSession();
+			var scanId = BeginScan();
 			await _engine.CalculateMissingSizesAsync(items, scanId);
 
 			// Part 4: a fully-cached rescan must still reach a terminal COMPLETED, or the UI is
@@ -144,7 +147,7 @@ namespace GSSystemAnalyzer.Tests.Engine
 		[Fact]
 		public async Task CancelledScan_EmitsCanceled_AndSurfacesOperationCanceled()
 		{
-			var scanId = _engine.BeginScanSession();
+			var scanId = BeginScan();
 			_engine.TriggerScanAbort(scanId); // token is already cancelled when the scan starts
 
 			// Contract guard (keeps the HTTP 499 path intact): the engine still surfaces OCE
@@ -158,8 +161,10 @@ namespace GSSystemAnalyzer.Tests.Engine
 
 		public void Dispose()
 		{
+			foreach (var id in _scanIds) _engine.EndScanSession(id);
+			_engine.Dispose();
 			try { if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true); } catch { /* best-effort */ }
-			try { if (File.Exists(_tempCacheFile)) File.Delete(_tempCacheFile); } catch { /* best-effort */ }
+			_cacheScope.Dispose();
 		}
 	}
 }

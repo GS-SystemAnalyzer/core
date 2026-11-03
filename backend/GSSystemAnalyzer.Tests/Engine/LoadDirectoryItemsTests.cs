@@ -6,6 +6,7 @@ using GSSystemAnalyzer.Engine;
 using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Tests.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -18,6 +19,7 @@ public class LoadDirectoryItemsTests : IDisposable
 	private readonly string _tempRoot;
 	private readonly AppSettingDto _appSettings;
 	private readonly DiskScannerEngine _engine;
+	private readonly ScannerCacheTestScope _cacheScope = new();
 
 	public LoadDirectoryItemsTests()
 	{
@@ -38,7 +40,8 @@ public class LoadDirectoryItemsTests : IDisposable
 		var hubMock = new Mock<IHubContext<SystemHub>>();
 		var loggerMock = new Mock<ILogger<DiskScannerEngine>>();
 
-		_engine = new DiskScannerEngine(hubMock.Object, settingsMock.Object, loggerMock.Object);
+		_engine = new DiskScannerEngine(hubMock.Object, settingsMock.Object, loggerMock.Object,
+			cacheFilePath: _cacheScope.CreateCachePath());
 	}
 
 	private string CreateDir(string name)
@@ -129,5 +132,6 @@ public class LoadDirectoryItemsTests : IDisposable
 		}
 		catch (DirectoryNotFoundException) { }
 		catch (IOException) { }
+		_cacheScope.Dispose();
 	}
 }

@@ -3,6 +3,7 @@ using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Tests.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -11,8 +12,12 @@ using Xunit;
 
 namespace GSSystemAnalyzer.Tests.Engine
 {
-	public class AgeHeatmapEngineTests
+	public class AgeHeatmapEngineTests : IDisposable
 	{
+		private readonly ScannerCacheTestScope _cacheScope = new();
+		private readonly List<DiskScannerEngine> _scanners = new();
+		private readonly List<MemoryCache> _caches = new();
+
 		private static DateTime DaysAgo(int days) =>
 			DateTime.UtcNow.AddDays(-days);
 
@@ -20,15 +25,16 @@ namespace GSSystemAnalyzer.Tests.Engine
 		/// Creates a real DiskScannerEngine with mocked hub + settings,
 		/// then seeds its public DirectorySizeCache with the supplied entries.
 		/// </summary>
-		private static DiskScannerEngine BuildScanner(
+		private DiskScannerEngine BuildScanner(
 			params (string Path, long SizeBytes, DateTime LastModified)[] entries)
 		{
 			var hubMock = new Mock<IHubContext<SystemHub>>();
 			var settingsMock = new Mock<ISettingService>();
 			settingsMock.Setup(s => s.Current).Returns(new AppSettingDto());
 
-			var scanner = new DiskScannerEngine(hubMock.Object, settingsMock.Object, NullLogger<DiskScannerEngine>.Instance);
-			scanner.DirectorySizeCache.Clear();
+			var scanner = new DiskScannerEngine(hubMock.Object, settingsMock.Object, NullLogger<DiskScannerEngine>.Instance,
+				cacheFilePath: _cacheScope.CreateCachePath());
+			_scanners.Add(scanner);
 
 			foreach (var (path, sizeBytes, lastModified) in entries)
 			{
@@ -48,10 +54,18 @@ namespace GSSystemAnalyzer.Tests.Engine
 			return scanner;
 		}
 
-		private static AgeHeatmapEngine BuildEngine(DiskScannerEngine scanner)
+		private AgeHeatmapEngine BuildEngine(DiskScannerEngine scanner)
 		{
 			var cache = new MemoryCache(new MemoryCacheOptions());
+			_caches.Add(cache);
 			return new AgeHeatmapEngine(scanner, cache);
+		}
+
+		public void Dispose()
+		{
+			foreach (var cache in _caches) cache.Dispose();
+			foreach (var scanner in _scanners) scanner.Dispose();
+			_cacheScope.Dispose();
 		}
 
 
@@ -187,7 +201,7 @@ namespace GSSystemAnalyzer.Tests.Engine
 			var scanner = BuildScanner(
 				("C:/root", 500, DaysAgo(5))
 			);
-			var cache = new MemoryCache(new MemoryCacheOptions());
+			using var cache = new MemoryCache(new MemoryCacheOptions());
 			var engine = new AgeHeatmapEngine(scanner, cache);
 
 			var first = engine.Analyze("C:/root");
@@ -220,4 +234,3 @@ namespace GSSystemAnalyzer.Tests.Engine
 		}
 	}
 }
-

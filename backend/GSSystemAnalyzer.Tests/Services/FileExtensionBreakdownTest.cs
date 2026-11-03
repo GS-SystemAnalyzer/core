@@ -2,6 +2,7 @@ using GSSystemAnalyzer.Engine;
 using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
+using GSSystemAnalyzer.Models.SettingDtos;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,16 +16,17 @@ namespace GSSystemAnalyzer.Tests.Services
 		private readonly DiskScannerEngine _engine;
 		private readonly FileTypeScanner _scanner;
 		private readonly string _root;
+		private readonly ScannerCacheTestScope _cacheScope = new();
 
 		public FileExtensionBreakdownTest()
 		{
 			var hub = new Mock<IHubContext<SystemHub>>().Object;
-			var settings = new Mock<ISettingService>().Object;
+			var settings = new Mock<ISettingService>();
+			settings.SetupGet(s => s.Current).Returns(AppSettingDto.GetFactoryDefaults());
 
 			_cache = new MemoryCache(new MemoryCacheOptions());
-			_engine = new DiskScannerEngine(hub, settings, NullLogger<DiskScannerEngine>.Instance);
-
-			_engine.DirectorySizeCache.Clear();
+			_engine = new DiskScannerEngine(hub, settings.Object, NullLogger<DiskScannerEngine>.Instance,
+				cacheFilePath: _cacheScope.CreateCachePath());
 
 			_scanner = new FileTypeScanner(_engine, _cache);
 
@@ -248,8 +250,10 @@ namespace GSSystemAnalyzer.Tests.Services
 		public void Dispose()
 		{
 			_cache.Dispose();
+			_engine.Dispose();
 			try { if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true); }
 			catch { /* best-effort cleanup */ }
+			_cacheScope.Dispose();
 		}
 	}
 }
