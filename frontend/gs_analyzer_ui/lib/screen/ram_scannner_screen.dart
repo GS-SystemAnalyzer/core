@@ -8,6 +8,8 @@ import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 import 'package:gs_analyzer_ui/widgets/telemetry_history_chart.dart';
 import 'package:gs_analyzer_ui/providers/hud_density_provider.dart';
+import 'package:gs_analyzer_ui/models/process_telemetry.dart';
+import 'package:gs_analyzer_ui/widgets/hud_accent_toggle.dart';
 
 class RamScannerScreen extends ConsumerStatefulWidget {
   const RamScannerScreen({super.key});
@@ -18,13 +20,15 @@ class RamScannerScreen extends ConsumerStatefulWidget {
 
 class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
   bool _showHistory = false;
+  final _metricKeys = {for (final metric in ProcessMemoryMetric.values) metric: GlobalKey()};
 
   @override
   Widget build(BuildContext context) {
     final ramState = ref.watch(ramProvider);
     final ramAlert = ref.watch(ramAlertProvider);
     final d = ref.watch(hudDensityProvider);
-    final theme = context.HudTheme;
+    final theme = context.hudTheme;
+    final groups = ramState.memorySortedProcesses;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -68,15 +72,22 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
 
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: d.gap,
+            runSpacing: d.gap,
             children: [
               Text('MEMORY SCANNER MODULE', style: theme.header),
-              Row(
-                children: [
-                  _buildToggleBtn('LIVE VIEW', !_showHistory),
-                  _buildToggleBtn('HISTORY', _showHistory),
+              HudAccentToggle<bool>(
+                segments: const [
+                  ButtonSegment(value: false, label: Text('LIVE VIEW')),
+                  ButtonSegment(value: true, label: Text('HISTORY')),
                 ],
+                selected: _showHistory,
+                showSelectedIcon: false,
+                visualDensity: d.rowHeight <= 32 ? VisualDensity.compact : VisualDensity.standard,
+                onChanged: (value) => setState(() => _showHistory = value),
               ),
             ],
           ),
@@ -91,7 +102,10 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
           )
         else ...[
           // Allocation cards
-          Container(
+          Flexible(
+            flex: 1,
+            fit: FlexFit.loose,
+            child: SingleChildScrollView(child: Container(
             padding: EdgeInsets.all(d.panelPad),
             decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: theme.textMain.withValues(alpha: 0.1))),
@@ -148,28 +162,73 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
                 }
               },
             ),
+          )),
+          ),
+
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: d.gap),
+            child: Row(
+              children: [
+                Expanded(child: SingleChildScrollView(
+                  key: const ValueKey('ram-memory-metric'),
+                  scrollDirection: Axis.horizontal,
+                  child: HudAccentToggle<ProcessMemoryMetric>(
+                    compact: true,
+                    showSelectedIcon: false,
+                    segments: [for (final metric in ProcessMemoryMetric.values)
+                      ButtonSegment(value: metric,
+                        label: Text(metric.shortLabel, key: _metricKeys[metric]), tooltip: '${metric.label}\n${metric.tooltip}')],
+                    selected: ramState.selectedMemoryMetric,
+                    visualDensity: d.rowHeight <= 32 ? VisualDensity.compact : VisualDensity.standard,
+                    onChanged: (selected) {
+                      ref.read(ramProvider.notifier).setMemoryMetric(selected);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        final target = _metricKeys[selected]?.currentContext;
+                        if (mounted && target != null) Scrollable.ensureVisible(target, duration: const Duration(milliseconds: 100));
+                      });
+                    },
+                  ),
+                )),
+                const SizedBox(width: 8),
+                HudAccentToggle<ProcessMemoryDisplayMode>(
+                  key: const ValueKey('ram-memory-display'),
+                  compact: true,
+                  showSelectedIcon: false,
+                  segments: [for (final mode in ProcessMemoryDisplayMode.values)
+                    ButtonSegment(value: mode, label: Text(mode.label), tooltip: mode.tooltip)],
+                  selected: ramState.memoryDisplayMode,
+                  visualDensity: d.rowHeight <= 32 ? VisualDensity.compact : VisualDensity.standard,
+                  onChanged: ref.read(ramProvider.notifier).setMemoryDisplayMode,
+                ),
+              ],
+            ),
           ),
 
           // Process table
           ramState.isLoading && ramState.groupedProcesses.isEmpty
-              ? Center(
+              ? Expanded(child: Center(
                   child: Padding(
                     padding: EdgeInsets.all(32.0),
                     child: CircularProgressIndicator(
                       color: theme.border,
                     ),
                   ),
-                )
+                 ))
               : Expanded(
+                  flex: 2,
                   child: ListView.builder(
-                    itemCount: ramState.groupedProcesses.length + 1,
+                    itemCount: groups.isEmpty ? 2 : groups.length + 1,
                     itemBuilder: (context, index) {
                       if (index == 0) return _buildTableHeader(d);
 
-                      final group = ramState.groupedProcesses[index - 1];
+                      if (groups.isEmpty) return Padding(padding: EdgeInsets.all(d.panelPad),
+                          child: Text('NO PROCESS DATA', style: theme.body, textAlign: TextAlign.center));
+                      final group = groups[index - 1];
+                      final memory = group.memoryFor(ramState.selectedMemoryMetric);
+                      final ratio = memory.percentOfCapacity(ramState.physicalTotalBytes);
                       
                       final isTopConsumer = ramAlert?.topConsumers.any((c) => c.name == group.name) ?? false;
-                      final isMemHot = group.totalPercentMem > 10.0;
+                      final isMemHot = ratio != null && ratio > 10.0;
                       final isHot = isMemHot || isTopConsumer;
                       final textColor = isHot
                           ? theme.accentAmber
@@ -179,7 +238,7 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
                           : group.name;
 
                       return Container(
-                        height: d.rowHeight + 16,
+                        constraints: BoxConstraints(minHeight: d.rowHeight + 16),
                         padding: EdgeInsets.symmetric(
                           horizontal: d.panelPad,
                           vertical: 8,
@@ -233,17 +292,23 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
                               ),
                             ),
                             Expanded(
-                              flex: 2,
-                              child: Text(
-                                '${group.totalRamMb.toStringAsFixed(1)} MB',
-                                style: theme.statGreen.copyWith(
-                                  color: textColor,
-                                ),
-                                textAlign: TextAlign.center,
+                              flex: 3,
+                              child: Tooltip(
+                                message: '${ramState.selectedMemoryMetric.tooltip}\n${ramState.memoryDisplayMode.tooltip}\n'
+                                    '${memory.availableMembers}/${group.count} members available; ${memory.estimatedMembers} legacy estimates; ${memory.unknownSourceMembers} unknown sources.',
+                                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                                  Text(ramState.memoryDisplayMode == ProcessMemoryDisplayMode.value
+                                      ? memory.formattedMiB : memory.formattedPercentOfCapacity(ramState.physicalTotalBytes),
+                                      key: ValueKey('ram-value-${group.primaryPid}'),
+                                      style: theme.statGreen.copyWith(color: textColor), textAlign: TextAlign.center),
+                                  if (memory.provenance.label != null)
+                                    FittedBox(fit: BoxFit.scaleDown, child: Text(memory.provenance.label!,
+                                      style: theme.body.copyWith(color: theme.accentAmber, fontSize: 9))),
+                                ]),
                               ),
                             ),
                             Expanded(
-                              flex: 3,
+                              flex: 2,
                               child: Center(
                                 child: Status(status: group.dominantStatus),
                               ),
@@ -281,46 +346,15 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
     );
   }
 
-  Widget _buildToggleBtn(String label, bool isSelected) {
-    final theme = context.HudTheme;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _showHistory = label == 'HISTORY';
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? theme.accentCyan.withValues(alpha: 0.1)
-              : Colors.transparent,
-          border: Border.all(
-            color: isSelected ? theme.accentCyan : theme.textMain.withValues(alpha: 0.1),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: HudTheme.fontCore,
-            color: isSelected ? theme.accentCyan : theme.textDim,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            letterSpacing: 1,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildTableHeader(HudDensity d) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: 8),
       height: d.rowHeight + 16,
       decoration: BoxDecoration(
-        color: context.HudTheme.panel,
-        border: Border(bottom: BorderSide(color: context.HudTheme.textMain.withValues(alpha: 0.1))),
+        color: context.hudTheme.panel,
+        border: Border(bottom: BorderSide(color: context.hudTheme.textMain.withValues(alpha: 0.1))),
       ),
-      child: const Row(
+      child: Row(
         children: [
           Expanded(
             flex: 2,
@@ -334,9 +368,14 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
             flex: 3,
             child: HudLabel('USER', textAlign: TextAlign.center),
           ),
-          Expanded(flex: 2, child: HudLabel('MB', textAlign: TextAlign.center)),
+          Expanded(flex: 3, child: Tooltip(
+              message: '${ref.watch(ramProvider).selectedMemoryMetric.tooltip}\n${ref.watch(ramProvider).memoryDisplayMode.tooltip}',
+              child: FittedBox(fit: BoxFit.scaleDown,
+                  child: HudLabel(ref.watch(ramProvider).memoryDisplayMode == ProcessMemoryDisplayMode.value
+                      ? ref.watch(ramProvider).selectedMemoryMetric.label
+                      : '${ref.watch(ramProvider).selectedMemoryMetric.shortLabel} (%)', textAlign: TextAlign.center)))),
           Expanded(
-            flex: 3,
+            flex: 2,
             child: HudLabel('STATUS', textAlign: TextAlign.center),
           ),
           Expanded(
@@ -357,7 +396,7 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
   ) {
     return Container(
       padding: EdgeInsets.all(d.panelPad),
-      decoration: context.HudTheme.hudPanelDecoration,
+      decoration: context.hudTheme.hudPanelDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -379,7 +418,7 @@ class _RamScannerScreenState extends ConsumerState<RamScannerScreen> {
           LinearProgressIndicator(
             value: percentage.clamp(0.0, 1.0),
             color: accentColor,
-            backgroundColor: context.HudTheme.textMain.withValues(alpha: 0.1),
+            backgroundColor: context.hudTheme.textMain.withValues(alpha: 0.1),
             minHeight: 4,
           ),
         ],

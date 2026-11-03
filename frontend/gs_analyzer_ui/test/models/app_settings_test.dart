@@ -64,6 +64,14 @@ void main() {
   });
 
   group('MonitoringSettings serialization', () {
+    test('RAM defaults are 1000ms and edited invalid drafts are not silently normalized', () {
+      expect(MonitoringSettings().ramPollIntervalMs, 1000);
+      expect(MonitoringSettings.fromJson({}).ramPollIntervalMs, 1000);
+      final draft = MonitoringSettings.fromJson({'ramPollIntervalMs': 199});
+      expect(draft.ramPollIntervalMs, 199);
+      expect(MonitoringSettings.fromJson(draft.toJson()).ramPollIntervalMs, 199);
+    });
+
     test('diskIoPollIntervalMs defaults to 1000', () {
       final mon = MonitoringSettings.fromJson({});
       expect(mon.diskIoPollIntervalMs, 1000);

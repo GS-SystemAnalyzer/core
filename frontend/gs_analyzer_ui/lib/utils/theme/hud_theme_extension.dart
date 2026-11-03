@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gs_analyzer_ui/utils/theme/hud_color.dart';
 
 class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
   final Color accentColor;
@@ -27,6 +28,14 @@ class HudThemeExtension extends ThemeExtension<HudThemeExtension> {
   //for backward compartibility
   TextStyle get label => labelStyle;
   TextStyle get statCyan => valueStyle;
+
+  Color get onAccent {
+    final luminance = accentColor.computeLuminance();
+    final darkContrast = (luminance + 0.05) / 0.05;
+    final lightContrast = 1.05 / (luminance + 0.05);
+    return darkContrast >= lightContrast
+        ? HudColor.darkTextPaint : HudColor.darkTextMain;
+  }
 
   const HudThemeExtension({
     required this.accentColor,

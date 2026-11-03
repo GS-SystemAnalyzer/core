@@ -297,17 +297,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               notifier.updateUI();
             },
           ),
-          _buildSlider(
-            'RAM POLL',
-            mon.ramPollIntervalMs.toDouble(),
-            500,
-            60000,
-            ' ms',
-            (val) {
-              mon.ramPollIntervalMs = val.toInt();
-              notifier.updateUI();
-            },
-          ),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (mon.ramPollIntervalMs >= MonitoringSettings.minRamPollIntervalMs && mon.ramPollIntervalMs <= MonitoringSettings.maxRamPollIntervalMs)
+              _buildSlider('RAM POLL', mon.ramPollIntervalMs.toDouble(), MonitoringSettings.minRamPollIntervalMs.toDouble(), MonitoringSettings.maxRamPollIntervalMs.toDouble(), ' MS', (val) {
+                mon.ramPollIntervalMs = val.round();
+                notifier.updateUI();
+              }, divisions: MonitoringSettings.maxRamPollIntervalMs - MonitoringSettings.minRamPollIntervalMs, valueDisplay: '${mon.ramPollIntervalMs} MS')
+            else
+              Row(children: [
+                Expanded(child: Text('RAM POLL: ${mon.ramPollIntervalMs} MS — UNSUPPORTED',
+                    style: context.hudTheme.body.copyWith(color: context.hudTheme.accentAmber))),
+                TextButton(onPressed: () {
+                  mon.ramPollIntervalMs = MonitoringSettings.defaultRamPollIntervalMs;
+                  notifier.updateUI();
+                }, child: const Text('USE 1000 MS')),
+              ]),
+            Text(state.hasUnsavedChanges ? 'RAM POLL UNSAVED'
+                : state.ramCadenceConfirmed ? 'RAM POLL CONFIRMED' : 'RAM POLL UNCONFIRMED',
+                style: context.hudTheme.body.copyWith(color: context.hudTheme.textDim, fontSize: 11)),
+            if (state.persistenceError != null) Text(state.persistenceError!,
+                style: context.hudTheme.body.copyWith(color: context.hudTheme.accentAmber, fontSize: 11)),
+          ]),
           _buildSlider(
             'THERMAL POLL',
             mon.thermalPollIntervalMs.toDouble(),
@@ -873,7 +883,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             min: min,
             max: max,
             divisions: divisions,
-            activeColor: context.HudTheme.accentCyan,
+            activeColor: context.hudTheme.accentColor,
             inactiveColor: context.HudTheme.textMain.withValues(alpha: 0.12),
             onChanged: onChanged,
           ),
@@ -1072,4 +1082,3 @@ class _CacheRefreshButtonState extends State<_CacheRefreshButton>
     );
   }
 }
-

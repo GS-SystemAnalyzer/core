@@ -2,6 +2,7 @@ using System.Configuration;
 using GSSystemAnalyzer.Engine;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GSSystemAnalyzer.Controllers
@@ -34,19 +35,20 @@ namespace GSSystemAnalyzer.Controllers
 		[HttpPost]
 		public async Task<IActionResult> SaveSettings([FromBody] AppSettingDto settings)
 		{
-			var errors = settings.Validate();
+			var snapshot = SettingsServices.Copy(settings);
+			var errors = snapshot.Validate();
 			if (errors.Any())
 			{
-				return BadRequest(new { success = false, message = "Validation failed" });
+				return BadRequest(new { success = false, message = "Validation failed", errors });
 			}
 
-			await _settingsService.SaveAsync(settings);
+			await _settingsService.SaveAsync(snapshot);
 
 			return Ok(new
 			{
 				success = true,
 				message = "Settings saved & hot-reloaded Successfully",
-				data = _settingsService.Current
+				data = snapshot
 			});
 		}
 

@@ -211,7 +211,8 @@ class _Toolbar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sort = ref.watch(processSortModeProvider);
     final status = ref.watch(processStatusFilterProvider);
-    final theme = context.HudTheme;
+    final theme = context.hudTheme;
+    final metric = ref.watch(ramProvider.select((s) => s.selectedMemoryMetric));
 
     String sortLabel;
     switch (sort) {
@@ -219,7 +220,7 @@ class _Toolbar extends ConsumerWidget {
         sortLabel = '% CPU';
         break;
       case ProcessSortMode.ram:
-        sortLabel = '% MEM';
+        sortLabel = '%${metric.shortLabel}';
         break;
       case ProcessSortMode.pid:
         sortLabel = 'PID';
@@ -291,9 +292,9 @@ class _Toolbar extends ConsumerWidget {
                 value: ProcessSortMode.cpu,
                 child: Text('% CPU'),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: ProcessSortMode.ram,
-                child: Text('% MEM'),
+                child: Text('%${metric.shortLabel}'),
               ),
               const PopupMenuItem(
                 value: ProcessSortMode.pid,
@@ -373,6 +374,7 @@ class _TableHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final d = ref.watch(hudDensityProvider);
+    final metric = ref.watch(ramProvider.select((s) => s.selectedMemoryMetric));
     return Container(
       padding: EdgeInsets.symmetric(horizontal: d.panelPad, vertical: 8),
       height: d.rowHeight + 16,
@@ -380,7 +382,7 @@ class _TableHeader extends ConsumerWidget {
         color: context.HudTheme.panel,
         border: Border(bottom: BorderSide(color: context.hudTheme.textMain.withValues(alpha: 0.1))),
       ),
-      child: const Row(
+      child: Row(
         children: [
           Expanded(
             flex: 2,
@@ -400,7 +402,9 @@ class _TableHeader extends ConsumerWidget {
           ),
           Expanded(
             flex: 2,
-            child: HudLabel('%MEM', textAlign: TextAlign.center),
+            child: Tooltip(message: metric.tooltip,
+              child: FittedBox(fit: BoxFit.scaleDown,
+                child: HudLabel('%${metric.shortLabel}', textAlign: TextAlign.center))),
           ),
           Expanded(
             flex: 3,
@@ -433,8 +437,12 @@ class _ProcessRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = context.HudTheme;
+    final (metric, capacity) = ref.watch(ramProvider.select((s) =>
+        (s.selectedMemoryMetric, s.physicalTotalBytes)));
+    final memory = group.memoryFor(metric);
+    final ratio = memory.percentOfCapacity(capacity);
     final isCpuHot = group.totalCpuPercent > 10.0;
-    final isMemHot = group.totalPercentMem > 10.0;
+    final isMemHot = ratio != null && ratio > 10.0;
     final isHot = isCpuHot || isMemHot;
     final rowColor = isSelected
         ? theme.accentCyan.withValues(alpha: 0.06)
@@ -511,10 +519,20 @@ class _ProcessRow extends ConsumerWidget {
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text(
-                    '${group.totalPercentMem.toStringAsFixed(1)}%',
-                    style: theme.statGreen.copyWith(color: textColor),
-                    textAlign: TextAlign.center,
+                  child: Tooltip(
+                    message: '${metric.tooltip}\nSelected bytes divided by measured physical RAM capacity.\n'
+                        '${memory.availableMembers}/${group.count} members available; ${memory.estimatedMembers} legacy estimates; ${memory.unknownSourceMembers} unknown sources.',
+                    child: FittedBox(fit: BoxFit.scaleDown,
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Text(memory.formattedPercentOfCapacity(capacity),
+                        key: ValueKey('explorer-memory-${group.primaryPid}'),
+                        style: theme.statGreen.copyWith(color: textColor),
+                        textAlign: TextAlign.center),
+                      if (memory.provenance.label != null)
+                        FittedBox(fit: BoxFit.scaleDown,
+                          child: Text(memory.provenance.label!, style: theme.body.copyWith(
+                            color: theme.accentAmber, fontSize: 9))),
+                    ])),
                   ),
                 ),
                 Expanded(
@@ -607,6 +625,8 @@ class _DetailDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = context.HudTheme;
+    final metric = ref.watch(ramProvider.select((s) => s.selectedMemoryMetric));
+    final memory = group.memoryFor(metric);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
@@ -633,10 +653,8 @@ class _DetailDrawer extends ConsumerWidget {
                       ? 'GROUPED (${group.count})'
                       : group.primaryPid.toString(),
                 ),
-                _DrawerStat(
-                  'WORKING SET',
-                  '${group.totalRamMb.toStringAsFixed(1)} MB',
-                ),
+                Tooltip(message: '${metric.tooltip}\n${memory.provenance.label ?? 'MEASURED'}',
+                  child: _DrawerStat(metric.label, memory.formattedMiB)),
                 _DrawerStat(
                   '% CPU',
                   '${group.totalCpuPercent.toStringAsFixed(2)}%',
