@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using GSSystemAnalyzer.Engine;
@@ -12,6 +12,7 @@ using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Models.SettingDtos;
 using GSSystemAnalyzer.Services;
+using GSSystemAnalyzer.Tests.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -25,6 +26,7 @@ namespace GSSystemAnalyzer.Tests.Engine
 		private readonly string _root;
 		private readonly string _tempCacheFile;
 		private readonly Mock<IHubContext<SystemHub>> _hubMock;
+		private readonly ScannerCacheTestScope _cacheScope = new();
 
 		public DiskScannerEngineIncrementalStreamingTests()
 		{
@@ -43,13 +45,9 @@ namespace GSSystemAnalyzer.Tests.Engine
 			defaults.Scan.SkipSystemFiles = false;
 			settings.SetupGet(s => s.Current).Returns(defaults);
 
-			_engine = new DiskScannerEngine(_hubMock.Object, settings.Object, NullLogger<DiskScannerEngine>.Instance);
-			_engine.DirectorySizeCache.Clear();
-
-			_tempCacheFile = Path.Combine(Path.GetTempPath(), "gsa_stream_" + Guid.NewGuid().ToString("N") + ".json");
-			typeof(DiskScannerEngine)
-				.GetField("_cacheFilePath", BindingFlags.Instance | BindingFlags.NonPublic)!
-				.SetValue(_engine, _tempCacheFile);
+			_tempCacheFile = _cacheScope.CreateCachePath();
+			_engine = new DiskScannerEngine(_hubMock.Object, settings.Object, NullLogger<DiskScannerEngine>.Instance,
+				cacheFilePath: _tempCacheFile);
 
 			_root = Path.Combine(Path.GetTempPath(), "gsa_stream_root_" + Guid.NewGuid().ToString("N"));
 			Directory.CreateDirectory(_root);
@@ -57,15 +55,16 @@ namespace GSSystemAnalyzer.Tests.Engine
 
 		public void Dispose()
 		{
+			_engine.Dispose();
 			try { if (Directory.Exists(_root)) Directory.Delete(_root, true); } catch { }
-			try { if (File.Exists(_tempCacheFile)) File.Delete(_tempCacheFile); } catch { }
+			_cacheScope.Dispose();
 		}
 
 		[Fact]
 		public async Task CoalescingStreamChannel_FlushesOnBatchSizeReached()
 		{
 			var batches = new ConcurrentQueue<IReadOnlyList<int>>();
-			var channel = new CoalescingStreamChannel<int>(
+			await using var channel = new CoalescingStreamChannel<int>(
 				items =>
 				{
 					batches.Enqueue(items);
@@ -88,14 +87,13 @@ namespace GSSystemAnalyzer.Tests.Engine
 			Assert.Single(batches);
 			Assert.Equal(5, batches.First().Count);
 
-			await channel.DisposeAsync();
 		}
 
 		[Fact]
 		public async Task CoalescingStreamChannel_FlushesOnTimeout()
 		{
 			var batches = new ConcurrentQueue<IReadOnlyList<string>>();
-			var channel = new CoalescingStreamChannel<string>(
+			await using var channel = new CoalescingStreamChannel<string>(
 				items =>
 				{
 					batches.Enqueue(items);
@@ -115,7 +113,6 @@ namespace GSSystemAnalyzer.Tests.Engine
 			Assert.Single(batches);
 			Assert.Equal(2, batches.First().Count);
 
-			await channel.DisposeAsync();
 		}
 
 		[Fact]
@@ -130,10 +127,17 @@ namespace GSSystemAnalyzer.Tests.Engine
 			var scanId = _engine.BeginScanSession();
 			var completedDirs = new ConcurrentBag<(string Path, long Size)>();
 
-			await _engine.CalculateMissingSizesAsync(items, scanId, (dir, size) =>
+			try
 			{
-				completedDirs.Add((dir.FullName, size));
-			});
+				await _engine.CalculateMissingSizesAsync(items, scanId, (dir, size) =>
+				{
+					completedDirs.Add((dir.FullName, size));
+				});
+			}
+			finally
+			{
+				_engine.EndScanSession(scanId);
+			}
 
 			Assert.Equal(2, completedDirs.Count);
 			Assert.Contains(completedDirs, d => d.Path == subDirA.FullName && d.Size >= 1024);
@@ -173,6 +177,8 @@ namespace GSSystemAnalyzer.Tests.Engine
 			Assert.Equal(_root, summary.Path);
 			Assert.True(summary.RecursiveBytesFinal);
 			Assert.True(summary.RecursiveBytes >= 4608);
+			var saved = JsonSerializer.Deserialize<Dictionary<string, CacheEntry>>(File.ReadAllText(_tempCacheFile))!;
+			Assert.Equal(summary.RecursiveBytes, saved[Path.GetFullPath(_root)].Size);
 
 			var allStreamedNodes = streamedChunks.SelectMany(c => c).ToList();
 			Assert.Contains(allStreamedNodes, n => n.Name == "root_file.txt" && n.Type == "File" && n.SizeBytes == 512);

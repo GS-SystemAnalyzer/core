@@ -162,7 +162,7 @@ namespace GSSystemAnalyzer.Services
 					_logger.LogDebug(ex, "Failed to invalidate file types cache for {Path}", path);
 				}
 
-				Task.Run(() => _scanner.SaveMemoryToDisk());
+				_scanner.SaveMemoryToDisk();
 
 				// Compute the scan diff + promote the baseline, but only for whole-drive scans —
 				// browsing individual subfolders should not accumulate baselines or reset a drive's.
@@ -407,7 +407,7 @@ namespace GSSystemAnalyzer.Services
 					_logger.LogDebug(ex, "Failed to invalidate file types cache for {Path}", path);
 				}
 
-				Task.Run(() => _scanner.SaveMemoryToDisk());
+				await Task.Run(() => _scanner.SaveMemoryToDisk());
 
 				if (IsDriveRoot(path))
 				{
@@ -457,7 +457,7 @@ namespace GSSystemAnalyzer.Services
 
 			if (memoryChanged)
 			{
-				Task.Run(() => _scanner.SaveMemoryToDisk());
+				_scanner.SaveMemoryToDisk();
 			}
 		}
 

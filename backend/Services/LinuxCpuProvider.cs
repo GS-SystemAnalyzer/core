@@ -14,11 +14,15 @@ namespace GSSystemAnalyzer.Services
         // Stores the previous tick data for every core to calculate the delta
         private readonly Dictionary<string, (long Idle, long Total)> _prevCoreData = new();
         private readonly ILogger<LinuxCpuProvider> _logger;
+        private readonly string _procRoot;
+        private readonly string _sysRoot;
         private double _previousAverage = 0;
 
-        public LinuxCpuProvider(ILogger<LinuxCpuProvider> logger)
+        public LinuxCpuProvider(ILogger<LinuxCpuProvider> logger, string? procRoot = null, string? sysRoot = null)
         {
             _logger = logger;
+            _procRoot = procRoot ?? "/proc";
+            _sysRoot = sysRoot ?? "/sys";
             // Do an initial read to populate the baseline data, just like discarding the first PerformanceCounter read
             var initialSnapshot = ReadProcStat();
             foreach (var core in initialSnapshot)
@@ -80,7 +84,7 @@ namespace GSSystemAnalyzer.Services
             try
             {
                 // This system file holds the current frequency in kHz (e.g., 2400000 = 2.4 GHz)
-                string freqText = File.ReadAllText("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq");
+                string freqText = File.ReadAllText(Path.Combine(_sysRoot, "devices", "system", "cpu", "cpu0", "cpufreq", "scaling_cur_freq"));
                 if (long.TryParse(freqText.Trim(), out long freqKhz))
                 {
                     // Convert kHz to GHz and round to 2 decimal places
@@ -96,17 +100,17 @@ namespace GSSystemAnalyzer.Services
             try
             {
                 // File-nr contains allocated file descriptors (Linux equivalent of Handles)
-                string[] fileNr = File.ReadAllText("/proc/sys/fs/file-nr").Split('\t', StringSplitOptions.RemoveEmptyEntries);
+                string[] fileNr = File.ReadAllText(Path.Combine(_procRoot, "sys", "fs", "file-nr")).Split('\t', StringSplitOptions.RemoveEmptyEntries);
                 if (fileNr.Length > 0 && int.TryParse(fileNr[0], out int handles))
                 {
                     dto.TotalHandles = handles;
                 }
 
                 // Count numerical directories in /proc to get the exact Process Count
-                dto.TotalProcesses = Directory.GetDirectories("/proc").Count(d => int.TryParse(Path.GetFileName(d), out _));
+                dto.TotalProcesses = Directory.GetDirectories(_procRoot).Count(d => int.TryParse(Path.GetFileName(d), out _));
 
                 // Read /proc/loadavg for active scheduling threads
-                string loadAvg = File.ReadAllText("/proc/loadavg");
+                string loadAvg = File.ReadAllText(Path.Combine(_procRoot, "loadavg"));
                 var parts = loadAvg.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length > 3)
                 {
@@ -119,12 +123,16 @@ namespace GSSystemAnalyzer.Services
                 }
                 
                 // Hardware Caches (Linux exposes these directly in the filesystem)
-                if (File.Exists("/sys/devices/system/cpu/cpu0/cache/index0/size"))
-                    dto.L1Cache = File.ReadAllText("/sys/devices/system/cpu/cpu0/cache/index0/size").Trim();
-                if (File.Exists("/sys/devices/system/cpu/cpu0/cache/index2/size"))
-                    dto.L2Cache = File.ReadAllText("/sys/devices/system/cpu/cpu0/cache/index2/size").Trim();
-                if (File.Exists("/sys/devices/system/cpu/cpu0/cache/index3/size"))
-                    dto.L3Cache = File.ReadAllText("/sys/devices/system/cpu/cpu0/cache/index3/size").Trim();
+                var cacheRoot = Path.Combine(_sysRoot, "devices", "system", "cpu", "cpu0", "cache");
+                var l1Path = Path.Combine(cacheRoot, "index0", "size");
+                var l2Path = Path.Combine(cacheRoot, "index2", "size");
+                var l3Path = Path.Combine(cacheRoot, "index3", "size");
+                if (File.Exists(l1Path))
+                    dto.L1Cache = File.ReadAllText(l1Path).Trim();
+                if (File.Exists(l2Path))
+                    dto.L2Cache = File.ReadAllText(l2Path).Trim();
+                if (File.Exists(l3Path))
+                    dto.L3Cache = File.ReadAllText(l3Path).Trim();
             }
             catch 
             {
@@ -137,9 +145,10 @@ namespace GSSystemAnalyzer.Services
         private Dictionary<string, (long Idle, long Total)> ReadProcStat()
         {
             var result = new Dictionary<string, (long Idle, long Total)>();
+            var statPath = Path.Combine(_procRoot, "stat");
             try
             {
-                var lines = File.ReadAllLines("/proc/stat");
+                var lines = File.ReadAllLines(statPath);
                 foreach (var line in lines)
                 {
                     // We only want the individual cores: cpu0, cpu1, cpu2, etc.
@@ -168,7 +177,7 @@ namespace GSSystemAnalyzer.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to read /proc/stat");
+                _logger.LogError(ex, "Failed to read CPU statistics from {Path}", statPath);
             }
             return result;
         }

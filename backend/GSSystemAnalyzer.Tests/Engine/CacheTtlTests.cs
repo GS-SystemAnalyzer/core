@@ -7,12 +7,16 @@ using Xunit;
 using GSSystemAnalyzer.Engine;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Tests.Services;
 
 namespace GSSystemAnalyzer.Tests.Engine;
 
-public class CacheTtlTests
+public class CacheTtlTests : IDisposable
 {
-    private static DiskScannerEngine CreateEngine(int ttlMinutes, int maxScans)
+    private readonly ScannerCacheTestScope _cacheScope = new();
+    private readonly List<DiskScannerEngine> _engines = new();
+
+    private DiskScannerEngine CreateEngine(int ttlMinutes, int maxScans)
     {
         var hub = new Mock<IHubContext<Hubs.SystemHub>>().Object;
 
@@ -26,7 +30,16 @@ public class CacheTtlTests
         var settings = new Mock<ISettingService>();
         settings.SetupGet(s => s.Current).Returns(appSettings);
 
-        return new DiskScannerEngine(hub, settings.Object, NullLogger<DiskScannerEngine>.Instance);
+        var engine = new DiskScannerEngine(hub, settings.Object, NullLogger<DiskScannerEngine>.Instance,
+            cacheFilePath: _cacheScope.CreateCachePath());
+        _engines.Add(engine);
+        return engine;
+    }
+
+    public void Dispose()
+    {
+        foreach (var engine in _engines) engine.Dispose();
+        _cacheScope.Dispose();
     }
 
     [Fact]

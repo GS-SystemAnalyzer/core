@@ -4,6 +4,7 @@ using GSSystemAnalyzer.Hubs;
 using GSSystemAnalyzer.Interfaces;
 using GSSystemAnalyzer.Models;
 using GSSystemAnalyzer.Models.SettingDtos;
+using GSSystemAnalyzer.Tests.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -12,20 +13,30 @@ using Xunit;
 
 namespace GSSystemAnalyzer.Tests.BackgroundWorkers;
 
-public class ScheduledScanWorkerTests
+public class ScheduledScanWorkerTests : IDisposable
 {
-	private static DiskScannerEngine BuildScanner(bool isScanning = false)
+	private readonly ScannerCacheTestScope _cacheScope = new();
+	private readonly List<DiskScannerEngine> _scanners = new();
+
+	private DiskScannerEngine BuildScanner(bool isScanning = false)
 	{
 		var hubMock = new Mock<IHubContext<SystemHub>>();
 		var settingsMock = new Mock<ISettingService>();
 		settingsMock.Setup(s => s.Current).Returns(new AppSettingDto());
 
-		var scanner = new DiskScannerEngine(hubMock.Object, settingsMock.Object, NullLogger<DiskScannerEngine>.Instance);
-		scanner.DirectorySizeCache.Clear();
+		var scanner = new DiskScannerEngine(hubMock.Object, settingsMock.Object, NullLogger<DiskScannerEngine>.Instance,
+			cacheFilePath: _cacheScope.CreateCachePath());
+		_scanners.Add(scanner);
 
 		// To simulate IsScanning, we'd need to acquire the semaphore.
 		// For tests where isScanning = true, we acquire it before the test.
 		return scanner;
+	}
+
+	public void Dispose()
+	{
+		foreach (var scanner in _scanners) scanner.Dispose();
+		_cacheScope.Dispose();
 	}
 
 	private static Mock<ISettingService> BuildSettingsMock(bool enabled = true, int interval = 15)
@@ -77,7 +88,7 @@ public class ScheduledScanWorkerTests
 		var settingsMock = BuildSettingsMock(enabled: false);
 		var scheduleMock = new Mock<IScheduleService>();
 
-		var worker = new ScheduledScanWorker(
+		using var worker = new ScheduledScanWorker(
 			scheduleMock.Object,
 			settingsMock.Object,
 			BuildScanner(),
@@ -120,7 +131,7 @@ public class ScheduledScanWorkerTests
 			.Setup(d => d.ScanDirectory(It.IsAny<string>(), It.IsAny<Guid>()))
 			.Returns(new List<StorageNode>());
 
-		var worker = new ScheduledScanWorker(
+		using var worker = new ScheduledScanWorker(
 			scheduleMock.Object,
 			settingsMock.Object,
 			BuildScanner(),
@@ -178,7 +189,7 @@ public class ScheduledScanWorkerTests
 
 		try
 		{
-			var worker = new ScheduledScanWorker(
+			using var worker = new ScheduledScanWorker(
 				scheduleMock.Object,
 				settingsMock.Object,
 				scanner,
@@ -231,7 +242,7 @@ public class ScheduledScanWorkerTests
 		var clientProxyMock = new Mock<IClientProxy>();
 		hubMock.Setup(h => h.Clients.All).Returns(clientProxyMock.Object);
 
-		var worker = new ScheduledScanWorker(
+		using var worker = new ScheduledScanWorker(
 			scheduleMock.Object,
 			settingsMock.Object,
 			BuildScanner(),
@@ -265,7 +276,7 @@ public class ScheduledScanWorkerTests
 			.Setup(s => s.Create(It.IsAny<CreateScheduleRequest>()))
 			.Returns(new ScheduledScan { Id = Guid.NewGuid(), Path = "C:/" });
 
-		var worker = new ScheduledScanWorker(
+		using var worker = new ScheduledScanWorker(
 			scheduleMock.Object,
 			settingsMock.Object,
 			BuildScanner(),
@@ -311,7 +322,7 @@ public class ScheduledScanWorkerTests
 			.Setup(s => s.GetDueSchedules(It.IsAny<DateTimeOffset>()))
 			.Returns(new List<ScheduledScan>());
 
-		var worker = new ScheduledScanWorker(
+		using var worker = new ScheduledScanWorker(
 			scheduleMock.Object,
 			settingsMock.Object,
 			BuildScanner(),
@@ -355,7 +366,7 @@ public class ScheduledScanWorkerTests
 			.Setup(d => d.ScanDirectory(It.IsAny<string>(), It.IsAny<Guid>()))
 			.Throws(new IOException("Disk read error"));
 
-		var worker = new ScheduledScanWorker(
+		using var worker = new ScheduledScanWorker(
 			scheduleMock.Object,
 			settingsMock.Object,
 			BuildScanner(),

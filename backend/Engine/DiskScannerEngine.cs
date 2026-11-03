@@ -69,9 +69,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 
 	private readonly object _fileWriteLock = new object();
 	private int _deepScanThrottle = 0;
-	private readonly string _cacheFilePath = Path.Combine(
-		Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-		"GSAnalyzer", "scanner_memory.json");
+	private readonly string _cacheFilePath;
 	private FileSystemWatcher? _liveRader;
 	private readonly object _radarLock = new object();
 	private const int MaxRadarViewDepth = 2;
@@ -101,8 +99,11 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 	private readonly IWatcherEventLogService? _watcherLog;
 	private int _scannedFilesCount = 0;
 
-	public DiskScannerEngine(IHubContext<SystemHub> hub, ISettingService settings, ILogger<DiskScannerEngine> logger, IScanCacheService? cacheService = null, IWatcherEventLogService? watcherLog = null)
+	public DiskScannerEngine(IHubContext<SystemHub> hub, ISettingService settings, ILogger<DiskScannerEngine> logger, IScanCacheService? cacheService = null, IWatcherEventLogService? watcherLog = null, string? cacheFilePath = null)
 	{
+		_cacheFilePath = cacheFilePath ?? Path.Combine(
+			Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+			"GSAnalyzer", "scanner_memory.json");
 		_hub = hub;
 		_settings = settings;
 		_logger = logger;

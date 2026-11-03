@@ -1,5 +1,7 @@
 using System;
-using System.Runtime.InteropServices;
+using System.Management;
+using System.Reflection;
+using System.Runtime.Versioning;
 using GSSystemAnalyzer.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -9,38 +11,82 @@ namespace GSSystemAnalyzer.Tests.Services
 {
 	public class WmiThermalFallbackTests
 	{
-		[Fact]
-		public void GetCpuTemperatureCelsius_OnManagementException_LogsDebugOnceAndDisablesForSession()
+		[Theory]
+		[SupportedOSPlatform("windows")]
+		[InlineData(ManagementStatus.AccessDenied)]
+		[InlineData(ManagementStatus.InvalidClass)]
+		[InlineData(ManagementStatus.InvalidNamespace)]
+		[InlineData(ManagementStatus.NotFound)]
+		[InlineData(ManagementStatus.NotSupported)]
+		public void GetCpuTemperatureCelsius_OnPermanentError_LogsDebugOnceAndDisables(ManagementStatus status)
 		{
-			if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-				return;
+			if (!OperatingSystem.IsWindows()) return;
+			var error = ManagementExceptionFactory.Create(status);
+			var logger = new Mock<ILogger<WmiThermalFallback>>();
+			var calls = 0;
+			var fallback = new WmiThermalFallback(logger.Object, () => { calls++; throw error; });
 
-			var mockLogger = new Mock<ILogger<WmiThermalFallback>>();
-			var fallback = new WmiThermalFallback(mockLogger.Object);
+			Assert.Null(fallback.GetCpuTemperatureCelsius());
+			Assert.Null(fallback.GetCpuTemperatureCelsius());
+			Assert.Equal(1, calls);
+			Assert.Equal(LogLevel.Debug, Assert.Single(logger.Invocations).Arguments[0]);
+		}
 
-			var first = fallback.GetCpuTemperatureCelsius();
-			var second = fallback.GetCpuTemperatureCelsius();
+		[Fact]
+		public void GetCpuTemperatureCelsius_OnRetryableError_LogsWarningAndRetries()
+		{
+			if (!OperatingSystem.IsWindows()) return;
+			var error = ManagementExceptionFactory.Create(ManagementStatus.Failed);
+			var logger = new Mock<ILogger<WmiThermalFallback>>();
+			var calls = 0;
+			var fallback = new WmiThermalFallback(logger.Object, () => ++calls == 1 ? throw error : 65.5);
 
-			Assert.Null(first);
-			Assert.Null(second);
+			Assert.Null(fallback.GetCpuTemperatureCelsius());
+			Assert.Equal(65.5, fallback.GetCpuTemperatureCelsius());
+			Assert.Equal(2, calls);
+			Assert.Equal(LogLevel.Warning, Assert.Single(logger.Invocations).Arguments[0]);
+		}
 
-			mockLogger.Verify(
-				x => x.Log(
-					LogLevel.Error,
-					It.IsAny<EventId>(),
-					It.IsAny<It.IsAnyType>(),
-					It.IsAny<Exception>(),
-					It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-				Times.Never);
+		[Fact]
+		public void GetCpuTemperatureCelsius_OnGeneralError_LogsDebugOnceAndDisables()
+		{
+			var logger = new Mock<ILogger<WmiThermalFallback>>();
+			var calls = 0;
+			var fallback = new WmiThermalFallback(logger.Object,
+				() => { calls++; throw new InvalidOperationException("controlled"); });
 
-			mockLogger.Verify(
-				x => x.Log(
-					LogLevel.Debug,
-					It.IsAny<EventId>(),
-					It.IsAny<It.IsAnyType>(),
-					It.IsAny<Exception>(),
-					It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-				Times.Once);
+			Assert.Null(fallback.GetCpuTemperatureCelsius());
+			Assert.Null(fallback.GetCpuTemperatureCelsius());
+			Assert.Equal(1, calls);
+			Assert.Equal(LogLevel.Debug, Assert.Single(logger.Invocations).Arguments[0]);
+		}
+
+		[Fact]
+		public void GetCpuTemperatureCelsius_AfterEmptyResult_RetriesAndReturnsValidReadings()
+		{
+			var logger = new Mock<ILogger<WmiThermalFallback>>();
+			var calls = 0;
+			var fallback = new WmiThermalFallback(logger.Object, () => ++calls == 1 ? null : 65.5);
+
+			Assert.Null(fallback.GetCpuTemperatureCelsius());
+			Assert.Equal(65.5, fallback.GetCpuTemperatureCelsius());
+			Assert.Equal(65.5, fallback.GetCpuTemperatureCelsius());
+			Assert.Equal(3, calls);
+			Assert.Empty(logger.Invocations);
+		}
+	}
+
+	internal static class ManagementExceptionFactory
+	{
+		[SupportedOSPlatform("windows")]
+		internal static ManagementException Create(ManagementStatus status)
+		{
+			var constructor = typeof(ManagementException).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic,
+				null, new[] { typeof(ManagementStatus), typeof(string), typeof(ManagementBaseObject) }, null);
+			Assert.NotNull(constructor);
+			var error = Assert.IsType<ManagementException>(constructor.Invoke(new object?[] { status, "controlled", null }));
+			Assert.Equal(status, error.ErrorCode);
+			return error;
 		}
 	}
 }
