@@ -152,7 +152,30 @@ builder.Services.AddScoped<IDuplicateFileDetector, DuplicateFileDetector>();
 builder.Services.AddScoped<IPermissionAuditService, PermissionAuditService>();
 
 builder.Services.AddSignalR();
+await using var benchmarkTrace = BenchmarkTrace.FromEnvironment();
+BenchmarkTrace.ProcessTrace = benchmarkTrace;
 var app = builder.Build();
+
+if (benchmarkTrace != null)
+{
+	app.Use(async (context, next) =>
+	{
+		var requestId = Guid.TryParseExact(context.Request.Headers["X-GS-Benchmark-Request-Id"], "N", out var supplied)
+			? supplied.ToString("N") : Guid.NewGuid().ToString("N");
+		using var stream = BenchmarkTrace.Enter("http-" + requestId);
+		using var request = benchmarkTrace.Begin("http.handler");
+		benchmarkTrace.Emit("http.route", metadata: request.Metadata,
+			key: benchmarkTrace.Key(context.Request.Method + " " + context.Request.Path));
+		context.Response.OnCompleted(() =>
+		{
+			benchmarkTrace.Emit("http.response", metadata: request.Metadata,
+				counts: new Dictionary<string, long> { ["status"] = context.Response.StatusCode });
+			return Task.CompletedTask;
+		});
+		try { await next(context); request.Outcome = "succeeded"; }
+		catch (Exception ex) { request.Fail(ex); throw; }
+	});
+}
 
 app.UseCors("AllowFlutterApp");
 app.UseAuthorization();

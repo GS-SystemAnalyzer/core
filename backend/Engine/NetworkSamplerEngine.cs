@@ -21,6 +21,7 @@ namespace GSSystemAnalyzer.Engine
 		private readonly ISettingService _settings;
 		private readonly ITelemetryHistoryBuffer _historyBuffer;
 		private readonly ILogger<NetworkSamplerEngine> _logger;
+		private readonly TimeProvider _clock;
 
 		private TimeSpan _pollInterval;
 		private readonly Dictionary<string, (long rx, long tx, long timestampTicks)> _prevSamples = new();
@@ -34,7 +35,17 @@ namespace GSSystemAnalyzer.Engine
 			ISettingService settings,
 			ITelemetryHistoryBuffer historyBuffer,
 			ILogger<NetworkSamplerEngine> logger)
+			: this(interfaceProvider, hubContext, settings, historyBuffer, logger, TimeProvider.System) { }
+
+		internal NetworkSamplerEngine(
+			INetworkInterfaceProvider interfaceProvider,
+			IHubContext<SystemHub> hubContext,
+			ISettingService settings,
+			ITelemetryHistoryBuffer historyBuffer,
+			ILogger<NetworkSamplerEngine> logger,
+			TimeProvider clock)
 		{
+			_clock = clock;
 			_interfaceProvider = interfaceProvider;
 			_hubContext = hubContext;
 			_settings = settings;
@@ -77,7 +88,7 @@ namespace GSSystemAnalyzer.Engine
 
 		private NetworkSnapshot SampleMetricsInternal()
 		{
-			var nowTicks = Stopwatch.GetTimestamp();
+			var nowTicks = _clock.GetTimestamp();
 			var timestamp = DateTimeOffset.UtcNow;
 			var rawInterfaces = _interfaceProvider.GetInterfaces();
 
@@ -123,7 +134,7 @@ namespace GSSystemAnalyzer.Engine
 						}
 						else
 						{
-							double elapsedSeconds = (nowTicks - prev.timestampTicks) / (double)Stopwatch.Frequency;
+							double elapsedSeconds = _clock.GetElapsedTime(prev.timestampTicks, nowTicks).TotalSeconds;
 							if (elapsedSeconds > 0)
 							{
 								long rxDelta = nic.BytesReceived - prev.rx;

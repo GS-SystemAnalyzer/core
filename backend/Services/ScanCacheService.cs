@@ -124,11 +124,13 @@ public class ScanCacheService : IScanCacheService, IDisposable
 		{
 			Interlocked.Increment(ref _hitCount);
 			node = cached;
+			if (BenchmarkTrace.Current is { Rich: true } hitTrace) hitTrace.Emit("cache.lookup", "hit", key: hitTrace.Key(key));
 			return true;
 		}
 
 		Interlocked.Increment(ref _missCount);
 		node = null;
+		if (BenchmarkTrace.Current is { Rich: true } missTrace) missTrace.Emit("cache.lookup", "miss", key: missTrace.Key(key));
 		return false;
 	}
 
@@ -146,8 +148,14 @@ public class ScanCacheService : IScanCacheService, IDisposable
 			Size = Math.Max(1, 1 + node.Files.Count)
 		};
 
+		var observer = BenchmarkTrace.Current is { } current ? new WeakReference<BenchmarkTrace>(current) : null;
+		var streamId = BenchmarkTrace.Stream;
+		BenchmarkTrace.Current?.MarkEvictionQueueUnknown();
 		entryOptions.RegisterPostEvictionCallback((k, v, reason, state) =>
 		{
+			var trace = observer != null && observer.TryGetTarget(out var target) && target.IsOpen ? target : null;
+			using var eviction = trace?.Begin("cache.eviction_callback", streamId);
+			trace?.Emit("cache.eviction", reason.ToString(), eviction?.Metadata, key: trace.Key(normPath));
 			if (k is string keyStr && keyStr.StartsWith("scan:node:"))
 			{
 				var evictedPath = keyStr.Substring("scan:node:".Length);
@@ -347,6 +355,8 @@ public class ScanCacheService : IScanCacheService, IDisposable
 
 	public void InvalidatePath(string path, bool isDirectory)
 	{
+		var trace = BenchmarkTrace.Current;
+		trace?.Emit("cache.invalidate_path", key: trace.Key(path));
 		var normPath = NormalizePath(path);
 		if (isDirectory)
 		{
@@ -371,6 +381,9 @@ public class ScanCacheService : IScanCacheService, IDisposable
 
 	public void InvalidatePrefix(string directoryPath)
 	{
+		var trace = BenchmarkTrace.Current;
+		using var invalidation = trace?.Begin("cache.invalidate_prefix");
+		trace?.Emit("cache.invalidate_target", key: trace.Key(directoryPath));
 		var normPath = NormalizePath(directoryPath);
 		var nodesToEvict = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -413,6 +426,7 @@ public class ScanCacheService : IScanCacheService, IDisposable
 			_nodeToRoot.TryRemove(nodePath, out _);
 			_nodeOwnBytes.TryRemove(nodePath, out _);
 		}
+		if (invalidation != null) invalidation.Counts = new Dictionary<string, long> { ["removal_attempts"] = nodesToEvict.Count };
 
 		// Mark ancestors stale
 		MarkAncestorsStale(normPath);
@@ -560,6 +574,7 @@ public class ScanCacheService : IScanCacheService, IDisposable
 
 	public void Clear()
 	{
+		BenchmarkTrace.Current?.Emit("cache.clear");
 		_rootMetas.Clear();
 		_nodeCachedTimes.Clear();
 		_nodeToRoot.Clear();

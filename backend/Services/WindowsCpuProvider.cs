@@ -52,49 +52,46 @@ namespace GSSystemAnalyzer.Services
 		{
 #if WINDOWS
 			var loads = _coreCounters.Select(c => Math.Round(c.NextValue(), 1)).ToList();
-			double currentAverage = Math.Round(loads.Average(), 1);
-			double currentGhz = 0.0;
+			double? baseMhz = null, perfRatio = null;
 			try
 			{
 				if (_baseFreqCounter != null && _perfRatioCounter != null)
 				{
-					double baseMhz = _baseFreqCounter.NextValue();
-					double perfRatio = _perfRatioCounter.NextValue();
-
-					double currentMhz = baseMhz * (perfRatio / 100.0);
-					currentGhz = Math.Round(currentMhz / 1000.0, 2);
+					baseMhz = _baseFreqCounter.NextValue();
+					perfRatio = _perfRatioCounter.NextValue();
 				}
 			}
 			catch
 			{
 			}
 
-			var dto = new CpuTelemetryDto
-			{
-				AverageLoad = currentAverage,
-				Delta = Math.Round(currentAverage - _previousAverage, 1),
-				CurrentFrequencyGhz = currentGhz,
-				TotalProcesses = (int)_systemProcesses.NextValue(),
-				TotalThreads = (int)_systemThreads.NextValue(),
-				TotalHandles = (int)_systemHandles.NextValue(),
-
-				L1Cache = "256 KB",
-				L2Cache = "1.0 MB",
-				L3Cache = "8.0 MB"
-			}
-			;
-			for (int i = 0; i < loads.Count; i += 4)
-			{
-				int end = Math.Min(i + 3, loads.Count - 1);
-				dto.CoreGroups.Add($"CORE {i}-{end}", loads.Skip(i).Take(4).ToList());
-			}
-
-			_previousAverage = currentAverage;
+			var dto = Project(loads, _previousAverage, baseMhz, perfRatio,
+				(int)_systemProcesses.NextValue(), (int)_systemThreads.NextValue(), (int)_systemHandles.NextValue());
+			_previousAverage = dto.AverageLoad;
 			return await Task.FromResult(dto);
 #else
 
             return await Task.FromException<CpuTelemetryDto>(new PlatformNotSupportedException());
 #endif
+		}
+
+		internal static CpuTelemetryDto Project(IEnumerable<double> samples, double previousAverage,
+			double? baseMhz, double? perfRatio, int processes, int threads, int handles)
+		{
+			var loads = samples.Select(value => Math.Round(value, 1)).ToList();
+			var average = Math.Round(loads.Average(), 1);
+			var dto = new CpuTelemetryDto
+			{
+				AverageLoad = average,
+				Delta = Math.Round(average - previousAverage, 1),
+				CurrentFrequencyGhz = baseMhz.HasValue && perfRatio.HasValue
+					? Math.Round(baseMhz.Value * (perfRatio.Value / 100.0) / 1000.0, 2) : 0.0,
+				TotalProcesses = processes, TotalThreads = threads, TotalHandles = handles,
+				L1Cache = "256 KB", L2Cache = "1.0 MB", L3Cache = "8.0 MB"
+			};
+			for (int i = 0; i < loads.Count; i += 4)
+				dto.CoreGroups.Add($"CORE {i}-{Math.Min(i + 3, loads.Count - 1)}", loads.Skip(i).Take(4).ToList());
+			return dto;
 		}
 	}
 }

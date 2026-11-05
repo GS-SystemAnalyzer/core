@@ -52,6 +52,8 @@ namespace GSSystemAnalyzer.Services
 
 		public IEnumerable<StorageNode> ScanDirectory(string path, Guid scanId)
 		{
+			using var stream = BenchmarkTrace.Enter(scanId.ToString("N"));
+			using var operation = BenchmarkTrace.Current?.Begin("scan.directory");
 			try
 			{
 				// A hidden/system folder opened directly as the scan target is skipped per its toggle; drive roots are never gated.
@@ -178,8 +180,10 @@ namespace GSSystemAnalyzer.Services
 					}
 				}
 
+				if (operation != null) operation.Outcome = "succeeded";
 				return nodes;
 			}
+			catch (Exception ex) { operation?.Fail(ex); throw; }
 			finally
 			{
 				_scanner.EndScanSession(scanId);
@@ -192,6 +196,9 @@ namespace GSSystemAnalyzer.Services
 			Func<IReadOnlyList<StorageNode>, Task> onChunk,
 			CancellationToken ct = default)
 		{
+			using var stream = BenchmarkTrace.Enter(scanId.ToString("N"));
+			var trace = BenchmarkTrace.Current;
+			using var operation = trace?.Begin("stream.service");
 			var parentPath = Path.GetDirectoryName(path) ?? string.Empty;
 			var summary = new DirectoryStreamSummary
 			{
@@ -205,6 +212,7 @@ namespace GSSystemAnalyzer.Services
 				if (!IsDriveRoot(path) && _scanner.IsPathSkippedByFilter(path))
 				{
 					_logger.LogDebug("Scan target {Path} excluded by hidden/system filter", path);
+					if (operation != null) operation.Outcome = "filtered";
 					return summary;
 				}
 
@@ -404,10 +412,15 @@ namespace GSSystemAnalyzer.Services
 				}
 				catch (Exception ex)
 				{
+					trace?.Emit("stream.file_types_invalidation", "failed");
 					_logger.LogDebug(ex, "Failed to invalidate file types cache for {Path}", path);
 				}
 
-				await Task.Run(() => _scanner.SaveMemoryToDisk());
+				using (var save = trace?.Begin("stream.final_save"))
+				{
+					await Task.Run(() => _scanner.SaveMemoryToDisk());
+					if (save != null) save.Outcome = "returned";
+				}
 
 				if (IsDriveRoot(path))
 				{
@@ -417,12 +430,19 @@ namespace GSSystemAnalyzer.Services
 					}
 					catch (Exception ex)
 					{
+						trace?.Emit("stream.scan_diff", "failed");
 						_logger.LogWarning(ex, "Scan diff computation failed for {Path}", path);
 					}
 				}
 
+				if (operation != null)
+				{
+					operation.Outcome = "succeeded";
+					operation.Counts = new Dictionary<string, long> { ["own_bytes"] = summary.OwnBytes, ["recursive_bytes"] = summary.RecursiveBytes };
+				}
 				return summary;
 			}
+			catch (Exception ex) { operation?.Fail(ex); throw; }
 			finally
 			{
 				_scanner.EndScanSession(scanId);

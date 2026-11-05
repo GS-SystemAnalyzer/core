@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="GSSystemAnalyzer.Tests" />
+    <InternalsVisibleTo Include="GSAnalyzer.Benchmarks" />
+    <InternalsVisibleTo Include="GSAnalyzer.Benchmarks.Tests" />
   </ItemGroup>
 
 

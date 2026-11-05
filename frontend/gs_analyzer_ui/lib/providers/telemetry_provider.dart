@@ -5,6 +5,7 @@ import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/providers/ram_provider.dart';
 import 'package:gs_analyzer_ui/providers/schedule_provider.dart';
 import 'package:gs_analyzer_ui/services/telemetry_service.dart';
+import 'package:gs_analyzer_ui/services/benchmark_trace.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
 import 'package:flutter/material.dart';
 import 'package:gs_analyzer_ui/providers/network_provider.dart';
@@ -64,6 +65,7 @@ class TelemetryState {
 class TelemetryNotifier extends StateNotifier<TelemetryState> {
   TelemetryService? _telemetryService;
   final Ref ref;
+  final bool allowTestTransport;
 
   TelemetryService? get service => _telemetryService;
 
@@ -74,7 +76,7 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
     await _telemetryService!.ensureConnected(timeout: timeout);
   }
 
-  TelemetryNotifier(this.ref, {bool autoConnect = true})
+  TelemetryNotifier(this.ref, {bool autoConnect = true, this.allowTestTransport = false})
       : super(const TelemetryState()) {
     if (autoConnect) _initRadio();
   }
@@ -92,6 +94,7 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
       reconnectDelayMs: reconnectDelayMs,
       maxRetries: maxRetries,
       onProgressUpdate: applyScanProgress,
+      allowTestTransport: allowTestTransport,
     );
 
     _telemetryService?.onRamUpdate = (data) {
@@ -257,7 +260,9 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
       ref.read(ramAlertProvider.notifier).handleRamAlertCleared();
     };
 
-    _telemetryService?.startListening();
+    final starting = _telemetryService!.startListening();
+    final trace = BenchmarkTrace.current;
+    if (trace != null) trace.own(starting);
   }
 
   // Single reducer for ScanProgress, extracted so telemetry_provider_test.dart can
@@ -280,6 +285,8 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
     // so a late SCANNING can't revert a finished scan.
     final accept = status == 'INITIALIZING' ||
         (scanId != null && scanId == state.currentScanId);
+    BenchmarkTrace.current?.emit('state.progress.accept', outcome: accept ? 'accepted' : 'rejected',
+      counts: {'has_scan_id': scanId == null ? 0 : 1, 'terminal': isDone ? 1 : 0});
     if (!accept) return;
 
     state = state.copyWith(
@@ -291,11 +298,14 @@ class TelemetryNotifier extends StateNotifier<TelemetryState> {
       currentScanId: scanId,
       clearScanId: isDone,
     );
+    BenchmarkTrace.current?.emit('state.progress.applied', counts: {'terminal': isDone ? 1 : 0});
   }
 
   @override
   void dispose() {
-    _telemetryService?.stopListening();
+    final disposal = _telemetryService?.dispose();
+    final trace = BenchmarkTrace.current;
+    if (disposal != null && trace != null) trace.own(disposal);
     super.dispose();
   }
 }

@@ -9,6 +9,7 @@ import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
 import 'package:gs_analyzer_ui/utils/theme/hud_theme_context.dart';
 
 import '../services/api_service.dart';
+import '../services/benchmark_trace.dart';
 
 const _keepPhysicalCapacity = Object();
 
@@ -109,7 +110,9 @@ class RamNotifier extends StateNotifier<RamState> {
       : _apiService = apiService ?? ApiService(),
         super(const RamState()) {
     _elapsedNow = elapsedNow ?? (() => _historyClock.elapsed);
-    _apiService.startRamRadar();
+    final starting = _apiService.startRamRadar();
+    final trace = BenchmarkTrace.current;
+    if (trace != null) trace.own(starting);
     _listenToSettings();
   }
 
@@ -203,6 +206,7 @@ class RamNotifier extends StateNotifier<RamState> {
       usageHistory: updatedHistory,
       physicalTotalBytes: _measuredCapacity(global['physicalTotalBytes'] ?? global['PhysicalTotalBytes']),
     );
+    BenchmarkTrace.current?.emit('state.ram.applied', counts: {'processes': parsed.length, 'groups': groupedList.length});
   }
 
   int? _measuredCapacity(Object? value) => value is num && value.isFinite && value > 0 && value == value.roundToDouble()

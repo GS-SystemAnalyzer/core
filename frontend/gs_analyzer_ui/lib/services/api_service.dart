@@ -23,11 +23,27 @@ import 'package:gs_analyzer_ui/models/cache_stats.dart';
 import 'package:gs_analyzer_ui/models/scan_export_options.dart';
 import 'package:gs_analyzer_ui/models/automation_rule.dart';
 import 'package:gs_analyzer_ui/models/scan_report_summary.dart';
+import 'package:gs_analyzer_ui/services/benchmark_trace.dart';
 
 
 class ApiService {
   final http.Client _client;
-  ApiService([http.Client? client]) : _client = client ?? http.Client();
+  final BenchmarkTrace? _trace;
+  ApiService([http.Client? client]) : this.observed(client: client, trace: BenchmarkTrace.current);
+  ApiService.observed({http.Client? client, BenchmarkTrace? trace})
+      : _trace = trace,
+        _client = trace == null ? (client ?? http.Client()) : BenchmarkHttpClient(client ?? http.Client(), trace);
+
+  void close() => _client.close();
+
+  T _decode<T>(http.Response response, T Function() decode) {
+    final span = _trace?.begin('http.decode', operationId: response.request?.headers['X-GS-Benchmark-Request-Id']);
+    try {
+      final result = decode();
+      span?.end(counts: {'entity_bytes': response.bodyBytes.length});
+      return result;
+    } catch (_) { span?.end(outcome: 'failed'); rethrow; }
+  }
 
   static const String storageUrl = 'http://localhost:5200/api/storage';
   static const String cacheUrl = 'http://localhost:5200/api/cache';
@@ -59,9 +75,15 @@ class ApiService {
     // appLogger.i('MATRIX BRIDGE FIRING TO: \$uri');
     final response = await _client.get(uri);
 
+    final delay = _trace?.historyDeliveryDelay;
+    if (delay != null) {
+      final delivery = _trace!.begin('history.client_delivery_delay', operationId: response.request?.headers['X-GS-Benchmark-Request-Id']);
+      try { await delay(minutes); delivery.end(outcome: 'released'); }
+      catch (_) { delivery.end(outcome: 'failed'); rethrow; }
+    }
+
     if (response.statusCode == 200) {
-      final jsonBody = jsonDecode(response.body);
-      return TelemetryHistoryResponse.fromJson(jsonBody);
+      return _decode(response, () => TelemetryHistoryResponse.fromJson(jsonDecode(response.body)));
     } else {
       appLogger.i(
         'Failed to fetch telemetry history: \${response.statusCode} - \${response.body}',
@@ -81,7 +103,7 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      final jsonBody = jsonDecode(response.body);
+      final jsonBody = _decode(response, () => jsonDecode(response.body));
 
       if (jsonBody['success'] == true) {
         appLogger.i('FEDEX BOX OPENED! Data is: ${jsonBody['data']}');

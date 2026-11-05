@@ -6,6 +6,7 @@ import 'package:gs_analyzer_ui/providers/minimized_ops_provider.dart';
 import 'package:gs_analyzer_ui/providers/settings_provider.dart';
 import 'package:gs_analyzer_ui/providers/telemetry_provider.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
+import 'package:gs_analyzer_ui/services/benchmark_trace.dart';
 import 'dart:math';
 
 String generateUuid() {
@@ -80,7 +81,10 @@ class DirectoryState {
 }
 
 class DirectoryNotifier extends StateNotifier<DirectoryState> {
-  final ApiService _apiService = ApiService();
+  final ApiService _apiService;
+  final BenchmarkTrace? _trace = BenchmarkTrace.current;
+  BenchmarkMetadata? _pendingMarker;
+  int _pendingUpdates = 0;
   final Map<String, List<StorageNode>> _sectorCache = {};
   final Map<String, StorageNode> _nodeIndex = {};
   Timer? _flushTimer;
@@ -88,8 +92,9 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
   bool _hasAutoMinimizedForCurrentScan = false;
   final Ref ref;
 
-  DirectoryNotifier(this.ref) : super(const DirectoryState()) {
-    scanDirectory('C:/');
+  DirectoryNotifier(this.ref, {ApiService? apiService, String initialRoot = 'C:/', bool autoStart = true})
+      : _apiService = apiService ?? ApiService(), super(DirectoryState(currentPath: initialRoot)) {
+    if (autoStart) scanDirectory(initialRoot);
     _listenToSettings();
   }
 
@@ -233,10 +238,21 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     _flushTimer?.cancel();
     _flushTimer = null;
     _hasPendingFlush = false;
+    _trace?.emit('state.directory.pending_reset', counts: {'updates': _pendingUpdates});
+    _pendingMarker = null;
+    _pendingUpdates = 0;
 
+    _trace?.emit('state.directory.selected', label: scanId, metadata: null);
     try {
       await ref.read(telemetryProvider.notifier).ensureConnected();
-      await _apiService.requestDirectoryStream(safePath, scanId);
+      final trace = _trace;
+      if (trace == null) {
+        await _apiService.requestDirectoryStream(safePath, scanId);
+      } else {
+        final request = BenchmarkTrace.newId();
+        trace.emit('state.directory.request', operationId: request, label: scanId);
+        await trace.withRequest(request, () => _apiService.requestDirectoryStream(safePath, scanId));
+      }
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
@@ -247,7 +263,10 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     String path,
     List<dynamic> chunkData,
   ) {
-    if (scanId != null && scanId != _currentScanId) return;
+    if (scanId != null && scanId != _currentScanId) {
+      _trace?.emit('state.directory.accept', outcome: 'old_scan');
+      return;
+    }
 
     String incomingPath = path.replaceAll('\\', '/').toLowerCase();
     String currentPath = state.currentPath.replaceAll('\\', '/').toLowerCase();
@@ -256,7 +275,12 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     if (currentPath.endsWith('/'))
       currentPath = currentPath.substring(0, currentPath.length - 1);
 
-    if (incomingPath != currentPath) return;
+    if (incomingPath != currentPath) {
+      _trace?.emit('state.directory.accept', outcome: 'other_path');
+      return;
+    }
+
+    _trace?.emit('state.directory.accept', outcome: 'accepted', counts: {'nodes': chunkData.length, 'has_scan_id': scanId == null ? 0 : 1});
 
     final parsedChunk = chunkData
         .map((json) => StorageNode.fromJson(json as Map<String, dynamic>))
@@ -267,6 +291,10 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
       _nodeIndex[key] = node;
     }
     _hasPendingFlush = true;
+    if (_trace != null) {
+      _pendingMarker = BenchmarkTrace.marker;
+      _pendingUpdates++;
+    }
 
     if (state.displayNodes.isEmpty) {
       _flushBufferedNodes();
@@ -284,6 +312,11 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     _sectorCache[state.currentPath] = activeNodes;
     _applyFiltersAndSort(nodes: activeNodes);
 
+    _trace?.emit('state.directory.applied', metadata: _pendingMarker,
+      counts: {'nodes': activeNodes.length, 'received_updates': _pendingUpdates});
+    _pendingMarker = null;
+    _pendingUpdates = 0;
+
     if (activeNodes.isNotEmpty && state.isLoading && !_hasAutoMinimizedForCurrentScan) {
       _hasAutoMinimizedForCurrentScan = true;
       if (!ref.read(scanMinimizedProvider)) {
@@ -300,7 +333,10 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
     int? recursiveBytes,
     bool recursiveBytesFinal = true,
   }) async {
-    if (scanId != null && scanId != _currentScanId) return;
+    if (scanId != null && scanId != _currentScanId) {
+      _trace?.emit('state.directory.terminal', outcome: 'old_scan');
+      return;
+    }
 
     String incomingPath = path.replaceAll('\\', '/').toLowerCase();
     String currentPath = state.currentPath.replaceAll('\\', '/').toLowerCase();
@@ -328,12 +364,22 @@ class DirectoryNotifier extends StateNotifier<DirectoryState> {
       _applyFiltersAndSort(nodes: activeNodes);
 
       state = state.copyWith(isLoading: false);
+      _trace?.emit('state.directory.terminal', outcome: 'applied',
+        counts: {'nodes': activeNodes.length, 'received_updates': _pendingUpdates,
+          if (ownBytes != null) 'own_bytes': ownBytes,
+          if (recursiveBytes != null) 'recursive_bytes': recursiveBytes});
+      _pendingMarker = null;
+      _pendingUpdates = 0;
+    } else {
+      _trace?.emit('state.directory.terminal', outcome: 'other_path');
     }
   }
 
   @override
   void dispose() {
     _flushTimer?.cancel();
+    _trace?.emit('state.directory.dispose', counts: {'pending_updates': _pendingUpdates});
+    _pendingMarker = null;
     super.dispose();
   }
 
