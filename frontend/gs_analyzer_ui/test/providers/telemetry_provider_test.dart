@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gs_analyzer_ui/providers/directory_provider.dart';
+import 'package:gs_analyzer_ui/providers/drive_stats_provider.dart';
 import 'package:gs_analyzer_ui/providers/scan_diff_provider.dart';
 import 'package:gs_analyzer_ui/providers/telemetry_provider.dart';
+import 'package:gs_analyzer_ui/services/telemetry_service.dart';
 import 'package:gs_analyzer_ui/utils/globals.dart';
 import 'package:gs_analyzer_ui/utils/theme/hud_color.dart';
 import 'package:gs_analyzer_ui/utils/theme/hud_theme.dart';
@@ -160,6 +162,55 @@ void main() {
       snackbarKey.currentState?.removeCurrentSnackBar();
       await tester.pumpWidget(const SizedBox());
       await tester.pump();
+    });
+  });
+
+  group('DriveListUpdate End-to-End Payload Handling', () {
+    test('TelemetryService unwraps backend payload and drivesProvider updates state', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final service = TelemetryService(
+        onProgressUpdate: (_, __, ___, ____, _____, ______) {},
+      );
+
+      service.onDriveUpdate = (data) {
+        container.read(drivesProvider.notifier).updateFromTelemetry(data);
+      };
+
+      final payload = [
+        {
+          'drives': [
+            {
+              'name': r'C:\',
+              'label': 'OS_Disk',
+              'type': 'Fixed',
+              'format': 'NTFS',
+              'totalBytes': 500000000,
+              'freeBytes': 200000000,
+              'usedBytes': 300000000,
+            },
+            {
+              'name': r'D:\',
+              'label': 'USB_Drive',
+              'type': 'Removable',
+              'format': 'FAT32',
+              'totalBytes': 64000000,
+              'freeBytes': 32000000,
+              'usedBytes': 32000000,
+            }
+          ]
+        }
+      ];
+
+      service.handleDriveUpdate(payload);
+
+      final drives = container.read(drivesProvider);
+      expect(drives.length, 2);
+      expect(drives[0].name, r'C:\');
+      expect(drives[0].label, 'OS_Disk');
+      expect(drives[1].name, r'D:\');
+      expect(drives[1].type, 'Removable');
     });
   });
 }
