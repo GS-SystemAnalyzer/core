@@ -50,11 +50,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 children: [
                                   Text(
                                     'System_Overview'.toUpperCase(),
-                                    style:context.HudTheme.header
+                                    style: context.hudTheme.header,
                                   ),
                                   Text(
                                     'Real-Time Telemetry Stream'.toUpperCase(),
-                                    style: context.HudTheme.label,
+                                    style: context.hudTheme.label,
                                   )
                                 ],
                               ),
