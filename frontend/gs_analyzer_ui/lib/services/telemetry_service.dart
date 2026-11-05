@@ -1,10 +1,16 @@
+import 'dart:async';
 import 'dart:io' show Platform;
+import 'package:logging/logging.dart';
+import 'package:gs_analyzer_ui/services/benchmark_trace.dart';
 import 'package:gs_analyzer_ui/utils/logger.dart';
 import 'package:signalr_netcore/signalr_client.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
 
 class TelemetryService {
   late HubConnection _hubConnection;
+  final BenchmarkTrace? _trace;
+  final bool allowTestTransport;
+  StreamSubscription<LogRecord>? _traceLogs;
 
   Function(String)? onSectorChanged;
   final Function(
@@ -47,7 +53,9 @@ class TelemetryService {
     int backendPort = 5200,
     int reconnectDelayMs = 3000,
     int maxRetries = 10,
-  }) {
+    this.allowTestTransport = false,
+    BenchmarkTrace? trace,
+  }) : _trace = trace ?? BenchmarkTrace.current {
     _initRadio(backendPort, reconnectDelayMs, maxRetries);
   }
 
@@ -59,22 +67,35 @@ class TelemetryService {
       (i) => reconnectDelayMs * (i + 1),
     );
 
-    _hubConnection = HubConnectionBuilder()
-        .withUrl(url)
-        .withAutomaticReconnect(retryDelays: retryDelays)
-        .build();
+    final trace = _trace;
+    final logger = trace == null ? null : (Logger.detached('benchmark.signalr')..level = Level.ALL);
+    _traceLogs = logger?.onRecord.listen(trace!.transportLog);
+    final builder = HubConnectionBuilder()
+        .withUrl(url, options: logger == null ? null : HttpConnectionOptions(logger: logger, logMessageContent: false))
+        .withAutomaticReconnect(retryDelays: retryDelays);
+    if (trace != null) {
+      builder.configureLogging(logger!);
+      builder.withHubProtocol(BenchmarkHubProtocol(trace));
+    }
+    _hubConnection = builder.build();
+    if (trace != null) {
+      _hubConnection.onreconnecting(({error}) => trace.emit('transport.reconnecting', outcome: 'interrupted'));
+      _hubConnection.onreconnected(({connectionId}) => trace.emit('transport.reconnected', outcome: 'connected'));
+      _hubConnection.onclose(({error}) => trace.emit('transport.closed', outcome: error == null ? 'closed' : 'failed'));
+    }
 
-    _hubConnection.on('ScanProgress', _handleIncomingTelemetry);
+    _observe('ScanProgress', _handleIncomingTelemetry);
     _hubConnection.on('SectorChanged', _handleSectorChanged);
     _hubConnection.on('NukeProgress', _handleNukeProgress);
     _hubConnection.on('TempCleanProgress', _handleTempCleanProgress);
     _hubConnection.on('NukeAborted', _handleNukeAborted);
-    _hubConnection.on('RamUpdate', _handleRamUpdate);
-    _hubConnection.on('DirectoryChunk', _handleDirectoryChunk);
-    _hubConnection.on(
+    _observe('RamUpdate', _handleRamUpdate);
+    _observe('DirectoryChunk', _handleDirectoryChunk);
+    _observe(
       'DirectoryStreamComplete',
       _handleDirectoryStreamComplete,
     );
+    if (trace != null) _observe('DirectoryStreamError', (_) {});
     _hubConnection.on('ReceiveCpuTelemetry', _handleCpuUpdate);
     _hubConnection.on('DriveListUpdate', _handleDriveUpdate);
     _hubConnection.on('AuditProgress', _handleAuditProgress);
@@ -89,6 +110,21 @@ class TelemetryService {
     _hubConnection.on('WatcherEventLogged', _handleWatcherEventLogged);
   }
 
+  void _observe(String event, void Function(List<Object?>?) handler) {
+    final trace = _trace;
+    if (trace == null) {
+      _hubConnection.on(event, handler);
+      return;
+    }
+    _hubConnection.on(event, (arguments) {
+      trace.receive(event, arguments == null || arguments.isEmpty ? null : arguments.first, () {
+        final span = trace.begin('service.dispatch');
+        try { handler(arguments); span.end(outcome: 'returned'); }
+        catch (_) { span.end(outcome: 'failed'); rethrow; }
+      });
+    });
+  }
+
   bool get isConnected => _hubConnection.state == HubConnectionState.Connected;
   Future<void>? _connectingFuture;
 
@@ -96,7 +132,7 @@ class TelemetryService {
     Duration timeout = const Duration(seconds: 2),
   }) async {
     if (isConnected) return;
-    if (Platform.environment.containsKey('FLUTTER_TEST')) return;
+    if (Platform.environment.containsKey('FLUTTER_TEST') && !allowTestTransport) return;
     if (_connectingFuture != null) {
       try {
         await _connectingFuture!.timeout(timeout);
@@ -111,19 +147,23 @@ class TelemetryService {
   }
 
   Future<void> startListening() async {
-    if (Platform.environment.containsKey('FLUTTER_TEST')) return;
+    if (Platform.environment.containsKey('FLUTTER_TEST') && !allowTestTransport) return;
     if (_hubConnection.state == HubConnectionState.Disconnected) {
+      final attempt = _trace?.begin('transport.start');
       final fut = _hubConnection.start();
       _connectingFuture = fut;
       try {
         await fut;
+        attempt?.end(outcome: isConnected ? 'connected' : 'not_connected');
         appLogger.i('TELEMETRY RADIO: CONNECTED TO BASE STATION!');
 
         final api = ApiService();
-        api.startRamRadar();
-        api.startCpuRadar();
-        api.startNetworkRadar();
+        final starts = [api.startRamRadar(), api.startCpuRadar(), api.startNetworkRadar()];
+        if (_trace != null) {
+          for (final start in starts) { _trace.own(start); }
+        }
       } catch (e) {
+        attempt?.end(outcome: 'failed');
         appLogger.i(
           'TELEMETRY RADIO ERROR: FAILED TO CONNECT TO BASE STATION! - $e',
         );
@@ -137,6 +177,14 @@ class TelemetryService {
     if (_hubConnection.state == HubConnectionState.Connected) {
       await _hubConnection.stop();
       appLogger.i('TELEMETRY RADIO: DISCONNECTED FROM BASE STATION!');
+    }
+  }
+
+  Future<void> dispose() async {
+    try { await stopListening(); }
+    finally {
+      await _traceLogs?.cancel();
+      _trace?.emit('transport.dispose', outcome: _hubConnection.state == HubConnectionState.Disconnected ? 'disconnected' : 'unsettled');
     }
   }
 
