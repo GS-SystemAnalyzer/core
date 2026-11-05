@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:gs_analyzer_ui/utils/logger.dart';
 import 'package:signalr_netcore/signalr_client.dart';
 import 'package:gs_analyzer_ui/services/api_service.dart';
@@ -272,14 +273,27 @@ class TelemetryService {
     }
   }
 
+  @visibleForTesting
+  void handleDriveUpdate(List<Object?>? arguments) => _handleDriveUpdate(arguments);
+
   void _handleDriveUpdate(List<Object?>? arguments) {
     if (arguments == null || arguments.isEmpty) return;
     try {
       final rawData = arguments[0];
 
-      if (rawData is List) {
+      List<dynamic>? driveList;
+      if (rawData is Map) {
+        final candidate = rawData['drives'] ?? rawData['Drives'];
+        if (candidate is List) {
+          driveList = candidate;
+        }
+      } else if (rawData is List) {
+        driveList = rawData;
+      }
+
+      if (driveList != null) {
         if (onDriveUpdate != null) {
-          onDriveUpdate!(rawData);
+          onDriveUpdate!(driveList);
         }
       } else {
         appLogger.i('UNKNOWN DRIVE PAYLOAD TYPE: ${rawData.runtimeType}');
