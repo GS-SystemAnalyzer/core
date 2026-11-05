@@ -20,6 +20,7 @@ namespace GSSystemAnalyzer.Engine
 		private readonly ISettingService _settings;
 		private readonly ITelemetryHistoryBuffer _historyBuffer;
 		private readonly ILogger<DiskIoEngine> _logger;
+		private readonly TimeProvider _clock;
 
 		private TimeSpan _pollInterval;
 		private readonly Dictionary<string, (long SessionReadBytes, long SessionWriteBytes)> _sessionTotals = new();
@@ -33,7 +34,17 @@ namespace GSSystemAnalyzer.Engine
 			ISettingService settings,
 			ITelemetryHistoryBuffer historyBuffer,
 			ILogger<DiskIoEngine> logger)
+			: this(reader, hubContext, settings, historyBuffer, logger, TimeProvider.System) { }
+
+		internal DiskIoEngine(
+			IDiskIoReader reader,
+			IHubContext<SystemHub> hubContext,
+			ISettingService settings,
+			ITelemetryHistoryBuffer historyBuffer,
+			ILogger<DiskIoEngine> logger,
+			TimeProvider clock)
 		{
+			_clock = clock;
 			_reader = reader;
 			_hubContext = hubContext;
 			_settings = settings;
@@ -47,7 +58,7 @@ namespace GSSystemAnalyzer.Engine
 				_logger.LogDebug("Disk I/O engine poll interval updated to {IntervalMs}ms", _pollInterval.TotalMilliseconds);
 			};
 
-			_lastSampleTicks = Stopwatch.GetTimestamp();
+			_lastSampleTicks = _clock.GetTimestamp();
 			_latestSnapshot = new DiskIoSnapshotCollection(DateTimeOffset.UtcNow, Array.Empty<DiskIoSnapshot>());
 		}
 
@@ -111,13 +122,13 @@ namespace GSSystemAnalyzer.Engine
 
 		private DiskIoSnapshotCollection SampleMetricsInternal()
 		{
-			var nowTicks = Stopwatch.GetTimestamp();
+			var nowTicks = _clock.GetTimestamp();
 			var timestamp = DateTimeOffset.UtcNow;
 
 			double elapsedSeconds = 1.0;
 			if (_lastSampleTicks > 0)
 			{
-				elapsedSeconds = (double)(nowTicks - _lastSampleTicks) / Stopwatch.Frequency;
+				elapsedSeconds = _clock.GetElapsedTime(_lastSampleTicks, nowTicks).TotalSeconds;
 				if (elapsedSeconds <= 0.001) elapsedSeconds = 1.0;
 			}
 			_lastSampleTicks = nowTicks;

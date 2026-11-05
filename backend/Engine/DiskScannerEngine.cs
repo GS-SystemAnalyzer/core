@@ -280,7 +280,14 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 
 	public async Task CalculateMissingSizesAsync(List<FileSystemInfo> items, Guid scanId, Action<DirectoryInfo, long>? onSubtreeCompleted = null)
 	{
-		await _scanLock.WaitAsync();
+		using var stream = BenchmarkTrace.Enter(scanId.ToString("N"));
+		var trace = BenchmarkTrace.Current;
+		using (var queue = trace?.Begin("scan.lock_queue"))
+		{
+			try { await _scanLock.WaitAsync(); if (queue != null) queue.Outcome = "acquired"; }
+			catch (Exception ex) { queue?.Fail(ex); throw; }
+		}
+		using var active = trace?.Begin("scan.active");
 		try
 		{
 			var directoriesToScan = items.OfType<DirectoryInfo>()
@@ -306,7 +313,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 				// Retrieve the specific session's token
 				var scanToken = _activeSessions.TryGetValue(scanId, out var session) ? session.Cts.Token : CancellationToken.None;
 
-				await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "INITIALIZING", completed = 0, total = totalNodes, count = 0, currentTarget = "Walking up the Engine...." });
+				await BenchmarkTrace.Send(_hub.Clients.All, "ScanProgress", new { scanId = scanId, status = "INITIALIZING", completed = 0, total = totalNodes, count = 0, currentTarget = "Walking up the Engine...." });
 
 				// Do not pass the token to Parallel.ForEachAsync: the framework then throws
 				// cancellation from its own code, which the debugger flags "user-unhandled" on every abort.
@@ -319,14 +326,15 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 				{
 					await Parallel.ForEachAsync(directoriesToScan, options, async (dir, ct) =>
 					{
+						using var worker = trace?.Begin("scan.worker");
 						// Bail on cancellation so the loop unwinds fast and frees _scanLock for a queued rescan.
-						if (scanToken.IsCancellationRequested) return;
+						if (scanToken.IsCancellationRequested) { if (worker != null) worker.Outcome = "cancelled"; return; }
 						try
 						{
 							var size = await Task.Run(() => GetDirectorySize(dir, scanToken, scanRoot), scanToken);
 
 							// A cancelled walk returns a partial size; do not cache it or emit progress for it.
-							if (scanToken.IsCancellationRequested) return;
+							if (scanToken.IsCancellationRequested) { if (worker != null) worker.Outcome = "cancelled"; return; }
 
 							DirectorySizeCache.TryGetValue(dir.FullName, out var existingEntry);
 							DirectorySizeCache[dir.FullName] = new CacheEntry
@@ -342,13 +350,15 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 						}
 						catch (OperationCanceledException)
 						{
+							if (worker != null) worker.Outcome = "cancelled";
 							return;
 						}
+						catch (Exception ex) { worker?.Fail(ex); throw; }
 
 						var completed = Interlocked.Increment(ref completedNode);
 						var percentage = Math.Round(((double)completed / totalNodes) * 100, 1);
 
-						_ = _hub.Clients.All.SendAsync("ScanProgress", new
+						_ = BenchmarkTrace.Send(_hub.Clients.All, "ScanProgress", new
 						{
 							scanId = scanId,
 							status = "SCANNING",
@@ -381,22 +391,24 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 					);
 					_cacheService?.SetScanRoot(rootMeta);
 
-					await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "COMPLETED", count = _scannedFilesCount, currentTarget = "Scan completed" });
+					await BenchmarkTrace.Send(_hub.Clients.All, "ScanProgress", new { scanId = scanId, status = "COMPLETED", count = _scannedFilesCount, currentTarget = "Scan completed" });
 				}
 				catch (OperationCanceledException)
 				{
 					_logger.LogInformation("Scan {ScanId} was canceled by user.", scanId);
-					await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "CANCELED", count = _scannedFilesCount, currentTarget = "Scan canceled" });
+					await BenchmarkTrace.Send(_hub.Clients.All, "ScanProgress", new { scanId = scanId, status = "CANCELED", count = _scannedFilesCount, currentTarget = "Scan canceled" });
 					throw;
 				}
 			}
 			else
 			{
 				// Emit an initializing pulse so listeners bind the session before the terminal pulse.
-				await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "INITIALIZING", completed = 0, total = 0, currentTarget = "Scan completed" });
-				await _hub.Clients.All.SendAsync("ScanProgress", new { scanId = scanId, status = "COMPLETED", completed = 0, total = 0, currentTarget = "Scan completed" });
+				await BenchmarkTrace.Send(_hub.Clients.All, "ScanProgress", new { scanId = scanId, status = "INITIALIZING", completed = 0, total = 0, currentTarget = "Scan completed" });
+				await BenchmarkTrace.Send(_hub.Clients.All, "ScanProgress", new { scanId = scanId, status = "COMPLETED", completed = 0, total = 0, currentTarget = "Scan completed" });
 			}
+			if (active != null) active.Outcome = "succeeded";
 		}
+		catch (Exception ex) { active?.Fail(ex); throw; }
 		finally
 		{
 			_scanLock.Release();
@@ -406,17 +418,22 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 
 	private long GetDirectorySize(DirectoryInfo dir, CancellationToken token, string scanRoot, int currentDepth = 1)
 	{
+		var trace = BenchmarkTrace.Current;
+		using var walk = trace?.Begin("scan.walk");
 		// Return early on cancellation instead of throwing on this hot, deeply recursive path.
-		if (token.IsCancellationRequested) return 0;
+		if (token.IsCancellationRequested) { if (walk != null) walk.Outcome = "cancelled"; return 0; }
 
 		var config = _settings.Current.Scan;
 
-		if (currentDepth > config.Depth) return 0;
+		if (currentDepth > config.Depth) { if (walk != null) walk.Outcome = "depth_skipped"; return 0; }
 
 		var normalizedPath = dir.FullName.Replace("\\", "/");
 		if (config.ExcludedPaths.Any(p =>
 				normalizedPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+		{
+			if (walk != null) walk.Outcome = "excluded";
 			return 0;
+		}
 
 
 		// Fix: The directory LastWriteTimeUts  only changes when its direct children are modified, so we need to check the LastWriteTimeUtc of the directory and its children to determine if the cache is stale.
@@ -437,6 +454,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 					);
 					_cacheService.SetNode(cachedNode, scanRoot);
 				}
+				if (walk != null) walk.Outcome = "cache_hit";
 				return entry.Size;
 			}
 
@@ -459,7 +477,10 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 
 			if (!config.FollowSymlinks &&
 				dir.Attributes.HasFlag(FileAttributes.ReparsePoint))
+			{
+				if (walk != null) walk.Outcome = "symlink_skipped";
 				return 0;
+			}
 
 			// Single streaming pass: EnumerateFiles replaces a GetFiles array that was walked five times.
 			// Everything the folder needs is accumulated here, or a naive swap would re-walk per use.
@@ -500,13 +521,15 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 			}
 
 			size += ownBytes;
+			if (walk != null) walk.Counts = new Dictionary<string, long> { ["observed_files"] = fileCount, ["own_bytes"] = ownBytes };
 
 			var pulse = Interlocked.Increment(ref _deepScanThrottle);
 			var currentCount = Interlocked.Add(ref _scannedFilesCount, fileCount);
 
 			if (pulse % 50 == 0)
 			{
-				_ = _hub.Clients.All.SendAsync("ScanProgress", new
+				trace?.Emit("scan.deep_progress", "public_scan_id_missing");
+				_ = BenchmarkTrace.Send(_hub.Clients.All, "ScanProgress", new
 				{
 					status = "SCANNING",
 					count = currentCount,
@@ -542,7 +565,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 		}
 		// No per-level cancellation rethrow: the walk returns early on cancel above, and the
 		// Parallel.ForEachAsync loop is the single place cancellation becomes an exception.
-		catch (Exception) { /* access denied, or a stray cancellation mid-walk — skip silently */ }
+		catch (Exception ex) { walk?.Fail(ex); /* The product continues after a failed walk. */ }
 
 		// Skip persisting a partial entry when the walk was cancelled.
 		if (!token.IsCancellationRequested)
@@ -557,11 +580,13 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 			};
 		}
 
+		if (walk != null && walk.Outcome == "settled") walk.Outcome = token.IsCancellationRequested ? "cancelled" : "succeeded";
 		return size;
 	}
 
 	public void SaveMemoryToDisk()
 	{
+		using var save = BenchmarkTrace.Current?.Begin("scan.save");
 		lock (_fileWriteLock)
 		{
 			try
@@ -580,9 +605,11 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 
 				// Atomic swap — readers see either the old file or the new one, never a stump.
 				File.Move(tmpPath, _cacheFilePath, overwrite: true);
+				if (save != null) save.Outcome = "succeeded";
 			}
 			catch (Exception ex)
 			{
+				save?.Fail(ex);
 				_logger.LogError(ex, "Failed to save cache to disk");
 			}
 		}
@@ -848,10 +875,12 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 		if (_activeSessions.TryRemove(id, out var existingSession))
 		{
 			existingSession.Dispose();
+			BenchmarkTrace.Current?.Emit("scan.session.end", "replaced", BenchmarkTrace.Current.Metadata(id.ToString("N")));
 		}
 
 		var newSession = new ScanSession(id);
 		_activeSessions[id] = newSession;
+		BenchmarkTrace.Current?.Emit("scan.session.start", "started", BenchmarkTrace.Current.Metadata(id.ToString("N")));
 
 		return id;
 	}
@@ -866,16 +895,19 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 		if (_activeSessions.TryRemove(scanId, out var session))
 		{
 			session.Dispose();
+			BenchmarkTrace.Current?.Emit("scan.session.end", "removed", BenchmarkTrace.Current.Metadata(scanId.ToString("N")));
 		}
 	}
 
 	public void TriggerScanAbort(Guid? scanId = null)
 	{
+		BenchmarkTrace.Current?.Emit("scan.abort.received", metadata: BenchmarkTrace.Current.Metadata(scanId?.ToString("N") ?? "system"));
 		if (scanId.HasValue)
 		{
 			if (_activeSessions.TryGetValue(scanId.Value, out var session))
 			{
 				session.Cts.Cancel();
+				BenchmarkTrace.Current?.Emit("scan.abort.signalled", metadata: BenchmarkTrace.Current.Metadata(scanId.Value.ToString("N")));
 				_logger.LogInformation("Scan abort signal received for specific scanId: {ScanId}", scanId.Value);
 			}
 		}
@@ -884,6 +916,7 @@ public class DiskScannerEngine : IDiskScannerEngine, IDisposable
 			foreach (var session in _activeSessions.Values)
 			{
 				session.Cts.Cancel();
+				BenchmarkTrace.Current?.Emit("scan.abort.signalled", metadata: BenchmarkTrace.Current.Metadata(session.ScanId.ToString("N")));
 			}
 			_logger.LogInformation("Global scan abort signal received, all active scans canceled");
 		}

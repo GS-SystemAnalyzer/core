@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using GSSystemAnalyzer.Services;
 
 namespace GSSystemAnalyzer.Engine
 {
@@ -14,6 +15,9 @@ namespace GSSystemAnalyzer.Engine
 		private readonly Func<IReadOnlyList<T>, Task> _flushAction;
 		private readonly CancellationTokenSource _cts;
 		private readonly Task _consumerTask;
+		private readonly BenchmarkTrace? _trace;
+		private readonly BenchmarkTrace.Observation? _consumer;
+		private long _accepted, _rejected, _drained, _delivered;
 
 		public CoalescingStreamChannel(
 			Func<IReadOnlyList<T>, Task> flushAction,
@@ -32,13 +36,26 @@ namespace GSSystemAnalyzer.Engine
 				SingleWriter = false
 			});
 
+			_trace = BenchmarkTrace.Current;
+			_consumer = _trace?.Begin("coalescer.consumer");
 			_consumerTask = Task.Run(ConsumerLoopAsync);
 		}
 
 		public bool TryWrite(T item)
 		{
-			if (_cts.IsCancellationRequested) return false;
-			return _channel.Writer.TryWrite(item);
+			if (_cts.IsCancellationRequested)
+			{
+				if (_trace != null) Interlocked.Increment(ref _rejected);
+				return false;
+			}
+			if (_trace != null) Interlocked.Increment(ref _accepted);
+			var accepted = _channel.Writer.TryWrite(item);
+			if (!accepted && _trace != null)
+			{
+				Interlocked.Decrement(ref _accepted);
+				Interlocked.Increment(ref _rejected);
+			}
+			return accepted;
 		}
 
 		public void Complete()
@@ -66,11 +83,12 @@ namespace GSSystemAnalyzer.Engine
 					while (batch.Count < _maxBatchSize && reader.TryRead(out var item))
 					{
 						batch.Add(item);
+						if (_trace != null) Interlocked.Increment(ref _drained);
 					}
 
 					if (batch.Count >= _maxBatchSize)
 					{
-						await _flushAction(batch.ToArray());
+						await FlushAsync(batch);
 						batch.Clear();
 						continue;
 					}
@@ -90,6 +108,7 @@ namespace GSSystemAnalyzer.Engine
 								while (batch.Count < _maxBatchSize && reader.TryRead(out var item))
 								{
 									batch.Add(item);
+									if (_trace != null) Interlocked.Increment(ref _drained);
 								}
 
 								if (batch.Count >= _maxBatchSize) break;
@@ -108,7 +127,7 @@ namespace GSSystemAnalyzer.Engine
 
 					if (batch.Count > 0)
 					{
-						await _flushAction(batch.ToArray());
+						await FlushAsync(batch);
 						batch.Clear();
 					}
 				}
@@ -117,23 +136,45 @@ namespace GSSystemAnalyzer.Engine
 				while (reader.TryRead(out var item))
 				{
 					batch.Add(item);
+					if (_trace != null) Interlocked.Increment(ref _drained);
 					if (batch.Count >= _maxBatchSize)
 					{
-						await _flushAction(batch.ToArray());
+						await FlushAsync(batch);
 						batch.Clear();
 					}
 				}
 
 				if (batch.Count > 0)
 				{
-					await _flushAction(batch.ToArray());
+					await FlushAsync(batch);
 					batch.Clear();
 				}
 			}
 			catch (OperationCanceledException)
 			{
+				if (_consumer != null) _consumer.Outcome = "cancelled";
 				// Clean shutdown on cancellation
 			}
+			catch (Exception ex) { _consumer?.Fail(ex); throw; }
+			finally { _consumer?.Dispose(); }
+		}
+
+		private Task FlushAsync(List<T> batch) => _trace == null ? _flushAction(batch.ToArray()) : TraceFlushAsync(batch);
+
+		private async Task TraceFlushAsync(List<T> batch)
+		{
+			using var flush = _trace?.Begin("coalescer.flush", _consumer?.Metadata.StreamId);
+			try
+			{
+				await _flushAction(batch.ToArray());
+				if (_trace != null) Interlocked.Add(ref _delivered, batch.Count);
+				if (flush != null)
+				{
+					flush.Outcome = "succeeded";
+					flush.Counts = new Dictionary<string, long> { ["delivered"] = batch.Count };
+				}
+			}
+			catch (Exception ex) { flush?.Fail(ex); throw; }
 		}
 
 		public async ValueTask DisposeAsync()
@@ -149,6 +190,9 @@ namespace GSSystemAnalyzer.Engine
 			}
 			finally
 			{
+				_trace?.Emit("coalescer.summary", metadata: _consumer?.Metadata,
+					counts: new Dictionary<string, long> { ["accepted"] = _accepted, ["rejected"] = _rejected,
+						["drained"] = _drained, ["delivered"] = _delivered, ["abandoned"] = _accepted - _delivered });
 				_cts.Dispose();
 			}
 		}

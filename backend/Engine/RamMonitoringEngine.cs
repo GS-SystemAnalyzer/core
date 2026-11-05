@@ -127,12 +127,15 @@ namespace GSSystemAnalyzer.Engine
 
 		public void StopRadar()
 		{
+			BenchmarkTrace.Current?.Emit("ram.stop.received", metadata: BenchmarkTrace.Current.Metadata("ram"));
 			lock (_lock) _radarCts?.Cancel();
 			_logger.LogInformation("RAM radar stopped");
 		}
 
 		private async Task RunSerializedAsync(Task? previous, CancellationTokenSource source, long generation)
 		{
+			using var stream = BenchmarkTrace.Enter("ram");
+			using var lifetime = BenchmarkTrace.Current?.Begin("ram.lifetime");
 			if (previous != null) await previous.ConfigureAwait(false);
 			Task? owners = null;
 			try
@@ -190,11 +193,21 @@ namespace GSSystemAnalyzer.Engine
 				while (!token.IsCancellationRequested)
 				{
 					var started = _clock.GetTimestamp();
+					var trace = BenchmarkTrace.Current;
+					var acquisitionStart = trace != null ? BenchmarkTrace.Ticks : 0;
+					using var sample = trace?.Begin("ram.sample");
 
 					try
 					{
 						var snapshot = CaptureProcessSnapshot(token);
 						var globalMetrics = _globalReader();
+						var metadata = sample == null ? null : sample.Metadata with
+						{
+							AcquisitionStartTicks = acquisitionStart.ToString(System.Globalization.CultureInfo.InvariantCulture),
+							AcquisitionEndTicks = BenchmarkTrace.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture)
+						};
+						trace?.Emit("ram.acquired", globalMetrics == null ? "global_unavailable" : "succeeded", metadata,
+							counts: new Dictionary<string, long> { ["processes"] = snapshot.Count });
 						var observed = _clock.GetTimestamp();
 						var utc = _timeProvider();
 						var pressure = globalMetrics != null ? ObservePressure(globalMetrics, observed, utc, generation) : null;
@@ -223,16 +236,20 @@ namespace GSSystemAnalyzer.Engine
 							ProcessMemorySemantics = OperatingSystem.IsWindows() ? "windows-private-ws" : "unavailable"
 						};
 
-						await _hub.Clients.All.SendAsync("RamUpdate", payload, cancellationToken: token).ConfigureAwait(false);
+						await BenchmarkTrace.Send(_hub.Clients.All, "RamUpdate", payload, token, metadata).ConfigureAwait(false);
 						if (pressure != null) await PublishPressureAsync(pressure, snapshot, token).ConfigureAwait(false);
+						if (sample != null) sample.Outcome = "succeeded";
 
 						_logger.LogDebug("RAM sweep at {Time} — sent {ProcessCount} processes", DateTime.Now.ToString("HH:mm:ss"), snapshot.Count);
 					}
 					catch (Exception ex) when (ex is not OperationCanceledException)
 					{
+						sample?.Fail(ex);
 						ResetQualification();
 						_logger.LogWarning(ex, "RAM engine tick error");
 					}
+					catch (OperationCanceledException ex) { sample?.Fail(ex); throw; }
+					finally { sample?.Dispose(); }
 					var remaining = TimeSpan.FromMilliseconds(Volatile.Read(ref _pollIntervalMs)) - _clock.GetElapsedTime(started);
 					if (remaining > TimeSpan.Zero) await Task.Delay(remaining, _clock, token).ConfigureAwait(false);
 					else await Task.Yield();

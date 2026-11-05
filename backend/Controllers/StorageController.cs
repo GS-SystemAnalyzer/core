@@ -29,33 +29,49 @@ namespace GSSystemAnalyzer.Controllers
 			var validationResult = ValidateDriveAndDirectory(path, driveService);
 			if (validationResult != null) return validationResult;
 
+			var requestStream = BenchmarkTrace.Stream;
 			var id = _diskService.BeginScan(scanId);
+			using var stream = BenchmarkTrace.Enter(id.ToString("N"));
+			var trace = BenchmarkTrace.Current;
+			trace?.Emit("stream.request", operationId: requestStream.StartsWith("http-", StringComparison.Ordinal) ? requestStream[5..] : null,
+				key: trace.Key(Path.GetFullPath(path).Replace('\\', '/').TrimEnd('/').ToUpperInvariant()));
+			var queued = trace?.Begin("stream.controller_queue");
+			var work = trace?.Begin("stream.controller_task");
 
-			_ = Task.Run(async () =>
+			var task = Task.Run(async () =>
 			{
+				queued?.Dispose();
 				using var scope = _scopeFactory.CreateScope();
 				var scopedDiskService = scope.ServiceProvider.GetRequiredService<IDiskOperationService>();
 				DirectoryStreamSummary? summary = null;
+				var outcome = "succeeded";
 				try
 				{
 					summary = await scopedDiskService.StreamDirectoryAsync(path, id, async chunk =>
 					{
-						await hubContext.Clients.All.SendAsync("DirectoryChunk", new
+						var metadata = trace?.Metadata();
+						trace?.Emit("stream.chunk", metadata: metadata, counts: new Dictionary<string, long>
+							{ ["nodes"] = chunk.Count, ["bytes"] = chunk.Sum(node => node.SizeBytes) });
+						await BenchmarkTrace.Send(hubContext.Clients.All, "DirectoryChunk", new
 						{
 							scanId = id,
 							path = path,
 							chunk = chunk
-						});
+						}, metadata: metadata);
 					});
 				}
 				catch (Exception ex)
 				{
-					await hubContext.Clients.All.SendAsync("DirectoryStreamError",
+					outcome = ex is OperationCanceledException ? "cancelled" : "failed";
+					trace?.Emit("stream.error", outcome);
+					await BenchmarkTrace.Send(hubContext.Clients.All, "DirectoryStreamError",
 						new { scanId = id, path = path, error = ex.Message });
 				}
 				finally
 				{
-					await hubContext.Clients.All.SendAsync("DirectoryStreamComplete", new
+					trace?.Emit("stream.terminal", outcome, counts: new Dictionary<string, long>
+						{ ["has_summary"] = summary != null ? 1 : 0, ["recursive_bytes"] = summary?.RecursiveBytes ?? 0 });
+					await BenchmarkTrace.Send(hubContext.Clients.All, "DirectoryStreamComplete", new
 					{
 						scanId = id,
 						path = path,
@@ -66,6 +82,7 @@ namespace GSSystemAnalyzer.Controllers
 					});
 				}
 			});
+			if (trace != null && work != null) _ = trace.Observe(task, work);
 
 			return Ok(new ApiResponse<object>
 			{
@@ -152,7 +169,12 @@ namespace GSSystemAnalyzer.Controllers
 		[HttpPost("abort-scan")]
 		public IActionResult AbortScan([FromQuery] Guid? scanId = null)
 		{
+			var requestStream = BenchmarkTrace.Stream;
+			using var stream = BenchmarkTrace.Enter(scanId?.ToString("N") ?? "system");
+			BenchmarkTrace.Current?.Emit("scan.abort.controller_received",
+				operationId: requestStream.StartsWith("http-", StringComparison.Ordinal) ? requestStream[5..] : null);
 			_diskService.TriggerScanAbort(scanId);
+			BenchmarkTrace.Current?.Emit("scan.abort.controller_returned");
 
 			return Ok(new ApiResponse<object>
 			{
